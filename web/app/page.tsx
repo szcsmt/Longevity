@@ -1,0 +1,37 @@
+'use client';
+
+import { Nav }               from '@/components/nav';
+import { HeroSection }       from '@/components/hero-section';
+import { ProblemSection }    from '@/components/problem-section';
+import { StorySection }      from '@/components/story-section';
+import { SolutionSection }   from '@/components/solution-section';
+import { EstateSection }     from '@/components/estate-section';
+import { ParkSection }       from '@/components/park-section';
+import { ParkLifeSection }   from '@/components/park-life-section';
+import { AmenitiesSection }  from '@/components/amenities-section';
+import { VillasSection }     from '@/components/villas-section';
+import { MapSection }        from '@/components/map-section';
+import { CtaSection }        from '@/components/cta-section';
+import { FooterSection }     from '@/components/footer-section';
+
+export default function Home() {
+  return (
+    <main style={{ background: 'transparent', position: 'relative' }}>
+      <div className="bg-atmosphere" aria-hidden="true" />
+      <div className="grain-overlay" aria-hidden="true" />
+      <Nav />
+      <HeroSection />
+      <ProblemSection />
+      <StorySection />
+      <SolutionSection />
+      <EstateSection />
+      <ParkSection />
+      <ParkLifeSection />
+      <AmenitiesSection />
+      <VillasSection />
+      <MapSection />
+      <CtaSection />
+      <FooterSection />
+    </main>
+  );
+}

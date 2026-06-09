@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Longevity Resort</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Raleway:ital,wght@0,200;0,300;0,400;0,500;1,200&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --gold:    #C9A96E;
+      --gold-40: rgba(201,169,110,0.40);
+      --gold-65: rgba(201,169,110,0.65);
+      --w90:     rgba(255,252,248,0.90);
+      --w55:     rgba(255,252,248,0.55);
+      --forest:  #001f16;
+    }
+
+    html { scroll-behavior: auto; }
+    body { background: #040706; overflow-x: hidden; }
+
+    /* ══════════════════════════════════════════
+       NAV
+    ══════════════════════════════════════════ */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 32px 52px;
+      opacity: 0;
+      animation: fadeIn 1.4s ease 0.5s forwards;
+    }
+
+    .nav-logo {
+      display: block;
+      height: 110px;
+    }
+    .nav-logo img {
+      height: 100%;
+      width: auto;
+      display: block;
+      /* subtle gold luminance to lift it against the video */
+      filter:
+        brightness(1.08)
+        drop-shadow(0 0 12px rgba(201,169,110,0.25))
+        drop-shadow(0 2px 24px rgba(0,0,0,0.40));
+    }
+
+    /* 2-line hamburger */
+    .nav-burger {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .nav-burger span {
+      display: block;
+      height: 1px;
+      background: var(--w90);
+      border-radius: 1px;
+      transition: width 0.4s cubic-bezier(0.22,1,0.36,1);
+    }
+    .nav-burger span:first-child { width: 28px; }
+    .nav-burger span:last-child  { width: 18px; }
+    .nav-burger:hover span       { width: 28px; }
+
+    /* ══════════════════════════════════════════
+       SCROLL CONTAINER — 350 vh of scroll
+    ══════════════════════════════════════════ */
+    .hero-scroll { height: 350vh; position: relative; }
+
+    /* ══════════════════════════════════════════
+       STICKY FRAME
+    ══════════════════════════════════════════ */
+    .hero-sticky {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: hidden;
+      will-change: transform;
+    }
+
+    /* Video */
+    .hero-video {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center;
+      z-index: 0;
+    }
+
+    /* Overlays */
+    .hero-overlay {
+      position: absolute; inset: 0; z-index: 1;
+      background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.28) 0%,
+        rgba(0,0,0,0.00) 18%,
+        rgba(0,0,0,0.00) 50%,
+        rgba(0,0,0,0.58) 100%
+      );
+    }
+    .hero-vignette {
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background: radial-gradient(ellipse 90% 80% at 50% 46%,
+        transparent 24%, rgba(0,0,0,0.44) 100%);
+    }
+
+    /* ══════════════════════════════════════════
+       TITLE
+       bottom: 28% places it in the landscape zone
+       where the villa / park ridge typically sits.
+    ══════════════════════════════════════════ */
+    .hero-title {
+      position: absolute;
+      bottom: 56%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      text-align: center;
+      white-space: nowrap;
+      perspective: 1100px;
+      perspective-origin: 50% 100%;
+    }
+
+    .t-wrap {
+      overflow: hidden;
+      padding-bottom: 6px;
+      margin-bottom: -4px;
+      line-height: 1;
+    }
+
+    .t-line {
+      display: block;
+      font-family: 'Playfair Display', serif;
+      font-weight: 400;
+      font-size: clamp(48px, 7.8vw, 116px);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--w90);
+      text-shadow:
+        0 0  80px rgba(201,169,110,0.06),
+        0 2px 28px rgba(0,0,0,0.30);
+
+      opacity: 0;
+      transform: rotateX(56deg) translateY(90px);
+      transform-origin: bottom center;
+    }
+
+    .t-line--sub {
+      font-size:     clamp(28px, 4.4vw, 64px);
+      font-weight:   400;
+      letter-spacing: 0.32em;
+    }
+
+    .t-rule {
+      display: block;
+      width: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      margin: 12px auto;
+      opacity: 0;
+    }
+
+    /* Triggered by JS .is-visible */
+    .hero-title.is-visible .t-wrap:nth-child(1) .t-line {
+      animation: rise3D 2.8s cubic-bezier(0.06,1,0.18,1) forwards;
+    }
+    .hero-title.is-visible .t-rule {
+      animation: expandRule 1.1s cubic-bezier(0.22,1,0.36,1) 1.30s forwards;
+    }
+    .hero-title.is-visible .t-wrap:nth-child(3) .t-line {
+      animation: rise3D 2.8s cubic-bezier(0.06,1,0.18,1) 0.28s forwards;
+    }
+
+    /* ══════════════════════════════════════════
+       CTA — pill / elongated, centred at bottom
+    ══════════════════════════════════════════ */
+    .hero-cta-wrap {
+      position: absolute;
+      bottom: 52px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+
+      opacity: 0;
+      /* JS adds .is-visible */
+      transition: opacity 1.2s cubic-bezier(0.22,1,0.36,1),
+                  transform 1.2s cubic-bezier(0.22,1,0.36,1);
+    }
+    .hero-cta-wrap.is-visible {
+      opacity: 1;
+    }
+
+    .hero-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 56px;
+      border-radius: 100px;
+      border: 1px solid var(--gold-40);
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(14px) saturate(1.4);
+      -webkit-backdrop-filter: blur(14px) saturate(1.4);
+      text-decoration: none;
+      cursor: pointer;
+      white-space: nowrap;
+
+      /* idle glow */
+      box-shadow:
+        0 0 18px rgba(201,169,110,0.12),
+        0 0 45px rgba(201,169,110,0.06),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+
+      /* pulse defined below */
+      animation: ctaPulse 3.5s ease-in-out infinite;
+
+      transition:
+        border-color 0.40s ease,
+        background   0.40s ease,
+        box-shadow   0.40s ease,
+        transform    0.28s ease,
+        letter-spacing 0.40s ease,
+        gap          0.40s ease;
+    }
+
+    .cta-text {
+      font-family: 'Raleway', sans-serif;
+      font-size: 10px;
+      font-weight: 300;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: var(--w90);
+      transition: letter-spacing 0.40s ease, color 0.35s ease;
+    }
+
+    .cta-arrow {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      opacity: 0.65;
+      transition: transform 0.35s ease, opacity 0.35s ease;
+    }
+
+    /* Hover */
+    .hero-cta:hover {
+      border-color: var(--gold-65);
+      background: rgba(201,169,110,0.09);
+      transform: translateY(-2px);
+      gap: 20px;
+      box-shadow:
+        0 0  28px rgba(201,169,110,0.55),
+        0 0  70px rgba(201,169,110,0.28),
+        0 0 120px rgba(201,169,110,0.13),
+        inset 0 1px 0 rgba(255,255,255,0.10);
+      animation: none; /* stop pulse on hover */
+    }
+    .hero-cta:hover .cta-text  { letter-spacing: 0.26em; color: #fff; }
+    .hero-cta:hover .cta-arrow { transform: translateX(5px); opacity: 1; }
+    .hero-cta:active           { transform: translateY(0) scale(0.98); }
+
+    /* ══════════════════════════════════════════
+       SCROLL CUE
+    ══════════════════════════════════════════ */
+    .scroll-cue {
+      position: absolute;
+      bottom: 40px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      pointer-events: none;
+      opacity: 0;
+      animation: fadeIn 1.4s ease 1.0s forwards;
+      transition: opacity 0.6s ease;
+    }
+    .scroll-cue.hidden { opacity: 0 !important; }
+
+    .sc-line {
+      width: 1px; height: 36px;
+      background: linear-gradient(to bottom, var(--gold), transparent);
+      animation: scPulse 2.6s ease-in-out 1.8s infinite;
+    }
+    .sc-label {
+      font-family: 'Raleway', sans-serif;
+      font-size: 8px; font-weight: 300;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: rgba(201,169,110,0.48);
+    }
+
+    /* ══════════════════════════════════════════
+       KEYFRAMES
+    ══════════════════════════════════════════ */
+    @keyframes rise3D {
+      0%  { opacity:0; transform: rotateX(56deg) translateY(90px); }
+      16% { opacity:1; }
+      100%{ opacity:1; transform: rotateX(0deg)  translateY(0);    }
+    }
+    @keyframes expandRule {
+      from { width:0; opacity:0; }
+      to   { width: min(180px,36vw); opacity:1; }
+    }
+    @keyframes fadeIn {
+      from { opacity:0; } to { opacity:1; }
+    }
+    @keyframes ctaPulse {
+      0%,100% {
+        box-shadow:
+          0 0 18px rgba(201,169,110,0.12),
+          0 0 45px rgba(201,169,110,0.06),
+          inset 0 1px 0 rgba(255,255,255,0.06);
+      }
+      50% {
+        box-shadow:
+          0 0 26px rgba(201,169,110,0.28),
+          0 0 70px rgba(201,169,110,0.13),
+          inset 0 1px 0 rgba(255,255,255,0.08);
+      }
+    }
+    @keyframes scPulse {
+      0%,100% { opacity:.28; } 50% { opacity:1; }
+    }
+
+    /* ══════════════════════════════════════════
+       REDUCED MOTION
+    ══════════════════════════════════════════ */
+    @media (prefers-reduced-motion: reduce) {
+      .t-line, .t-rule, .nav, .scroll-cue { animation:none!important; opacity:1!important; transform:none!important; }
+      .t-rule { width: min(180px,36vw); }
+    }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      .nav { padding: 24px 28px; }
+    }
+    @media (max-width: 600px) {
+      .nav-logo { height: 38px; }
+      .hero-title { white-space: normal; width: 88%; }
+      .hero-cta { padding: 16px 40px; }
+    }
+
+    /* ══════════════════════════════════════════
+       PROBLEM SECTION
+    ══════════════════════════════════════════ */
+    .problem {
+      background:
+        linear-gradient(to bottom, rgba(4,7,6,1) 0%, rgba(0,31,22,0.86) 18%, rgba(0,31,22,0.86) 82%, rgba(4,7,6,1) 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 140px 48px;
+      position: relative;
+      overflow: hidden;
+      /* seamless join from hero's dark bottom */
+      margin-top: -2px;
+    }
+
+    .section-parallax-bg {
+      position: absolute;
+      inset: -40% 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      will-change: transform;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* subtle top gradient so the section bleeds in from hero */
+    .problem::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 180px;
+      background: linear-gradient(to bottom, rgba(4,7,6,1), transparent);
+      pointer-events: none;
+    }
+
+    .problem__inner {
+      max-width: 700px;
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 64px;
+    }
+
+    .problem__lines {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── Each line ─────────────────────────── */
+    .p-line {
+      font-family: 'Playfair Display', serif;
+      font-weight: 400;
+      font-size: clamp(20px, 2.8vw, 40px);
+      line-height: 1.5;
+      letter-spacing: 0.01em;
+      color: rgba(255,252,248,0.72);
+
+      opacity: 0;
+      transform: translateY(32px);
+      transition:
+        opacity   1.0s cubic-bezier(0.22,1,0.36,1),
+        transform 1.0s cubic-bezier(0.22,1,0.36,1);
+    }
+
+    .p-line.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── Cinematic stagger on first 3 lines ─
+       Each line waits significantly longer than
+       the previous — creates a heavy, deliberate
+       rhythm like movie title cards.            */
+    .problem__lines:first-child .p-line {
+      transform: translateY(22px);
+      /* slower, weightier easing */
+      transition:
+        opacity   1.6s cubic-bezier(0.12, 1, 0.20, 1),
+        transform 1.6s cubic-bezier(0.12, 1, 0.20, 1);
+    }
+    .problem__lines:first-child .p-line:nth-child(1) { transition-delay: 0ms; }
+    .problem__lines:first-child .p-line:nth-child(2) { transition-delay: 620ms; }
+    .problem__lines:first-child .p-line:nth-child(3) { transition-delay: 1240ms; }
+
+    /* Larger, brighter for the emotional turn */
+    .p-line--large {
+      font-size: clamp(24px, 3.4vw, 48px);
+      color: rgba(255,252,248,0.88);
+      font-style: italic;
+      font-weight: 400;
+    }
+
+    /* Gold punchline */
+    .p-line--gold {
+      font-size: clamp(26px, 3.8vw, 54px);
+      font-weight: 500;
+      color: var(--gold);
+      letter-spacing: 0.04em;
+    }
+
+    /* Thin gold divider between the two groups */
+    .problem__divider {
+      width: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0;
+      transition:
+        width   1.2s cubic-bezier(0.22,1,0.36,1),
+        opacity 1.2s ease;
+    }
+    .problem__divider.is-visible {
+      width: min(200px, 40vw);
+      opacity: 1;
+    }
+
+    @media (max-width: 600px) {
+      .problem { padding: 100px 28px; }
+      .problem__inner { gap: 48px; }
+      .problem__lines { gap: 18px; }
+    }
+
+    /* ══════════════════════════════════════════
+       PROOF SECTION — sticky card stack
+    ══════════════════════════════════════════ */
+
+    /* ── Stack container ───────────────────── */
+    .ps {
+      position: relative;
+    }
+
+    /* ── Each sticky card ───────────────────── */
+    .ps-card {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      width: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+
+    /* depth shadow on top edge: makes stacking visible */
+    .ps-card + .ps-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 90px;
+      background: linear-gradient(to bottom,
+        rgba(0,0,0,0.55) 0%,
+        transparent 100%);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* gradient backgrounds — each card a different mood */
+    .ps-card--1 {
+      background:
+        radial-gradient(ellipse 70% 60% at 80% 30%, rgba(0,80,40,0.45) 0%, transparent 70%),
+        linear-gradient(155deg, rgba(0,14,8,0.82) 0%, rgba(0,39,20,0.76) 55%, rgba(0,18,8,0.82) 100%),
+        url('images/proof-1.jpg') center/cover no-repeat;
+    }
+    .ps-card--2 {
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 70%, rgba(0,40,80,0.40) 0%, transparent 65%),
+        linear-gradient(160deg, rgba(0,8,15,0.82) 0%, rgba(0,26,40,0.76) 50%, rgba(0,14,24,0.82) 100%),
+        url('images/proof-2.jpg') center/cover no-repeat;
+    }
+    .ps-card--3 {
+      background:
+        radial-gradient(ellipse 65% 55% at 75% 25%, rgba(80,40,0,0.38) 0%, transparent 65%),
+        linear-gradient(150deg, rgba(10,5,0,0.82) 0%, rgba(34,16,0,0.76) 50%, rgba(14,7,0,0.82) 100%),
+        url('images/proof-3.jpg') center/cover no-repeat;
+    }
+    .ps-card--4 {
+      background:
+        radial-gradient(ellipse 55% 60% at 30% 65%, rgba(60,30,0,0.40) 0%, transparent 65%),
+        linear-gradient(155deg, rgba(8,4,0,0.82) 0%, rgba(28,12,0,0.76) 50%, rgba(12,6,0,0.82) 100%),
+        url('images/proof-4.jpg') center/cover no-repeat;
+    }
+
+    /* ── Card inner layout ──────────────────── */
+    .ps-card__inner {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 80px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      gap: 0 60px;
+    }
+
+    /* big watermark number — left column, bleeds off edge */
+    .ps-num {
+      font-family: 'Playfair Display', serif;
+      font-weight: 200;
+      font-size: clamp(200px, 28vw, 380px);
+      line-height: 0.85;
+      color: rgba(255,252,248,0.04);
+      letter-spacing: -0.04em;
+      user-select: none;
+      pointer-events: none;
+      margin-left: -0.08em;
+      /* blend so it sits behind the text layer */
+    }
+
+    /* text content — right column */
+    .ps-content {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .ps-label {
+      font-family: 'Raleway', sans-serif;
+      font-size: 9px;
+      font-weight: 300;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+      opacity: 0.80;
+    }
+
+    .ps-heading {
+      font-family: 'Playfair Display', serif;
+      font-weight: 400;
+      font-style: italic;
+      font-size: clamp(34px, 4.4vw, 64px);
+      line-height: 1.22;
+      letter-spacing: 0.01em;
+      color: var(--w90);
+    }
+
+    .ps-rule {
+      display: block;
+      width: min(120px, 24vw);
+      height: 1px;
+      background: linear-gradient(90deg, var(--gold-65), transparent);
+    }
+
+    .ps-body {
+      font-family: 'Playfair Display', serif;
+      font-weight: 400;
+      font-size: clamp(15px, 1.45vw, 20px);
+      line-height: 1.85;
+      letter-spacing: 0.01em;
+      color: rgba(255,252,248,0.42);
+    }
+
+    /* location caption — bottom of card */
+    .ps-location {
+      position: absolute;
+      bottom: 44px;
+      left: 80px;
+      font-family: 'Raleway', sans-serif;
+      font-size: 8px;
+      font-weight: 200;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255,252,248,0.18);
+      z-index: 2;
+    }
+
+    /* ── Progress dots — right edge ─────────── */
+    .ps-dots {
+      position: fixed;
+      right: 36px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+    }
+    .ps-dots.is-visible { opacity: 1; }
+
+    .ps-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(255,252,248,0.18);
+      transition: background 0.4s ease, transform 0.4s ease;
+    }
+    .ps-dot.active {
+      background: var(--gold);
+      transform: scale(1.5);
+    }
+
+    /* ── Proof: Responsive ──────────────────── */
+    @media (max-width: 900px) {
+      .ps-card__inner {
+        grid-template-columns: 1fr;
+        padding: 0 40px;
+        text-align: center;
+        justify-items: center;
+      }
+      .ps-num { display: none; }
+      .ps-location { left: 40px; }
+      .ps-rule { margin: 0 auto; }
+      .ps-dots { right: 20px; }
+    }
+    @media (max-width: 480px) {
+      .ps-card__inner { padding: 0 28px; }
+      .ps-location { left: 28px; }
+    }
+
+    /* ══════════════════════════════════════════
+       FEATURES SECTION — Villa carousel
+    ══════════════════════════════════════════ */
+    .features {
+      background:
+        linear-gradient(to bottom, rgba(0,31,22,0.92) 0%, rgba(0,31,22,0.88) 50%, rgba(0,31,22,0.94) 100%);
+      padding: 120px 0 140px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .features__header {
+      text-align: center;
+      padding: 0 40px;
+      margin-bottom: 80px;
+    }
+    .features__eyebrow {
+      display: block;
+      font-family: 'Raleway', sans-serif;
+      font-size: 9px;
+      font-weight: 300;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--gold);
+      opacity: 0.78;
+      margin-bottom: 20px;
+    }
+    .features__title {
+      font-family: 'Playfair Display', serif;
+      font-weight: 400;
+      font-size: clamp(42px, 6vw, 84px);
+      letter-spacing: 0.03em;
+      color: var(--w90);
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    .features__subtitle {
+      font-family: 'Playfair Display', serif;
+      font-weight: 400;
+      font-style: italic;
+      font-size: clamp(15px, 1.5vw, 20px);
+      color: rgba(255,252,248,0.38);
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Stage (arrows + viewport) ──────────── */
+    .features__stage {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      padding: 0 52px;
+      margin-bottom: 52px;
+    }
+
+    /* Arrow buttons */
+    .features__arrow {
+      flex-shrink: 0;
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      border: 1px solid var(--gold-40);
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition:
+        border-color 0.35s ease,
+        background   0.35s ease,
+        transform    0.35s ease,
+        opacity      0.35s ease;
+    }
+    .features__arrow svg { stroke: var(--gold); }
+    .features__arrow:hover {
+      border-color: var(--gold-65);
+      background: rgba(201,169,110,0.10);
+      transform: scale(1.08);
+    }
+    .features__arrow:disabled {
+      opacity: 0.22;
+      cursor: default;
+      transform: none;
+    }
+
+    /* Overflow clip */
+    .features__viewport {
+      flex: 1;
+      overflow: hidden;
+      cursor: grab;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .features__viewport.is-dragging { cursor: grabbing; }
+
+    /* Sliding track */
+    .features__track {
+      display: flex;
+      transition: transform 0.75s cubic-bezier(0.16, 1, 0.30, 1);
+      will-change: transform;
+    }
+
+    /* ── Individual villa card ──────────────── */
+    .fv-card {
+      flex-shrink: 0;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 5fr 7fr;
+      align-items: center;
+      gap: 72px;
+      padding: 0 32px;
+    }
+
+    /* ── Text column ─────────────────────────── */
+    .fvc-text { display: flex; flex-direction: column; gap: 26px; }
+
+    .fvc-label { display: flex; align-items: center; gap: 14px; }
+    .fvc-label-line {
+      display: block;
+      height: 1px;
+      width: 28px;
+      background: var(--w90);
+      transition: width 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+    .fvc-label-text {
+      font-family: 'Raleway', sans-serif;
+      font-size: 9px;
+      font-weight: 300;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--w90);
+      transition: letter-spacing 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    .fvc-title { display: flex; flex-direction: column; }
+    .fvc-title-line {
+      display: block;
+      font-family: 'Playfair Display', serif;
+      font-weight: 400;
+      font-style: italic;
+      font-size: clamp(34px, 4.4vw, 62px);
+      line-height: 1.14;
+      letter-spacing: 0.01em;
+      color: var(--w90);
+      transition: transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    .fvc-rule {
+      display: block;
+      width: 80px; height: 1px;
+      background: linear-gradient(90deg, var(--gold-65), transparent);
+      transition: width 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    .fvc-desc {
+      font-family: 'Playfair Display', serif;
+      font-weight: 400;
+      font-size: clamp(14px, 1.35vw, 18px);
+      line-height: 1.85;
+      color: rgba(255,252,248,0.40);
+      transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    /* CTA row */
+    .fvc-cta { display: flex; align-items: center; gap: 16px; }
+    .fvc-btn {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 1px solid rgba(201,169,110,0.28);
+      background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.5s cubic-bezier(0.16,1,0.3,1),
+                  background   0.5s cubic-bezier(0.16,1,0.3,1),
+                  transform    0.5s cubic-bezier(0.16,1,0.3,1),
+                  box-shadow   0.5s cubic-bezier(0.16,1,0.3,1);
+    }
+    .fvc-btn svg {
+      stroke: var(--gold);
+      transition: transform 0.5s cubic-bezier(0.16,1,0.3,1);
+    }
+    .fvc-btn-label {
+      font-family: 'Raleway', sans-serif;
+      font-size: 9px;
+      font-weight: 300;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255,252,248,0.45);
+      transform: translateX(-8px);
+      transition: opacity 0.7s ease,
+                  transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    /* ── Image column ─────────────────────────── */
+    .fvc-image-wrap {
+      position: relative;
+      transition: transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    /* Animated frame outline */
+    .fvc-frame {
+      position: absolute;
+      inset: -14px;
+      border: 1px solid transparent;
+      pointer-events: none;
+      transition: border-color 0.7s ease, transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    /* Image container */
+    .fvc-image-inner {
+      position: relative;
+      height: clamp(320px, 38vw, 500px);
+      overflow: hidden;
+    }
+
+    /* Placeholder: styled div (swap for <img> when photos available) */
+    .fvc-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 1.0s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    /* Dark gradient overlay on hover */
+    .fvc-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.12), transparent);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.7s ease;
+    }
+
+    /* Corner accents */
+    .fvc-corner {
+      position: absolute;
+      background: rgba(255,255,255,0.70);
+      opacity: 0;
+      transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16,1,0.3,1);
+    }
+    .fvc-corner--tl-v { top:12px; left:12px; width:1px; height:22px; transform:scaleY(0); transform-origin:top;    transition-delay:50ms; }
+    .fvc-corner--tl-h { top:12px; left:12px; width:22px; height:1px; transform:scaleX(0); transform-origin:left;   transition-delay:100ms; }
+    .fvc-corner--br-v { bottom:12px; right:12px; width:1px; height:22px; transform:scaleY(0); transform-origin:bottom; transition-delay:150ms; }
+    .fvc-corner--br-h { bottom:12px; right:12px; width:22px; height:1px; transform:scaleX(0); transform-origin:right; transition-delay:200ms; }
+
+    /* Card index */
+    .fvc-index {
+      position: absolute;
+      bottom: -26px; right: 0;
+      font-family: 'Raleway', sans-serif;
+      font-size: 9px; font-weight: 200;
+      letter-spacing: 0.14em;
+      color: rgba(255,252,248,0.20);
+      transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    /* ── Hover states — pure CSS ─────────────── */
+    .fv-card:hover .fvc-label-line                 { width: 44px; }
+    .fv-card:hover .fvc-label-text                 { letter-spacing: 0.22em; }
+    .fv-card:hover .fvc-title-line:first-child      { transform: translateY(-2px); }
+    .fv-card:hover .fvc-title-line:last-child       { transform: translateX(10px); }
+    .fv-card:hover .fvc-rule                        { width: 110px; }
+    .fv-card:hover .fvc-desc                        { opacity: 1; transform: translateY(-3px); }
+    .fv-card:hover .fvc-btn {
+      border-color: var(--gold-65);
+      background: rgba(201,169,110,0.14);
+      transform: scale(1.06);
+      box-shadow: 0 6px 28px rgba(201,169,110,0.18);
+    }
+    .fv-card:hover .fvc-btn svg                     { transform: rotate(45deg); }
+    .fv-card:hover .fvc-btn-label                   { opacity: 1; transform: translateX(0); transition-delay: 100ms; }
+    .fv-card:hover .fvc-image-wrap                  { transform: translateX(4px) translateY(-4px); }
+    .fv-card:hover .fvc-frame                       { border-color: rgba(255,252,248,0.13); transform: scale(1.01); }
+    .fv-card:hover .fvc-img                         { transform: scale(1.04); }
+    .fv-card:hover .fvc-overlay                     { opacity: 1; }
+    .fv-card:hover .fvc-corner                      { opacity: 1; }
+    .fv-card:hover .fvc-corner--tl-v                { transform: scaleY(1); }
+    .fv-card:hover .fvc-corner--tl-h                { transform: scaleX(1); }
+    .fv-card:hover .fvc-corner--br-v                { transform: scaleY(1); }
+    .fv-card:hover .fvc-corner--br-h                { transform: scaleX(1); }
+    .fv-card:hover .fvc-index                       { opacity: 0.55; transform: translateY(8px); }
+
+    /* ── Footer dots ─────────────────────────── */
+    .features__footer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+    .fd-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: rgba(255,252,248,0.18);
+      cursor: pointer;
+      transition: background 0.4s ease, transform 0.4s ease;
+    }
+    .fd-dot.active { background: var(--gold); transform: scale(1.5); }
+
+    /* ── Features: Responsive ───────────────── */
+    @media (max-width: 960px) {
+      .fv-card {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        padding: 0 20px;
+        text-align: center;
+        justify-items: center;
+      }
+      .fvc-label  { justify-content: center; }
+      .fvc-rule   { margin: 0 auto; }
+      .fvc-cta    { justify-content: center; }
+      .fvc-desc   { max-width: 460px; }
+      .features__stage { padding: 0 20px; gap: 14px; }
+    }
+    @media (max-width: 480px) {
+      .features__stage { padding: 0 12px; gap: 10px; }
+      .features__arrow { width: 38px; height: 38px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="/" class="nav-logo" aria-label="Longevity Resort">
+      <img src="LOGO.svg" alt="Longevity Resort" />
+    </a>
+    <button class="nav-burger" type="button" aria-label="Menu">
+      <span></span>
+      <span></span>
+    </button>
+  </nav>
+
+  <!-- HERO -->
+  <div id="heroScroll" class="hero-scroll">
+    <div class="hero-sticky">
+
+      <video id="heroVideo" class="hero-video"
+        src="Video.mp4" muted playsinline preload="auto"
+        aria-hidden="true">
+      </video>
+
+      <div class="hero-overlay"  aria-hidden="true"></div>
+      <div class="hero-vignette" aria-hidden="true"></div>
+
+      <!-- Title: rises above the villa/landscape -->
+      <div id="heroTitle" class="hero-title" aria-label="Longevity Resort">
+        <div class="t-wrap">
+          <span class="t-line">Longevity</span>
+        </div>
+        <span class="t-rule" aria-hidden="true"></span>
+        <div class="t-wrap">
+          <span class="t-line t-line--sub">Resort</span>
+        </div>
+      </div>
+
+      <!-- CTA — pill button, bottom-centre -->
+      <div id="heroCtaWrap" class="hero-cta-wrap">
+        <a href="#discover" class="hero-cta" aria-label="Step Inside">
+          <span class="cta-text">Step Inside</span>
+          <span class="cta-arrow" aria-hidden="true">
+            <svg width="18" height="10" viewBox="0 0 18 10" fill="none">
+              <path d="M1 5h16M11 1l6 4-6 4"
+                stroke="rgba(255,252,248,0.88)"
+                stroke-width="1.1"
+                stroke-linecap="round"
+                stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </a>
+      </div>
+
+      <!-- Scroll cue -->
+      <div id="scrollCue" class="scroll-cue" aria-hidden="true">
+        <div class="sc-line"></div>
+        <span class="sc-label">Scroll</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       PROBLEM SECTION
+  ══════════════════════════════════════════ -->
+  <section class="problem">
+    <div class="section-parallax-bg" style="background-image: url('images/problem-bg.jpg');" aria-hidden="true"></div>
+
+    <div class="problem__inner">
+
+      <div class="problem__lines">
+        <p class="p-line">The meetings never stop.</p>
+        <p class="p-line">The traffic never clears.</p>
+        <p class="p-line">The notifications never sleep.</p>
+      </div>
+
+      <div class="problem__divider" aria-hidden="true"></div>
+
+      <div class="problem__lines">
+        <p class="p-line p-line--large">You can't remember the last time<br>you felt truly rested.</p>
+        <p class="p-line p-line--gold">Not tired.<br>Rested.</p>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       PROOF SECTION — sticky card stack
+  ══════════════════════════════════════════ -->
+
+  <!-- Progress dots (fixed, managed by JS) -->
+  <div class="ps-dots" id="psDots" aria-hidden="true">
+    <div class="ps-dot active"></div>
+    <div class="ps-dot"></div>
+    <div class="ps-dot"></div>
+    <div class="ps-dot"></div>
+  </div>
+
+  <div class="ps" id="proofStack">
+
+    <!-- Card 1 — The Environment -->
+    <div class="ps-card ps-card--1" data-card="0">
+      <div class="ps-card__inner">
+        <span class="ps-num" aria-hidden="true">01</span>
+        <div class="ps-content">
+          <span class="ps-label">The Environment</span>
+          <h2 class="ps-heading">The air that<br>clears everything.</h2>
+          <span class="ps-rule" aria-hidden="true"></span>
+          <p class="ps-body">Ancient rainforest meets the Gulf of Thailand.<br>Silence has a different quality here.</p>
+        </div>
+      </div>
+      <span class="ps-location">9.5°N · 100.0°E — Koh Samui, Thailand</span>
+    </div>
+
+    <!-- Card 2 — The Stillness -->
+    <div class="ps-card ps-card--2" data-card="1">
+      <div class="ps-card__inner">
+        <span class="ps-num" aria-hidden="true">02</span>
+        <div class="ps-content">
+          <span class="ps-label">The Stillness</span>
+          <h2 class="ps-heading">No agenda.<br>No noise.<br>Just presence.</h2>
+          <span class="ps-rule" aria-hidden="true"></span>
+          <p class="ps-body">Private infinity pool. Ocean horizon at dawn.<br>The kind of morning you forgot existed.</p>
+        </div>
+      </div>
+      <span class="ps-location">Private Villa — Longevity Resort</span>
+    </div>
+
+    <!-- Card 3 — The Wellness -->
+    <div class="ps-card ps-card--3" data-card="2">
+      <div class="ps-card__inner">
+        <span class="ps-num" aria-hidden="true">03</span>
+        <div class="ps-content">
+          <span class="ps-label">The Wellness</span>
+          <h2 class="ps-heading">Your body<br>remembers<br>how to rest.</h2>
+          <span class="ps-rule" aria-hidden="true"></span>
+          <p class="ps-body">Ayurvedic rituals. Cold plunge at first light.<br>Breathwork with a view of the jungle canopy.</p>
+        </div>
+      </div>
+      <span class="ps-location">Wellness Pavilion — Daily Programme</span>
+    </div>
+
+    <!-- Card 4 — The Cuisine -->
+    <div class="ps-card ps-card--4" data-card="3">
+      <div class="ps-card__inner">
+        <span class="ps-num" aria-hidden="true">04</span>
+        <div class="ps-content">
+          <span class="ps-label">The Cuisine</span>
+          <h2 class="ps-heading">Taste the<br>island.</h2>
+          <span class="ps-rule" aria-hidden="true"></span>
+          <p class="ps-body">Farm-to-table Thai. Local spice. Fresh coconut at sunset.<br>Meals that feel like ceremony.</p>
+        </div>
+      </div>
+      <span class="ps-location">The Restaurant — Longevity Resort</span>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FEATURES SECTION — The Villas
+  ══════════════════════════════════════════ -->
+  <section class="features" id="features">
+    <div class="section-parallax-bg" style="background-image: url('images/features-bg.jpg');" aria-hidden="true"></div>
+
+    <div class="features__header">
+      <span class="features__eyebrow">The Residences</span>
+      <h2 class="features__title">The Villas</h2>
+      <p class="features__subtitle">Three sanctuaries. One island.</p>
+    </div>
+
+    <div class="features__stage">
+
+      <!-- Prev arrow -->
+      <button class="features__arrow" id="featPrev" aria-label="Previous villa" disabled>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 1.5L3.5 7L9 12.5"/>
+        </svg>
+      </button>
+
+      <!-- Viewport + track -->
+      <div class="features__viewport" id="featViewport">
+        <div class="features__track" id="featTrack">
+
+          <!-- Villa I -->
+          <div class="fv-card">
+            <div class="fvc-text">
+              <div class="fvc-label">
+                <span class="fvc-label-line"></span>
+                <span class="fvc-label-text">Villa I</span>
+              </div>
+              <h3 class="fvc-title">
+                <span class="fvc-title-line">The Samui</span>
+                <span class="fvc-title-line">Villa</span>
+              </h3>
+              <span class="fvc-rule" aria-hidden="true"></span>
+              <p class="fvc-desc">
+                Two bedrooms. Private pool. Surrounded by<br>
+                ancient jungle on three sides.
+              </p>
+              <div class="fvc-cta">
+                <div class="fvc-btn" role="button" tabindex="0" aria-label="Explore The Samui Villa">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.5 10.5L10.5 2.5M10.5 2.5H5M10.5 2.5V8"/>
+                  </svg>
+                </div>
+                <span class="fvc-btn-label">Explore</span>
+              </div>
+            </div>
+            <div class="fvc-image-wrap">
+              <div class="fvc-frame" aria-hidden="true"></div>
+              <div class="fvc-image-inner">
+                <img class="fvc-img" src="images/villa-I.jpg" alt="The Samui Villa" />
+                <div class="fvc-overlay" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--tl-v" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--tl-h" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--br-v" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--br-h" aria-hidden="true"></div>
+              </div>
+              <span class="fvc-index" aria-hidden="true">01</span>
+            </div>
+          </div>
+
+          <!-- Villa II -->
+          <div class="fv-card">
+            <div class="fvc-text">
+              <div class="fvc-label">
+                <span class="fvc-label-line"></span>
+                <span class="fvc-label-text">Villa II</span>
+              </div>
+              <h3 class="fvc-title">
+                <span class="fvc-title-line">The Horizon</span>
+                <span class="fvc-title-line">Villa</span>
+              </h3>
+              <span class="fvc-rule" aria-hidden="true"></span>
+              <p class="fvc-desc">
+                Three bedrooms. Infinity pool facing the ocean.<br>
+                A view that resets everything.
+              </p>
+              <div class="fvc-cta">
+                <div class="fvc-btn" role="button" tabindex="0" aria-label="Explore The Horizon Villa">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.5 10.5L10.5 2.5M10.5 2.5H5M10.5 2.5V8"/>
+                  </svg>
+                </div>
+                <span class="fvc-btn-label">Explore</span>
+              </div>
+            </div>
+            <div class="fvc-image-wrap">
+              <div class="fvc-frame" aria-hidden="true"></div>
+              <div class="fvc-image-inner">
+                <img class="fvc-img" src="images/villa-II.jpg" alt="The Horizon Villa" />
+                <div class="fvc-overlay" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--tl-v" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--tl-h" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--br-v" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--br-h" aria-hidden="true"></div>
+              </div>
+              <span class="fvc-index" aria-hidden="true">02</span>
+            </div>
+          </div>
+
+          <!-- Villa III -->
+          <div class="fv-card">
+            <div class="fvc-text">
+              <div class="fvc-label">
+                <span class="fvc-label-line"></span>
+                <span class="fvc-label-text">Villa III</span>
+              </div>
+              <h3 class="fvc-title">
+                <span class="fvc-title-line">The Sanctuary</span>
+                <span class="fvc-title-line">Villa</span>
+              </h3>
+              <span class="fvc-rule" aria-hidden="true"></span>
+              <p class="fvc-desc">
+                Four bedrooms. Full private service.<br>
+                The most secluded estate on the island.
+              </p>
+              <div class="fvc-cta">
+                <div class="fvc-btn" role="button" tabindex="0" aria-label="Explore The Sanctuary Villa">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.5 10.5L10.5 2.5M10.5 2.5H5M10.5 2.5V8"/>
+                  </svg>
+                </div>
+                <span class="fvc-btn-label">Explore</span>
+              </div>
+            </div>
+            <div class="fvc-image-wrap">
+              <div class="fvc-frame" aria-hidden="true"></div>
+              <div class="fvc-image-inner">
+                <img class="fvc-img" src="images/villa-III.jpg" alt="The Sanctuary Villa" />
+                <div class="fvc-overlay" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--tl-v" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--tl-h" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--br-v" aria-hidden="true"></div>
+                <div class="fvc-corner fvc-corner--br-h" aria-hidden="true"></div>
+              </div>
+              <span class="fvc-index" aria-hidden="true">03</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Next arrow -->
+      <button class="features__arrow" id="featNext" aria-label="Next villa">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 1.5L10.5 7L5 12.5"/>
+        </svg>
+      </button>
+
+    </div>
+
+    <!-- Progress dots -->
+    <div class="features__footer" id="featDots">
+      <div class="fd-dot active" data-idx="0"></div>
+      <div class="fd-dot" data-idx="1"></div>
+      <div class="fd-dot" data-idx="2"></div>
+    </div>
+
+  </section>
+
+  <script>
+  (function () {
+    var scrollEl  = document.getElementById('heroScroll');
+    var video     = document.getElementById('heroVideo');
+    var titleEl   = document.getElementById('heroTitle');
+    var ctaWrap   = document.getElementById('heroCtaWrap');
+    var cueEl     = document.getElementById('scrollCue');
+
+    var titleDone = false;
+    var ctaDone   = false;
+    var cueDone   = false;
+
+    /* ─── Smooth video scrubbing ──────────────────────
+       A continuous RAF loop lerps video.currentTime
+       toward targetTime. This hides the jitter caused
+       by large sudden seeks and gives a cinematic feel.
+       The 0.14 factor balances responsiveness vs smoothness.
+
+       NOTE: For the smoothest possible scrubbing, re-export
+       the video with a high keyframe density (e.g. every
+       15–30 frames / every 0.5 s). In DaVinci Resolve or
+       Premiere: export H.264 with Keyframe Distance = 15.
+       In HandBrake: Options > x264 > Keyframe = 15.
+    ────────────────────────────────────────────────── */
+    var targetTime = 0;
+    var LERP = 0.12;
+    var rafId = null;
+
+    function videoLoop() {
+      if (video.readyState < 2 || !video.duration) { rafId = null; return; }
+
+      var diff = targetTime - video.currentTime;
+      if (Math.abs(diff) > 0.015) {
+        video.currentTime += diff * LERP;
+        rafId = requestAnimationFrame(videoLoop);
+      } else {
+        video.currentTime = targetTime;
+        rafId = null;
+      }
+    }
+
+    function scheduleVideoLoop() {
+      if (!rafId) rafId = requestAnimationFrame(videoLoop);
+    }
+
+    /* ─── Scroll handler ───────────────────────────── */
+    window.addEventListener('scroll', function () {
+      var scrollTop = window.scrollY || window.pageYOffset;
+      var maxScroll = scrollEl.offsetHeight - window.innerHeight;
+      var p = maxScroll > 0 ? Math.min(1, Math.max(0, scrollTop / maxScroll)) : 0;
+
+      /* Update video target — only start RAF if not already running */
+      targetTime = p * (video.duration || 0);
+      scheduleVideoLoop();
+
+      /* Hide scroll cue */
+      if (!cueDone && scrollTop > 30) {
+        cueDone = true;
+        cueEl.classList.add('hidden');
+      }
+
+      /* Reveal title at 12 % */
+      if (!titleDone && p >= 0.12) {
+        titleDone = true;
+        titleEl.classList.add('is-visible');
+      }
+
+      /* Reveal CTA at 25 % */
+      if (!ctaDone && p >= 0.25) {
+        ctaDone = true;
+        ctaWrap.classList.add('is-visible');
+      }
+    }, { passive: true });
+
+    /* Seek to frame 0 once metadata loaded */
+    video.addEventListener('loadedmetadata', function () {
+      video.currentTime = 0;
+    });
+  }());
+
+  /* ── Problem section reveal ─────────────────────
+     First group : CSS transition-delay handles
+                   the 620 ms cinematic stagger.
+     Divider + second group : each element gets its
+     own IntersectionObserver so fast scrollers still
+     see the content the moment it enters the viewport.
+  ─────────────────────────────────────────────── */
+  (function () {
+    var firstGroup = document.querySelector('.problem__lines:first-child');
+    var firstLines = firstGroup ? firstGroup.querySelectorAll('.p-line') : [];
+    var divider    = document.querySelector('.problem__divider');
+    var secondLines = document.querySelectorAll('.problem__lines:last-child .p-line');
+
+    /* ── First group: trigger all at once, CSS does stagger ── */
+    var firstObserver = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting) return;
+      firstLines.forEach(function (el) { el.classList.add('is-visible'); });
+      firstObserver.disconnect();
+    }, { threshold: 0.25 });
+
+    if (firstGroup) firstObserver.observe(firstGroup);
+
+    /* ── Divider: simple observer ─────────────────────────── */
+    if (divider) {
+      var divObs = new IntersectionObserver(function (entries) {
+        if (!entries[0].isIntersecting) return;
+        divider.classList.add('is-visible');
+        divObs.disconnect();
+      }, { threshold: 0.5 });
+      divObs.observe(divider);
+    }
+
+    /* ── Second group: each line observed independently.
+       A tiny index-based delay (max 400 ms total) gives
+       a gentle stagger without blocking fast scrollers.  ── */
+    secondLines.forEach(function (el, i) {
+      var obs = new IntersectionObserver(function (entries) {
+        if (!entries[0].isIntersecting) return;
+        setTimeout(function () {
+          el.classList.add('is-visible');
+        }, i * 200);          /* 0 ms, 200 ms — max 400 ms stagger */
+        obs.disconnect();
+      }, { threshold: 0.15 }); /* low threshold = fires early for fast scrollers */
+      obs.observe(el);
+    });
+  }());
+
+  /* ── Proof stack progress dots ─────────────────
+     Watches which card is at the top of the viewport
+     (each card is sticky top:0) and highlights the
+     corresponding dot. Dots appear on entry, hide on exit.
+  ─────────────────────────────────────────────── */
+  (function () {
+    var stack  = document.getElementById('proofStack');
+    var dotsEl = document.getElementById('psDots');
+    var dots   = dotsEl ? dotsEl.querySelectorAll('.ps-dot') : [];
+    var cards  = stack  ? stack.querySelectorAll('.ps-card')  : [];
+
+    if (!stack || !cards.length) return;
+
+    function setActive(idx) {
+      dots.forEach(function (d, i) {
+        d.classList.toggle('active', i === idx);
+      });
+    }
+
+    /* Show/hide dots while proof stack is in viewport */
+    var stackObs = new IntersectionObserver(function (entries) {
+      dotsEl.classList.toggle('is-visible', entries[0].isIntersecting);
+    }, { threshold: 0.01 });
+    stackObs.observe(stack);
+
+    /* Detect which card is currently sticky (topmost visible) */
+    var cardObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          var idx = parseInt(entry.target.getAttribute('data-card'), 10);
+          if (!isNaN(idx)) setActive(idx);
+        }
+      });
+    }, {
+      /* rootMargin: narrow horizontal band near the top of viewport */
+      rootMargin: '-40% 0px -40% 0px',
+      threshold: 0
+    });
+
+    cards.forEach(function (c) { cardObs.observe(c); });
+  }());
+
+  /* ── Features villa carousel ────────────────────
+     Arrow navigation + mouse/touch drag.
+     Snaps per-card (each card = 100% track width).
+  ─────────────────────────────────────────────── */
+  (function () {
+    var track    = document.getElementById('featTrack');
+    var viewport = document.getElementById('featViewport');
+    var btnPrev  = document.getElementById('featPrev');
+    var btnNext  = document.getElementById('featNext');
+    var dotsWrap = document.getElementById('featDots');
+
+    if (!track) return;
+
+    var cards     = track.querySelectorAll('.fv-card');
+    var dots      = dotsWrap ? dotsWrap.querySelectorAll('.fd-dot') : [];
+    var total     = cards.length;
+    var current   = 0;
+
+    function goTo(idx) {
+      current = Math.max(0, Math.min(total - 1, idx));
+      track.style.transform = 'translateX(-' + (current * 100) + '%)';
+      btnPrev.disabled = current === 0;
+      btnNext.disabled = current === total - 1;
+      dots.forEach(function (d, i) {
+        d.classList.toggle('active', i === current);
+      });
+    }
+
+    btnPrev.addEventListener('click', function () { goTo(current - 1); });
+    btnNext.addEventListener('click', function () { goTo(current + 1); });
+
+    dots.forEach(function (d) {
+      d.addEventListener('click', function () {
+        goTo(parseInt(d.getAttribute('data-idx'), 10));
+      });
+    });
+
+    /* Keyboard navigation */
+    document.addEventListener('keydown', function (e) {
+      var feat = document.getElementById('features');
+      if (!feat) return;
+      var r = feat.getBoundingClientRect();
+      /* Only intercept when Features section is in viewport */
+      if (r.bottom < 0 || r.top > window.innerHeight) return;
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); goTo(current - 1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); goTo(current + 1); }
+    });
+
+    /* Mouse drag */
+    var dragStart = 0;
+    var isDragging = false;
+    var THRESHOLD = 60;
+
+    viewport.addEventListener('mousedown', function (e) {
+      dragStart = e.clientX;
+      isDragging = true;
+      viewport.classList.add('is-dragging');
+      /* Pause CSS transition while dragging for immediate feel */
+      track.style.transition = 'none';
+    });
+
+    document.addEventListener('mousemove', function (e) {
+      if (!isDragging) return;
+      var delta = e.clientX - dragStart;
+      var base = -(current * viewport.offsetWidth);
+      track.style.transform = 'translateX(' + (base + delta) + 'px)';
+    });
+
+    document.addEventListener('mouseup', function (e) {
+      if (!isDragging) return;
+      isDragging = false;
+      viewport.classList.remove('is-dragging');
+      track.style.transition = '';
+      var delta = e.clientX - dragStart;
+      if (delta < -THRESHOLD) goTo(current + 1);
+      else if (delta > THRESHOLD) goTo(current - 1);
+      else goTo(current);
+    });
+
+    /* Touch drag */
+    var touchStart = 0;
+    viewport.addEventListener('touchstart', function (e) {
+      touchStart = e.touches[0].clientX;
+      track.style.transition = 'none';
+    }, { passive: true });
+
+    viewport.addEventListener('touchend', function (e) {
+      track.style.transition = '';
+      var delta = e.changedTouches[0].clientX - touchStart;
+      if (delta < -THRESHOLD) goTo(current + 1);
+      else if (delta > THRESHOLD) goTo(current - 1);
+      else goTo(current);
+    }, { passive: true });
+
+    /* Init */
+    goTo(0);
+  }());
+
+  /* ── GPU parallax for section backgrounds ──────────
+     Uses transform: translateY — compositor-thread only,
+     zero repaints. Replaces background-attachment: fixed.
+  ────────────────────────────────────────────────── */
+  (function () {
+    var parallaxBgs = document.querySelectorAll('.section-parallax-bg');
+    if (!parallaxBgs.length) return;
+
+    var ticking = false;
+
+    function update() {
+      var viewH = window.innerHeight;
+      parallaxBgs.forEach(function (bg) {
+        var section = bg.parentElement;
+        var rect = section.getBoundingClientRect();
+        /* only update while section is near the viewport */
+        if (rect.bottom < -viewH || rect.top > viewH * 2) return;
+        var progress = (viewH * 0.5 - (rect.top + rect.height * 0.5)) /
+                       (viewH * 0.5 + rect.height * 0.5);
+        var offset = progress * 90;
+        bg.style.transform = 'translateY(' + offset + 'px)';
+      });
+      ticking = false;
+    }
+
+    window.addEventListener('scroll', function () {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+
+    update();
+  }());
+  </script>
+
+</body>
+</html>

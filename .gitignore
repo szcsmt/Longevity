@@ -1,0 +1,22 @@
+# dependencies
+**/node_modules/
+.pnp
+.pnp.*
+
+# builds / generated
+**/.next/
+**/out/
+**/build/
+*.tsbuildinfo
+next-env.d.ts
+
+# os / editor junk
+.DS_Store
+**/.DS_Store
+*.log
+npm-debug.log*
+
+# env / secrets
+**/.env
+**/.env*.local
+.vercel
