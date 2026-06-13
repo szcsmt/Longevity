@@ -64,6 +64,22 @@ export function FooterSection() {
               letterSpacing: '0.16em', textTransform: 'uppercase',
               color: 'var(--cr40)', margin: '18px 0 0',
             }}>Bophut · Koh Samui · Thailand</p>
+            <a
+              href="/brochure/longevity-brochure-2026.pdf"
+              download
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 20,
+                fontFamily: ffs, fontSize: 'clamp(11px,1vw,13px)', fontWeight: 300,
+                letterSpacing: '0.06em', color: 'var(--gold)', textDecoration: 'none',
+                borderBottom: '1px solid rgba(201,169,110,0.3)', paddingBottom: 2,
+                width: 'fit-content', transition: 'color 0.3s, border-color 0.3s',
+              }}
+            >
+              Download brochure (PDF)
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 1v9M3.5 6.5L7 10l3.5-3.5M2 12.5h10" />
+              </svg>
+            </a>
           </div>
 
           {/* Legal nav */}

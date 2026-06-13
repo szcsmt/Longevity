@@ -28,11 +28,13 @@ const villas: VillaData[] = [
     tagline: 'Intimate seclusion. Full privacy.',
     desc: 'One bedroom. Private plunge pool. Surrounded by ancient jungle, steps from the shoreline.',
     highlights: ['Private garden terrace', 'Open-air bathroom', 'Daily housekeeping'],
-    img: '/images/ks-villa-03.webp',
+    img: '/images/villa/ext-1.webp',
     gallery: [
-      { src: '/images/ks-villa-03.webp', caption: 'Garden & pool — golden hour' },
-      { src: '/images/ks-villa-04.webp', caption: 'Night lighting' },
-      { src: '/images/ks-villa-01.webp', caption: 'Exterior view' },
+      { src: '/images/villa/ext-1.webp',        caption: 'Exterior · golden hour' },
+      { src: '/images/villa/int-living-1.webp', caption: 'Living room' },
+      { src: '/images/villa/int-bedroom-1.webp',caption: 'Bedroom' },
+      { src: '/images/villa/int-kitchen-1.webp',caption: 'Kitchen' },
+      { src: '/images/villa/int-bathroom-1.webp',caption: 'Bathroom' },
     ],
     alt: 'Villa M exterior',
   },
@@ -42,11 +44,14 @@ const villas: VillaData[] = [
     tagline: 'Elevated living. Sea horizon.',
     desc: 'One spacious bedroom. A 12-metre pool facing the open sea. A view that resets everything.',
     highlights: ['Panoramic ocean terrace', 'Spa access included', 'Concierge 24/7', 'Sunset sala'],
-    img: '/images/ks-villa-01.webp',
+    img: '/images/villa/ext-2.webp',
     gallery: [
-      { src: '/images/ks-villa-01.webp', caption: 'Pool terrace — golden hour' },
-      { src: '/images/ks-villa-02.webp', caption: 'Evening ambience' },
-      { src: '/images/ks-villa-03.webp', caption: 'Garden wing' },
+      { src: '/images/villa/ext-2.webp',         caption: 'Exterior · pool & terrace' },
+      { src: '/images/villa/ext-3.webp',         caption: 'Poolside' },
+      { src: '/images/villa/int-living-2.webp',  caption: 'Living room' },
+      { src: '/images/villa/int-bedroom-2.webp', caption: 'Bedroom' },
+      { src: '/images/villa/int-kitchen-2.webp', caption: 'Kitchen' },
+      { src: '/images/villa/int-bathroom-2.webp',caption: 'Bathroom' },
     ],
     alt: 'Villa L exterior',
   },
@@ -56,11 +61,16 @@ const villas: VillaData[] = [
     tagline: 'The estate. The pinnacle.',
     desc: 'Two bedrooms. Heated infinity pool. Dedicated butler. The most secluded residence on the estate.',
     highlights: ['Private butler service', 'Full kitchen', 'Meditation pavilion', 'Outdoor cinema'],
-    img: '/images/ks-villa-05.webp',
+    img: '/images/villa/ext-4.webp',
     gallery: [
-      { src: '/images/ks-villa-05.webp', caption: 'Infinity pool & terrace' },
-      { src: '/images/ks-villa-01.webp', caption: 'Day view' },
-      { src: '/images/ks-villa-02.webp', caption: 'Night illumination' },
+      { src: '/images/villa/ext-4.webp',            caption: 'Exterior' },
+      { src: '/images/villa/ext-5.webp',            caption: 'Evening' },
+      { src: '/images/villa/ext-6.webp',            caption: 'Garden view' },
+      { src: '/images/villa/int-living-3.webp',     caption: 'Living room' },
+      { src: '/images/villa/int-living-4.webp',     caption: 'Lounge' },
+      { src: '/images/villa/int-bedroom-3.webp',    caption: 'Bedroom' },
+      { src: '/images/villa/int-bedroom-living.webp',caption: 'Bedroom & living' },
+      { src: '/images/villa/int-bathroom-3.webp',   caption: 'Bathroom' },
     ],
     alt: 'Villa XL exterior',
   },
@@ -161,12 +171,30 @@ function VillaImageCarousel({
     }
   }
 
+  const arrowStyle: React.CSSProperties = {
+    flexShrink: 0, width: 'clamp(40px,4vw,54px)', height: 'clamp(40px,4vw,54px)', borderRadius: '50%',
+    border: '1px solid rgba(201,169,110,0.5)', background: 'rgba(6,14,8,0.4)', backdropFilter: 'blur(8px)',
+    color: 'var(--gold)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'background 0.35s, color 0.35s, border-color 0.35s',
+  };
+
   return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px,1.4vw,18px)', width: '100%' }}>
+
+      {/* Previous villa — OUTSIDE the frame (switch villa type) */}
+      <button aria-label="Previous villa" onClick={() => onNavigate(prevIdx)} style={arrowStyle}
+        onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
+        onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.4)'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.5)'; }}>
+        <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2L4 6.5L9 11" /></svg>
+      </button>
+
+    <div className="villa-stage" style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+
     <div
-      className="elev-img"
+      className="villa-carousel elev-img"
       style={{
         position: 'relative', overflow: 'hidden',
-        height: 'clamp(340px,54vh,580px)',
+        height: 'clamp(420px,64vh,700px)',
         borderRadius: 'clamp(14px,1.4vw,22px)',
         touchAction: 'pan-y',
         userSelect: 'none',
@@ -200,7 +228,7 @@ function VillaImageCarousel({
               decoding="async"
               style={{
                 width: '100%', height: '100%', objectFit: 'cover',
-                filter: 'brightness(0.80) saturate(1.08)',
+                filter: 'brightness(0.96) saturate(1.12)',
                 pointerEvents: 'none',
                 display: 'block',
               }}
@@ -214,40 +242,6 @@ function VillaImageCarousel({
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5,
         background: 'linear-gradient(to top, rgba(6,14,8,0.55) 0%, transparent 32%, transparent 78%, rgba(6,14,8,0.22) 100%)',
       }} />
-
-      {/* ── Arrows on the image edges ── */}
-      {[
-        { label: 'Previous villa', side: 'left'  as const, onClick: () => onNavigate(prevIdx) },
-        { label: 'Next villa',     side: 'right' as const, onClick: () => onNavigate(nextIdx) },
-      ].map(({ label, side, onClick }) => (
-        <button
-          key={side}
-          aria-label={label}
-          onClick={(e) => { e.stopPropagation(); onClick(); }}
-          style={{
-            position: 'absolute',
-            top: '50%', transform: 'translateY(-50%)',
-            [side]: 14,
-            zIndex: 10,
-            width: 46, height: 46, borderRadius: '50%',
-            border: '1px solid rgba(201,169,110,0.50)',
-            background: 'rgba(6,14,8,0.62)',
-            backdropFilter: 'blur(8px)',
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--gold)',
-            transition: 'background 0.3s, border-color 0.3s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(6,14,8,0.88)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(6,14,8,0.62)'; }}
-        >
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            {side === 'left'
-              ? <path d="M9 2L4 6.5L9 11" />
-              : <path d="M4 2l5 4.5L4 11" />}
-          </svg>
-        </button>
-      ))}
 
       {/* Tap hint — bottom right of image */}
       <span aria-hidden="true" style={{
@@ -273,6 +267,17 @@ function VillaImageCarousel({
         color: 'rgba(228,217,195,0.22)', userSelect: 'none',
         zIndex: 10,
       }}>{vs[active].index} / 0{n}</span>
+    </div>
+
+    </div>
+
+      {/* Next villa — OUTSIDE the frame (switch villa type) */}
+      <button aria-label="Next villa" onClick={() => onNavigate(nextIdx)} style={arrowStyle}
+        onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
+        onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.4)'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.5)'; }}>
+        <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2l5 4.5L4 11" /></svg>
+      </button>
+
     </div>
   );
 }
@@ -300,7 +305,7 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
         background: 'rgba(6,14,8,0.94)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 'clamp(16px,4vw,48px)',
-        backdropFilter: 'blur(12px)',
+        backdropFilter: 'blur(8px)',
         animation: 'fadeIn 0.3s ease both',
       }}
     >
@@ -311,6 +316,7 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
           width: '100%', maxWidth: 1080, maxHeight: '90vh', overflow: 'auto',
           background: '#0A1A0D',
           border: '1px solid rgba(201,169,110,0.20)',
+          borderRadius: 'clamp(16px,1.8vw,24px)',
           boxShadow: '0 50px 120px -30px rgba(0,0,0,0.9), 0 0 60px -10px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.05)',
           display: 'grid', gridTemplateColumns: '1fr 380px',
           position: 'relative',
@@ -318,12 +324,15 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
       >
         {/* Gallery */}
         <div style={{ position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, position: 'relative', minHeight: 280, overflow: 'hidden' }}>
+          <div style={{ flex: 1, position: 'relative', minHeight: 280, overflow: 'hidden', isolation: 'isolate' }}>
             {villa.gallery.map((g, i) => (
-              <img key={i} src={g.src} alt={g.caption} style={{
+              <img key={i} src={g.src} alt={g.caption} decoding="async" style={{
                 position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
                 opacity: i === img ? 1 : 0,
-                transition: 'opacity 0.5s cubic-bezier(0.16,1,0.3,1)',
+                transition: 'opacity 0.4s ease',
+                willChange: 'opacity',
+                transform: 'translateZ(0)',
+                backfaceVisibility: 'hidden',
               }} />
             ))}
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(6,14,8,0.8), transparent)', padding: '20px 20px 14px' }}>
@@ -340,10 +349,10 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
               </button>
             </>}
           </div>
-          <div style={{ display: 'flex', gap: 2, background: '#071009' }}>
+          <div style={{ display: 'flex', gap: 6, background: '#071009', padding: 8 }}>
             {villa.gallery.map((g, i) => (
               <button key={i} onClick={() => setImg(i)}
-                style={{ flex: 1, height: 58, overflow: 'hidden', border: 'none', padding: 0, cursor: 'pointer', opacity: img === i ? 1 : 0.40, transition: 'opacity 0.3s', outline: img === i ? '2px solid var(--gold)' : 'none', outlineOffset: -2 }}>
+                style={{ flex: 1, height: 56, overflow: 'hidden', border: 'none', borderRadius: 8, padding: 0, cursor: 'pointer', opacity: img === i ? 1 : 0.40, transition: 'opacity 0.3s', outline: img === i ? '2px solid var(--gold)' : 'none', outlineOffset: -2 }}>
                 <img src={g.src} alt={g.caption} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
               </button>
             ))}
@@ -359,7 +368,7 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
           </div>
           <span style={{ display: 'block', width: 28, height: 1, background: 'var(--gold-40)' }} />
           <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr70)', margin: 0 }}>{villa.desc}</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: 'rgba(201,169,110,0.08)', border: '1px solid rgba(201,169,110,0.08)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: 'rgba(201,169,110,0.08)', border: '1px solid rgba(201,169,110,0.08)', borderRadius: 12, overflow: 'hidden' }}>
             {[{k:'Size',v:villa.size},{k:'Rooms',v:villa.bedrooms},{k:'Guests',v:villa.guests},{k:'Pool',v:villa.pool}].map(({k,v}) => (
               <div key={k} style={{ padding: '12px 14px', background: 'rgba(6,14,8,0.6)' }}>
                 <span style={{ display: 'block', fontFamily: ffs, fontSize: 7, fontWeight: 300, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.6, marginBottom: 3 }}>{k}</span>
@@ -378,7 +387,18 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
               ))}
             </ul>
           </div>
-          <a href="#reserve" onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: 'auto', fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.20em', textTransform: 'uppercase', color: 'var(--bg)', background: 'var(--gold)', padding: '13px 24px', textDecoration: 'none' }}>Reserve This Villa</a>
+          <a href="#reserve" onClick={onClose}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 'auto',
+              fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.26em', textTransform: 'uppercase',
+              color: 'var(--gold)', background: 'transparent', border: '1px solid rgba(201,169,110,0.55)',
+              borderRadius: 100, padding: '16px 28px', textDecoration: 'none',
+              transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
+              animation: 'goldGlow 3.4s ease-in-out infinite',
+            }}
+            onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
+            onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.55)'; }}
+          >Reserve This Villa</a>
         </div>
 
         <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close" style={{ position: 'fixed', top: 'clamp(16px,3vw,28px)', right: 'clamp(16px,3vw,28px)', zIndex: 1001, width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(228,217,195,0.30)', background: 'rgba(6,14,8,0.85)', backdropFilter: 'blur(8px)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -405,11 +425,24 @@ export function VillasSection() {
     <>
       <style>{`
         .vdot { border:none; cursor:pointer; padding:0; transition: width 0.45s cubic-bezier(0.16,1,0.3,1), background 0.3s; }
+        .villa-stage { border-radius: clamp(16px,1.6vw,24px); transition: transform 0.6s cubic-bezier(0.16,1,0.3,1); }
+        /* Static gold frame + soft glow halo — lifts the villa off the dark backdrop */
+        .villa-stage::before {
+          content: ''; position: absolute; inset: -3px; border-radius: inherit;
+          border: 1.5px solid rgba(201,169,110,0.5);
+          box-shadow: 0 0 60px -6px var(--gold-glow), 0 34px 84px -34px rgba(0,0,0,0.85);
+          pointer-events: none; z-index: 6;
+          transition: border-color 0.6s cubic-bezier(0.16,1,0.3,1), box-shadow 0.6s cubic-bezier(0.16,1,0.3,1);
+        }
+        .villa-carousel { transition: box-shadow 0.6s cubic-bezier(0.16,1,0.3,1); }
+        .villa-stage:hover { transform: translateY(-8px) scale(1.025); }
+        .villa-stage:hover::before { border-color: rgba(232,201,138,0.8); box-shadow: 0 0 92px -4px rgba(201,169,110,0.42), 0 44px 100px -34px rgba(0,0,0,0.9); }
+        .villa-stage:hover .villa-carousel { box-shadow: 0 55px 120px -30px rgba(0,0,0,0.9); }
       `}</style>
 
       <section id="villas" style={{
         background: 'transparent',
-        padding: 'clamp(150px,15vw,200px) clamp(24px,8vw,120px) clamp(80px,10vw,120px)',
+        padding: 'clamp(80px,9vw,130px) clamp(24px,8vw,120px) clamp(80px,10vw,120px)',
         minHeight: '100vh',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
       }}>
@@ -425,11 +458,11 @@ export function VillasSection() {
         {/* Card: text left + image right */}
         <div className="lr-villa-card" style={{
           display: 'flex', flexDirection: 'row', alignItems: 'center',
-          gap: 'clamp(44px,7vw,100px)', width: '100%',
+          gap: 'clamp(28px,3.5vw,56px)', width: '100%',
         }}>
 
           {/* LEFT: Text */}
-          <div style={{ flex: '0 0 clamp(240px,28%,360px)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: '0 0 clamp(220px,25%,320px)', display: 'flex', flexDirection: 'column' }}>
 
             <h3 style={{ margin: '0 0 clamp(8px,1.2vw,14px)', lineHeight: 1 }}>
               <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(48px,6vw,88px)', letterSpacing: '-0.01em', lineHeight: 1.0, filter: 'drop-shadow(0 0 24px var(--gold-glow))' }}>{villa.name}</span>
@@ -448,19 +481,20 @@ export function VillasSection() {
               onClick={() => setModal(villa)}
               style={{
                 alignSelf: 'flex-start',
-                display: 'flex', alignItems: 'center', gap: 10,
-                fontFamily: ffs, fontSize: 8, fontWeight: 300,
-                letterSpacing: '0.22em', textTransform: 'uppercase',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                fontFamily: ffs, fontSize: 9, fontWeight: 300,
+                letterSpacing: '0.28em', textTransform: 'uppercase',
                 color: 'var(--gold)',
-                background: 'transparent', border: '1px solid rgba(201,169,110,0.28)',
-                padding: '12px 22px', cursor: 'pointer',
-                transition: 'background 0.35s, border-color 0.35s',
+                background: 'transparent', border: '1px solid rgba(201,169,110,0.55)',
+                borderRadius: 100, padding: '16px 38px', cursor: 'pointer',
+                transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
+                animation: 'goldGlow 3.4s ease-in-out infinite',
               }}
-              onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'rgba(201,169,110,0.10)'; b.style.borderColor = 'rgba(201,169,110,0.55)'; }}
-              onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.borderColor = 'rgba(201,169,110,0.28)'; }}
+              onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
+              onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.55)'; }}
             >
               View Details
-              <ArrowUpRight size={13} />
+              <ArrowUpRight size={14} />
             </button>
           </div>
 

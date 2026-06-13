@@ -18,7 +18,7 @@ interface Cell { src: string; l: string; t: string; w: string; h: string; dx: nu
 
 const OUTER: Cell[] = [
   { src:'/images/villa-I.jpg',    l:'0%',    t:'0%',    w:'20%',   h:'21%',  dx:-1, dy:-1 }, // TL
-  { src:'/images/proof-1.jpg',    l:'20.2%', t:'0%',    w:'59.6%', h:'21%',  dx: 0, dy:-1 }, // TC
+  { src:'/images/xy.webp',        l:'20.2%', t:'0%',    w:'59.6%', h:'21%',  dx: 0, dy:-1 }, // TC
   { src:'/images/villa-II.jpg',   l:'80%',   t:'0%',    w:'20%',   h:'21%',  dx: 1, dy:-1 }, // TR
   { src:'/images/proof-2.jpg',    l:'0%',    t:'21.2%', w:'20%',   h:'57.6%',dx:-1, dy: 0 }, // ML
   { src:'/images/proof-3.jpg',    l:'80%',   t:'21.2%', w:'20%',   h:'57.6%',dx: 1, dy: 0 }, // MR

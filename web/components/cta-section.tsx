@@ -172,6 +172,30 @@ export function CtaSection() {
               ))}
             </div>
 
+            {/* Brochure download */}
+            <a
+              className="reveal"
+              href="/brochure/longevity-brochure-2026.pdf"
+              download
+              onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
+              onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.45)'; }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 12,
+                marginTop: 'clamp(36px,4.5vw,52px)', width: 'fit-content',
+                fontFamily: ffs, fontSize: 9, fontWeight: 300,
+                letterSpacing: '0.26em', textTransform: 'uppercase',
+                color: 'var(--gold)', background: 'transparent',
+                border: '1px solid rgba(201,169,110,0.45)', borderRadius: 100,
+                padding: '15px 26px', textDecoration: 'none',
+                transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
+              }}
+            >
+              Download the brochure
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M7 1v9M3.5 6.5L7 10l3.5-3.5M2 12.5h10" />
+              </svg>
+            </a>
+
             {/* Bottom brand */}
             <span style={{
               display: 'block', marginTop: 'auto', paddingTop: 'clamp(48px,7vw,80px)',

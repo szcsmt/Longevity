@@ -20,3 +20,7 @@ npm-debug.log*
 **/.env
 **/.env*.local
 .vercel
+
+# brochure source (served copy lives in web/public/brochure/)
+/Longevity Brochure 2026.pdf
+Screen.mov

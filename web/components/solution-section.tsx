@@ -40,21 +40,27 @@ export function SolutionSection() {
       {/* ── Full-bleed image reveal ── */}
       <div style={{ position: 'relative', height: 'clamp(420px,68vh,720px)', overflow: 'hidden' }}>
         <img
-          src="/images/sanaila.jpg"
+          src="/images/another-way.webp"
           alt="Koh Samui"
           loading="lazy"
           decoding="async"
           style={{
             position: 'absolute', inset: 0,
             width: '100%', height: '100%',
-            objectFit: 'cover', objectPosition: 'center 40%',
-            filter: 'brightness(0.55) saturate(1.1)',
+            objectFit: 'cover', objectPosition: 'center 55%',
+            filter: 'brightness(0.46) saturate(0.78)',
           }}
         />
+        {/* Edge fade */}
         <div aria-hidden="true" style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(to bottom, var(--bg) 0%, transparent 18%, transparent 55%, rgba(6,14,8,0.80) 85%, var(--bg) 100%)',
+          background: 'linear-gradient(to bottom, var(--bg) 0%, transparent 20%, transparent 58%, rgba(6,14,8,0.82) 86%, var(--bg) 100%)',
           pointerEvents: 'none',
+        }} />
+        {/* Calming wash + centre vignette so the headline keeps focus */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(120% 90% at 50% 42%, rgba(6,14,8,0.32) 0%, rgba(6,14,8,0.55) 100%)',
         }} />
         <div className="reveal" style={{
           position: 'absolute', top: '50%', left: '50%',
@@ -63,11 +69,12 @@ export function SolutionSection() {
         }}>
           <span style={{
             display: 'block',
-            fontFamily: ffs, fontSize: 9, fontWeight: 300,
-            letterSpacing: '0.34em', textTransform: 'uppercase',
-            color: 'var(--gold)', opacity: 0.9,
+            fontFamily: ffs, fontSize: 'clamp(13px,1.6vw,18px)', fontWeight: 400,
+            letterSpacing: '0.28em', textTransform: 'uppercase',
+            color: 'var(--gold)', opacity: 1,
+            textShadow: '0 1px 16px rgba(6,14,8,0.9), 0 0 30px rgba(201,169,110,0.35)',
             marginBottom: 'clamp(16px,2.5vw,28px)',
-          }}>But there is another way</span>
+          }}>Where we built it</span>
           <h2 style={{
             fontFamily: ff, fontWeight: 400,
             fontSize: 'clamp(60px,10vw,140px)',
@@ -79,10 +86,10 @@ export function SolutionSection() {
           <p style={{
             fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
             fontSize: 'clamp(15px,1.6vw,21px)',
-            color: 'rgba(255,252,248,0.55)',
+            color: 'rgba(255,252,248,0.78)',
             lineHeight: 1.7, letterSpacing: '0.01em',
             maxWidth: 500, margin: '0 auto',
-            textShadow: '0 1px 14px rgba(6,14,8,0.7)',
+            textShadow: '0 1px 16px rgba(6,14,8,0.85)',
           }}>
             An island in the Gulf of Thailand where the sun shines 330 days a year,
             the jungle meets the sea, and the air still heals.

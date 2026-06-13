@@ -9,17 +9,17 @@ const chapters = [
   {
     title: 'The Feeling',
     body: 'Travelling between capitals and luxury hotels, something was always missing. Every resort looked expensive. None of them felt healing. The founder wanted a place that actually changed how you lived — not just where you stayed.',
-    bg: '/images/villa-I.jpg',
+    bg: '/images/story/feeling.webp',
   },
   {
     title: 'The Place',
     body: 'Bophut, northeast Koh Samui. Untouched jungle, a private shore five minutes on foot, the first development of its kind on the island. 330 days of sunshine. Ancient trees. The Gulf of Thailand at your doorstep. The moment he stood here, the search was over.',
-    bg: '/images/sanaila.jpg',
+    bg: '/images/story/place.webp',
   },
   {
     title: 'The Standard',
     body: 'Thai warmth, Dubai precision. Thermo-glazed windows, central climate control engineered for the tropics, full soundproofing, private pools. Not a compromise anywhere. Built around a single belief: that where you live should make you healthier, sharper, and more alive — every single day.',
-    bg: '/images/ks-villa-05.webp',
+    bg: '/images/story/standard.webp',
   },
 ];
 
@@ -69,15 +69,15 @@ export function StorySection() {
       {/* Headline */}
       <h2 className="reveal" style={{
         fontFamily: ff, fontWeight: 400,
-        fontSize: 'clamp(38px,6.5vw,96px)',
-        lineHeight: 1.08, letterSpacing: '-0.01em',
+        fontSize: 'clamp(32px,4.8vw,68px)',
+        lineHeight: 1.1, letterSpacing: '-0.01em',
         color: 'var(--cream)',
-        margin: '0 0 clamp(64px,9vw,120px)',
+        margin: '0 0 clamp(52px,7vw,96px)',
         maxWidth: '14em',
       }}>
-        We found<br />
-        a different answer.<br />
-        <em className="gold-text" style={{ fontStyle: 'italic' }}>We built it here.</em>
+        We wanted more<br />
+        than a place to stay.<br />
+        <em className="gold-text" style={{ fontStyle: 'italic' }}>So we built this.</em>
       </h2>
 
       {/* Chapters — 3 glass cards */}

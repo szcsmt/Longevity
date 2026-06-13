@@ -9,6 +9,7 @@ const links = [
   { label: 'The Estate', href: '#discover' },
   { label: 'The Park',   href: '#park'     },
   { label: 'Villas',     href: '#villas'   },
+  { label: 'Personalise', href: '#personalise' },
   { label: 'Location',   href: '#location' },
   { label: 'Reserve',    href: '#reserve'  },
 ];

@@ -266,6 +266,16 @@ body {
 @keyframes scPulse {
   0%,100% { opacity:.28; } 50% { opacity:1; }
 }
+@keyframes scrollDot {
+  0%   { opacity:0; transform:translate(-50%,0); }
+  25%  { opacity:1; }
+  60%  { opacity:1; transform:translate(-50%,14px); }
+  100% { opacity:0; transform:translate(-50%,14px); }
+}
+@keyframes scrollBounce {
+  0%,100% { transform:translateY(0);   opacity:0.55; }
+  50%     { transform:translateY(6px); opacity:1; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

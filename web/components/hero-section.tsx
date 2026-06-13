@@ -17,9 +17,9 @@ export function HeroSection() {
     const canvas  = canvasRef.current;
     const scroller = scrollEl.current;
     if (!canvas || !scroller) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
-    ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingQuality = 'low';
 
     const isMobile = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
     const reduce   = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -28,7 +28,8 @@ export function HeroSection() {
     let poster: HTMLImageElement | null = null;
     let drawn = -1;            // index of frame currently painted
     let targetFrame = 0;
-    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    let maxScroll = 0;         // cached in resize() — avoids layout reads on scroll
 
     // cover-fit a source image onto the full canvas
     function paint(img: HTMLImageElement) {
@@ -57,10 +58,11 @@ export function HeroSection() {
     }
 
     function resize() {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       canvas!.width  = Math.round(canvas!.clientWidth  * dpr);
       canvas!.height = Math.round(canvas!.clientHeight * dpr);
-      ctx!.imageSmoothingQuality = 'high';
+      ctx!.imageSmoothingQuality = 'low';
+      maxScroll = scroller!.offsetHeight - window.innerHeight;
       render(targetFrame, true);
     }
 
@@ -89,9 +91,14 @@ export function HeroSection() {
       const img = new Image();
       img.decoding = 'async';
       img.onload = () => {
-        frames[i] = img;
-        if (Math.abs(i - targetFrame) <= 1 || drawn === -1) render(targetFrame, true);
-        loadOne();
+        // Pre-decode off the scroll path so scrubbing never decodes on the main thread.
+        const store = () => {
+          frames[i] = img;
+          if (Math.abs(i - targetFrame) <= 1 || drawn === -1) render(targetFrame, true);
+          loadOne();
+        };
+        if (img.decode) img.decode().then(store).catch(store);
+        else store();
       };
       img.onerror = loadOne;
       img.src = framePath(i);
@@ -102,7 +109,6 @@ export function HeroSection() {
     let ticking = false;
     function update() {
       ticking = false;
-      const maxScroll = scroller!.offsetHeight - window.innerHeight;
       const prog = maxScroll > 0 ? Math.min(1, Math.max(0, window.scrollY / maxScroll)) : 0;
       targetFrame = Math.round(prog * (FRAME_COUNT - 1));
       render(targetFrame);
@@ -203,29 +209,6 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Side editorial box (desktop) */}
-        <div className="hero-sidebox" style={{
-          position:'absolute', left:'clamp(24px,5vw,72px)', bottom:'clamp(120px,18vh,200px)',
-          zIndex:10, maxWidth:280, display:'flex', gap:18,
-          opacity: titleVisible ? 1 : 0,
-          transform: titleVisible ? 'translateX(0)' : 'translateX(-16px)',
-          transition:'opacity 1.6s cubic-bezier(0.22,1,0.36,1) 0.6s, transform 1.6s cubic-bezier(0.22,1,0.36,1) 0.6s',
-        }}>
-          <span aria-hidden="true" style={{ width:1, alignSelf:'stretch', background:'linear-gradient(to bottom, var(--gold), transparent)', flexShrink:0 }} />
-          <div>
-            <span style={{
-              display:'block', fontFamily:'var(--font-raleway), sans-serif',
-              fontSize:8, fontWeight:300, letterSpacing:'0.26em', textTransform:'uppercase',
-              color:'var(--gold)', opacity:0.8, marginBottom:12,
-            }}>Bophut · Koh Samui</span>
-            <p style={{
-              margin:0, fontFamily:'var(--font-playfair), serif', fontStyle:'italic',
-              fontSize:'clamp(14px,1.2vw,17px)', lineHeight:1.65,
-              color:'rgba(255,252,248,0.78)', textShadow:'0 1px 16px rgba(6,14,8,0.8)',
-            }}>Where the jungle meets the sea — a private sanctuary built for a longer, better life.</p>
-          </div>
-        </div>
-
         {/* CTA */}
         <div style={{
           position:'absolute', bottom:52, left:'50%',
@@ -234,23 +217,29 @@ export function HeroSection() {
           opacity: ctaVisible ? 1 : 0,
           transition:'opacity 1.2s cubic-bezier(0.22,1,0.36,1)',
         }}>
-          <a href="#discover" style={{
-            display:'inline-flex', alignItems:'center', gap:16,
-            padding:'18px 56px', borderRadius:100,
-            border:'1px solid var(--gold-40)',
-            background:'rgba(255,255,255,0.04)',
-            backdropFilter:'blur(14px) saturate(1.4)',
+          <a href="#villas" style={{
+            display:'inline-flex', alignItems:'center', justifyContent:'center', gap:14,
+            padding:'18px 52px', borderRadius:100,
+            border:'1px solid rgba(201,169,110,0.6)',
+            background:'rgba(6,14,8,0.42)',
+            backdropFilter:'blur(8px)',
             textDecoration:'none', cursor:'pointer', whiteSpace:'nowrap',
-          }}>
+            color:'var(--w90)',
+            boxShadow:'0 0 30px -6px var(--gold-glow)',
+            transition:'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
+          }}
+            onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.borderColor = 'var(--gold)'; b.style.color = 'var(--bg)'; }}
+            onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.22)'; b.style.borderColor = 'rgba(201,169,110,0.6)'; b.style.color = 'var(--w90)'; }}
+          >
             <span style={{
               fontFamily:'var(--font-raleway), sans-serif',
               fontSize:10, fontWeight:300,
               letterSpacing:'0.20em', textTransform:'uppercase',
-              color:'var(--w90)',
+              color:'inherit',
             }}>Step Inside</span>
-            <span aria-hidden="true" style={{ display:'flex', alignItems:'center', opacity:0.65 }}>
+            <span aria-hidden="true" style={{ display:'flex', alignItems:'center' }}>
               <svg width="18" height="10" viewBox="0 0 18 10" fill="none">
-                <path d="M1 5h16M11 1l6 4-6 4" stroke="rgba(255,252,248,0.88)" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M1 5h16M11 1l6 4-6 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </span>
           </a>
@@ -258,26 +247,45 @@ export function HeroSection() {
 
         {/* Scroll cue */}
         <div aria-hidden="true" style={{
-          position:'absolute', bottom:40, left:'50%',
+          position:'absolute', bottom:'clamp(26px,4vh,44px)', left:'50%',
           transform:'translateX(-50%)',
           zIndex:10,
-          display:'flex', flexDirection:'column', alignItems:'center', gap:8,
+          display:'flex', flexDirection:'column', alignItems:'center', gap:14,
           pointerEvents:'none',
           opacity: cueHidden ? 0 : 1,
-          animation: cueHidden ? 'none' : 'fadeIn 1.4s ease 1s forwards',
+          animation: cueHidden ? 'none' : 'fadeIn 1.6s ease 0.9s both',
           transition:'opacity 0.6s ease',
         }}>
-          <div style={{
-            width:1, height:36,
-            background:'linear-gradient(to bottom, var(--gold), transparent)',
-            animation:'scPulse 2.6s ease-in-out 1.8s infinite',
-          }} />
           <span style={{
             fontFamily:'var(--font-raleway), sans-serif',
-            fontSize:8, fontWeight:300,
-            letterSpacing:'0.22em', textTransform:'uppercase',
-            color:'rgba(201,169,110,0.48)',
-          }}>Scroll</span>
+            fontSize:'clamp(9px,1vw,11px)', fontWeight:300,
+            letterSpacing:'0.34em', textTransform:'uppercase',
+            color:'var(--w90)', opacity:0.9,
+            textShadow:'0 1px 14px rgba(6,14,8,0.85)',
+          }}>Scroll to explore</span>
+
+          {/* Glowing mouse with an animated dot */}
+          <div style={{
+            width:28, height:46, borderRadius:16,
+            border:'1.5px solid rgba(201,169,110,0.9)',
+            position:'relative',
+            boxShadow:'0 0 26px -4px rgba(201,169,110,0.6)',
+          }}>
+            <span style={{
+              position:'absolute', top:9, left:'50%',
+              width:4, height:9, borderRadius:3,
+              background:'var(--gold)',
+              transform:'translateX(-50%)',
+              boxShadow:'0 0 10px rgba(201,169,110,0.9)',
+              animation:'scrollDot 1.8s cubic-bezier(0.5,0,0.2,1) infinite',
+            }} />
+          </div>
+
+          {/* Bouncing chevron */}
+          <svg width="22" height="10" viewBox="0 0 22 10" fill="none" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ animation:'scrollBounce 1.8s ease-in-out infinite', marginTop:-4 }}>
+            <path d="M2 2l9 6 9-6" />
+          </svg>
         </div>
 
       </div>

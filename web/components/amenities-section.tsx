@@ -15,7 +15,7 @@ interface Hotspot {
   body: string;
 }
 
-/* Positions tuned to the ks-villa-01 render (open villa, pool, interior). */
+/* Positions tuned to the heals-you render (open villa, pool, interior). */
 const hotspots: Hotspot[] = [
   { x: 42, y: 18, icon: Sun,       title: 'Circadian Lighting',     body: 'Light that follows the sun — morning white, evening amber. Your internal clock supported by architecture.' },
   { x: 24, y: 45, icon: Droplets,  title: 'Filtered Water Everywhere', body: 'Pure water at every point of use. Kitchen, bathroom, shower. No exceptions.' },
@@ -28,7 +28,14 @@ const hotspots: Hotspot[] = [
 
 export function AmenitiesSection() {
   const ref = useRef<HTMLElement>(null);
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState<number | null>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const show = (i: number) => { if (hideTimer.current) clearTimeout(hideTimer.current); setActive(i); };
+  const scheduleHide = () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setActive(null), 650);
+  };
 
   useEffect(() => {
     const items = ref.current?.querySelectorAll<HTMLElement>('.reveal') ?? [];
@@ -42,12 +49,12 @@ export function AmenitiesSection() {
     });
   }, []);
 
-  const cur = hotspots[active];
+  const cur = active !== null ? hotspots[active] : null;
 
   return (
     <section ref={ref} style={{
       background: 'transparent',
-      padding: 'clamp(120px,14vw,180px) clamp(24px,8vw,120px)',
+      padding: 'clamp(70px,8vw,110px) clamp(24px,8vw,120px) clamp(90px,11vw,140px)',
       position: 'relative', overflow: 'hidden', isolation: 'isolate',
     }}>
 
@@ -93,7 +100,7 @@ export function AmenitiesSection() {
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/images/ks-villa-01.webp"
+          src="/images/heals-you.webp"
           alt="A Longevity Resort villa interior"
           loading="lazy" decoding="async"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.82) saturate(1.05)' }}
@@ -113,8 +120,9 @@ export function AmenitiesSection() {
               key={h.title}
               className="hs-dot"
               aria-label={h.title}
-              onMouseEnter={() => setActive(i)}
-              onClick={() => setActive(i)}
+              onMouseEnter={() => show(i)}
+              onMouseLeave={scheduleHide}
+              onClick={() => show(i)}
               style={{
                 position: 'absolute', left: `${h.x}%`, top: `${h.y}%`,
                 transform: 'translate(-50%,-50%)',
@@ -134,7 +142,8 @@ export function AmenitiesSection() {
           );
         })}
 
-        {/* Floating detail card — anchored left/right & top/bottom per dot quadrant */}
+        {/* Floating detail card — only while a dot is hovered/active, anchored per quadrant */}
+        {cur && active !== null && (
         <div
           key={active}
           style={{
@@ -149,7 +158,7 @@ export function AmenitiesSection() {
             boxShadow: '0 30px 70px -24px rgba(0,0,0,0.85), 0 0 40px -12px var(--gold-glow)',
             backdropFilter: 'blur(10px)',
             borderRadius: 12, padding: 'clamp(16px,1.6vw,22px)',
-            animation: 'fadeIn 0.35s ease both',
+            animation: 'fadeIn 0.3s ease both',
           }}
         >
           <span style={{
@@ -167,6 +176,7 @@ export function AmenitiesSection() {
             lineHeight: 1.75, color: 'var(--cr70)', margin: 0,
           }}>{cur.body}</p>
         </div>
+        )}
       </div>
 
       {/* Chips — quick legend / also drive the active state */}
@@ -177,8 +187,9 @@ export function AmenitiesSection() {
         {hotspots.map((h, i) => (
           <button
             key={h.title}
-            onClick={() => setActive(i)}
-            onMouseEnter={() => setActive(i)}
+            onClick={() => show(i)}
+            onMouseEnter={() => show(i)}
+            onMouseLeave={scheduleHide}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '8px 15px', borderRadius: 100, cursor: 'pointer',
