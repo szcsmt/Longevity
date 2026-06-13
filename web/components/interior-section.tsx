@@ -73,7 +73,7 @@ export function InteriorSection() {
       <h2 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(38px,5.8vw,84px)', lineHeight: 1.04, letterSpacing: '-0.015em', color: 'var(--cream)', margin: '0 0 clamp(18px,2vw,26px)' }}>
         Your villa.<br /><em className="gold-text" style={{ fontStyle: 'italic' }}>Your interior.</em>
       </h2>
-      <p style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(15px,1.6vw,21px)', lineHeight: 1.7, color: 'var(--cr70)', maxWidth: 620, margin: '0 0 clamp(44px,6vw,72px)' }}>
+      <p style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(15px,1.6vw,21px)', lineHeight: 1.6, color: 'var(--cr70)', maxWidth: 620, margin: '0 0 clamp(22px,3vw,40px)' }}>
         The structure stays exactly as it is — every interior inside it is yours to design.
         Choose how a room should live, and we build it to that brief.
       </p>
@@ -84,7 +84,7 @@ export function InteriorSection() {
         {/* Preview */}
         <div>
           <div className="elev-img" style={{
-            position: 'relative', width: '100%', aspectRatio: '16 / 10', overflow: 'hidden',
+            position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden',
             borderRadius: 'clamp(14px,1.6vw,22px)', border: '1px solid rgba(201,169,110,0.18)',
           }}>
             {configs.map((c, i) => (

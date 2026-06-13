@@ -149,11 +149,11 @@ export function HeroSection() {
 
         {/* Soft gold glow behind the title */}
         <div aria-hidden="true" style={{
-          position:'absolute', bottom:'58%', left:'50%',
-          width:'min(680px,82vw)', height:'min(420px,48vh)',
+          position:'absolute', bottom:'66%', left:'50%',
+          width:'min(560px,72vw)', height:'min(320px,38vh)',
           transform:'translate(-50%,40%)',
           zIndex:3, pointerEvents:'none',
-          background:'radial-gradient(ellipse at center, rgba(201,169,110,0.16) 0%, transparent 68%)',
+          background:'radial-gradient(ellipse at center, rgba(201,169,110,0.11) 0%, transparent 68%)',
           filter:'blur(36px)',
           opacity: titleVisible ? 1 : 0,
           transition:'opacity 2.6s cubic-bezier(0.06,1,0.18,1)',
@@ -163,7 +163,7 @@ export function HeroSection() {
         <div
           aria-label="Longevity Resort"
           style={{
-            position:'absolute', bottom:'62%', left:'50%',
+            position:'absolute', bottom:'70%', left:'50%',
             transform:'translateX(-50%)',
             zIndex:10, textAlign:'center', whiteSpace:'nowrap',
             perspective:'1100px', perspectiveOrigin:'50% 100%'
@@ -174,7 +174,7 @@ export function HeroSection() {
               display:'block',
               fontFamily:'var(--font-playfair), serif',
               fontWeight:400,
-              fontSize:'clamp(40px, 7.8vw, 116px)',
+              fontSize:'clamp(32px, 5.6vw, 84px)',
               letterSpacing:'0.08em',
               textTransform:'uppercase',
               color:'var(--w90)',
@@ -198,7 +198,7 @@ export function HeroSection() {
               display:'block',
               fontFamily:'var(--font-playfair), serif',
               fontWeight:400,
-              fontSize:'clamp(24px, 4.4vw, 64px)',
+              fontSize:'clamp(18px, 3.2vw, 46px)',
               letterSpacing:'0.32em',
               textTransform:'uppercase',
               color:'var(--w90)',
