@@ -139,54 +139,43 @@ export function MapSection() {
         .lr-map .leaflet-control-attribution { display: none !important; }
       `}</style>
 
-      <section id="location" style={{ background: 'transparent', paddingTop: 'clamp(56px,7vw,104px)' }}>
+      <section id="location" style={{ background: 'transparent' }}>
 
-        {/* Section header */}
-        <div style={{ maxWidth: 1440, margin: '0 auto', padding: '0 clamp(24px,8vw,120px)', marginBottom: 'clamp(26px,3.5vw,46px)' }}>
-          <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(10px,1vw,12px)', fontWeight: 400, letterSpacing: '0.30em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.8, marginBottom: 'clamp(14px,1.8vw,22px)' }}>Location</span>
-          <h2 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(30px,4vw,60px)', lineHeight: 1.08, letterSpacing: '-0.01em', color: 'var(--cream)', margin: '0 0 clamp(10px,1.4vw,18px)' }}>
-            Five minutes <em className="gold-text" style={{ fontStyle: 'italic' }}>from the shore.</em>
-          </h2>
-          <p style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,20px)', lineHeight: 1.6, color: 'var(--cr70)', margin: 0, maxWidth: 640 }}>
-            Bophut, north-east Koh Samui — beaches, wellness, dining and the airport all minutes away. Tap a point to explore.
-          </p>
-        </div>
-
-        <div ref={wrapRef} style={{ position: 'relative', height: 'clamp(460px,66vh,820px)' }}>
+        <div ref={wrapRef} style={{ position: 'relative', height: 'clamp(440px,65vh,780px)' }}>
           <div ref={mapEl} className="lr-map" style={{ width: '100%', height: '100%' }} />
 
           {/* Active POI card — bottom left: photo + name + description */}
           {poi && (
             <div key={poi.id} style={{
               position: 'absolute', zIndex: 500, pointerEvents: 'none',
-              bottom: 'clamp(18px,2.5vw,30px)', left: 'clamp(20px,3vw,36px)',
-              width: 'clamp(300px,38vw,440px)',
+              bottom: 'clamp(16px,2.5vw,28px)', left: 'clamp(20px,3vw,36px)',
+              width: 'clamp(230px,80vw,300px)',
               background: 'rgba(6,14,8,0.94)',
-              border: '1px solid rgba(201,169,110,0.3)',
+              border: '1px solid rgba(201,169,110,0.28)',
               backdropFilter: 'blur(14px)',
               boxShadow: '0 30px 70px -24px rgba(0,0,0,0.85), 0 0 40px -12px var(--gold-glow)',
-              borderRadius: 14, overflow: 'hidden',
+              borderRadius: 12, overflow: 'hidden',
               animation: 'fadeIn 0.35s ease both',
             }}>
               <div style={{ position: 'relative' }}>
                 <img
                   src={poi.img}
                   alt={poi.name}
-                  style={{ width: '100%', height: 'clamp(180px,22vh,250px)', objectFit: 'cover', display: 'block', filter: 'brightness(0.92)' }}
+                  style={{ width: '100%', height: 132, objectFit: 'cover', display: 'block', filter: 'brightness(0.9)' }}
                 />
                 {poi.primary && (
                   <span style={{
-                    position: 'absolute', top: 12, left: 12,
-                    fontFamily: ffs, fontSize: 'clamp(9px,0.9vw,11px)', fontWeight: 400, letterSpacing: '0.18em', textTransform: 'uppercase',
-                    color: 'var(--bg)', background: 'var(--gold)', padding: '5px 12px', borderRadius: 100,
+                    position: 'absolute', top: 10, left: 10,
+                    fontFamily: ffs, fontSize: 7, fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase',
+                    color: 'var(--bg)', background: 'var(--gold)', padding: '4px 9px', borderRadius: 100,
                   }}>The Estate</span>
                 )}
               </div>
-              <div style={{ padding: 'clamp(16px,2vw,22px) clamp(18px,2.2vw,24px)' }}>
-                <span style={{ display:'block', fontFamily:ff, fontSize:'clamp(18px,1.7vw,24px)', color:'var(--cream)', marginBottom:8, lineHeight:1.2 }}>
+              <div style={{ padding: 'clamp(13px,1.6vw,17px) clamp(15px,2vw,18px)' }}>
+                <span style={{ display:'block', fontFamily:ff, fontSize:'clamp(14px,1.3vw,17px)', color:'var(--cream)', marginBottom:6, lineHeight:1.2 }}>
                   {poi.name}
                 </span>
-                <span style={{ display:'block', fontFamily:ffs, fontSize:'clamp(12px,1.1vw,14px)', fontWeight:300, lineHeight:1.65, color:'var(--cr70)' }}>
+                <span style={{ display:'block', fontFamily:ffs, fontSize:'clamp(10px,0.9vw,11px)', fontWeight:300, lineHeight:1.65, color:'var(--cr70)' }}>
                   {poi.desc}
                 </span>
               </div>

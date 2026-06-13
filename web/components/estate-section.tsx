@@ -14,11 +14,25 @@ const ffs = 'var(--font-raleway), sans-serif';
    [ ML  ][ CENTER       ][ MR  ]
    [ BL  ][ BC────────── ][ BR  ]
 ──────────────────────────────── */
+interface Cell { src: string; l: string; t: string; w: string; h: string; dx: number; dy: number; }
+
+const OUTER: Cell[] = [
+  { src:'/images/villa-I.jpg',    l:'0%',    t:'0%',    w:'20%',   h:'21%',  dx:-1, dy:-1 }, // TL
+  { src:'/images/xy.webp',        l:'20.2%', t:'0%',    w:'59.6%', h:'21%',  dx: 0, dy:-1 }, // TC
+  { src:'/images/villa-II.jpg',   l:'80%',   t:'0%',    w:'20%',   h:'21%',  dx: 1, dy:-1 }, // TR
+  { src:'/images/proof-2.jpg',    l:'0%',    t:'21.2%', w:'20%',   h:'57.6%',dx:-1, dy: 0 }, // ML
+  { src:'/images/proof-3.jpg',    l:'80%',   t:'21.2%', w:'20%',   h:'57.6%',dx: 1, dy: 0 }, // MR
+  { src:'/images/villa-III.jpg',  l:'0%',    t:'79%',   w:'20%',   h:'21%',  dx:-1, dy: 1 }, // BL
+  { src:'/images/features-bg.jpg',l:'20.2%', t:'79%',   w:'59.6%', h:'21%',  dx: 0, dy: 1 }, // BC
+  { src:'/images/proof-4.jpg',    l:'80%',   t:'79%',   w:'20%',   h:'21%',  dx: 1, dy: 1 }, // BR
+];
+
 const CENTER = '/images/sanaila.jpg';
 
 export function EstateSection() {
   const scrollRef  = useRef<HTMLDivElement>(null);
   const centerRef  = useRef<HTMLDivElement>(null);
+  const outerRefs  = useRef<(HTMLDivElement | null)[]>([]);
   const textRef    = useRef<HTMLDivElement>(null);
   const labelRef   = useRef<HTMLSpanElement>(null);
 
@@ -45,6 +59,15 @@ export function EstateSection() {
       if (centerRef.current) {
         centerRef.current.style.transform = `scale(${1 + p * 0.84})`;
       }
+
+      // Outer images: fly outward + fade
+      const outerOp = Math.max(0, 1 - p * 1.65).toFixed(3);
+      outerRefs.current.forEach((div, i) => {
+        if (!div) return;
+        const { dx, dy } = OUTER[i];
+        div.style.transform = `translate3d(${dx * p * 34}vw, ${dy * p * 34}vh, 0)`;
+        div.style.opacity   = outerOp;
+      });
 
       // Text overlay: fades in after p > 0.70
       if (textRef.current) {
@@ -74,19 +97,45 @@ export function EstateSection() {
         background: 'transparent',
       }}>
 
+        {/* ── Outer images ── */}
+        {OUTER.map((cell, i) => (
+          <div
+            key={i}
+            ref={el => { outerRefs.current[i] = el; }}
+            style={{
+              position: 'absolute',
+              left: cell.l, top: cell.t,
+              width: cell.w, height: cell.h,
+              overflow: 'hidden',
+              willChange: 'transform, opacity',
+            }}
+          >
+            <img
+              src={cell.src}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              decoding="async"
+              style={{
+                width: '100%', height: '100%',
+                objectFit: 'cover', display: 'block',
+                filter: 'brightness(0.68) saturate(0.88)',
+              }}
+            />
+          </div>
+        ))}
+
         {/* ── Center image (zooms to fill) ── */}
         <div
           ref={centerRef}
           style={{
             position: 'absolute',
-            left: '16%', top: '17%',
-            width: '68%', height: '66%',
+            left: '20.2%', top: '21.2%',
+            width: '59.6%', height: '57.6%',
             overflow: 'hidden',
-            borderRadius: 'clamp(10px,1.2vw,18px)',
             transformOrigin: 'center center',
             willChange: 'transform',
             zIndex: 2,
-            boxShadow: '0 50px 120px -30px rgba(0,0,0,0.85), 0 0 0 1px rgba(201,169,110,0.18)',
           }}
         >
           <img

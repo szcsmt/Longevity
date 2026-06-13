@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
-import { ArrowUpRight, Maximize2 } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
@@ -243,33 +243,22 @@ function VillaImageCarousel({
         background: 'linear-gradient(to top, rgba(6,14,8,0.55) 0%, transparent 32%, transparent 78%, rgba(6,14,8,0.22) 100%)',
       }} />
 
-      {/* Center explore affordance — "click the image to view this villa" */}
-      <div className="villa-explore" aria-hidden="true" style={{
-        position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 'clamp(12px,1.4vw,18px)',
+      {/* Tap hint — bottom right of image */}
+      <span aria-hidden="true" style={{
+        position: 'absolute', bottom: 16, right: 16, zIndex: 10,
+        display: 'flex', alignItems: 'center', gap: 7,
+        padding: '8px 14px', borderRadius: 100,
+        background: 'rgba(6,14,8,0.55)',
+        border: '1px solid rgba(201,169,110,0.28)',
+        backdropFilter: 'blur(8px)',
+        color: 'var(--gold)',
+        fontFamily: ffs, fontSize: 7, fontWeight: 300,
+        letterSpacing: '0.22em', textTransform: 'uppercase',
+        pointerEvents: 'none',
       }}>
-        <span className="villa-explore-ring" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: 'clamp(62px,7vw,86px)', height: 'clamp(62px,7vw,86px)', borderRadius: '50%',
-          border: '1.5px solid rgba(232,201,138,0.9)',
-          background: 'rgba(6,14,8,0.34)', backdropFilter: 'blur(6px)',
-          color: 'var(--gold)',
-          boxShadow: '0 0 46px -6px rgba(201,169,110,0.6)',
-        }}>
-          <Maximize2 size={28} strokeWidth={1.4} />
-        </span>
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          padding: '9px 18px', borderRadius: 100,
-          background: 'rgba(6,14,8,0.6)', border: '1px solid rgba(201,169,110,0.35)', backdropFilter: 'blur(8px)',
-          fontFamily: ffs, fontSize: 'clamp(10px,1vw,12px)', fontWeight: 400,
-          letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--w90)',
-          textShadow: '0 1px 12px rgba(6,14,8,0.9)',
-        }}>
-          View villa <ArrowUpRight size={13} />
-        </span>
-      </div>
+        Tap to explore
+        <ArrowUpRight size={11} />
+      </span>
 
       {/* Index watermark — bottom left */}
       <span style={{
@@ -435,10 +424,6 @@ export function VillasSection() {
   return (
     <>
       <style>{`
-        @keyframes vexpand { 0%,100% { transform: scale(1); } 50% { transform: scale(1.09); } }
-        .villa-explore-ring { animation: vexpand 2.4s ease-in-out infinite; }
-        .villa-stage:hover .villa-explore { opacity: 0; }
-        .villa-explore { transition: opacity 0.45s ease; }
         .vdot { border:none; cursor:pointer; padding:0; transition: width 0.45s cubic-bezier(0.16,1,0.3,1), background 0.3s; }
         .villa-stage { border-radius: clamp(16px,1.6vw,24px); transition: transform 0.6s cubic-bezier(0.16,1,0.3,1); }
         /* Static gold frame + soft glow halo — lifts the villa off the dark backdrop */

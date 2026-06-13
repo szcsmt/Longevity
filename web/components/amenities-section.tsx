@@ -86,8 +86,8 @@ export function AmenitiesSection() {
       </h2>
 
       <p className="reveal" style={{
-        fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.45vw,18px)',
-        lineHeight: 1.7, color: 'var(--cr70)', margin: '0 0 clamp(28px,3.2vw,44px)', maxWidth: 540,
+        fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,18px)',
+        lineHeight: 1.8, color: 'var(--cr40)', margin: '0 0 clamp(44px,5vw,64px)', maxWidth: 520,
       }}>
         Explore the residence — tap each point to see the longevity technology built into it.
       </p>
@@ -95,7 +95,7 @@ export function AmenitiesSection() {
       {/* Interactive image */}
       <div className="reveal elev-img" style={{
         position: 'relative', width: '100%',
-        height: 'clamp(300px,46vh,560px)', overflow: 'hidden',
+        aspectRatio: '16 / 9', overflow: 'hidden',
         borderRadius: 'clamp(12px,1.4vw,20px)',
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}

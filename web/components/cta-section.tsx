@@ -157,13 +157,19 @@ export function CtaSection() {
               ready to commit to a better life. Begin here.
             </p>
 
-            {/* Response promise */}
-            <div className="reveal" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <span style={{ display: 'block', width: 30, height: 1, background: 'var(--gold)', flexShrink: 0 }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <span style={{ fontFamily: ffs, fontSize: 'clamp(12px,1.2vw,15px)', fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)' }}>Enquiry within 24 h</span>
-                <span style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,19px)', color: 'var(--cr70)' }}>Personal response guaranteed</span>
-              </div>
+            {/* Details strip */}
+            <div className="reveal" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {[
+                ['Private estate', 'Koh Samui, Thailand'],
+                ['Limited to 12 villas', 'Each villa individually owned'],
+                ['Enquiry within 24 h', 'Personal response guaranteed'],
+              ].map(([a, b]) => (
+                <div key={a} style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                  <span style={{ display: 'block', width: 18, height: 1, background: 'var(--gold-40)', flexShrink: 0 }} />
+                  <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--cr40)' }}>{a}</span>
+                  <span style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 11, color: 'rgba(228,217,195,0.22)', marginLeft: 4 }}>{b}</span>
+                </div>
+              ))}
             </div>
 
             {/* Brochure download */}
