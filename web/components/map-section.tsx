@@ -149,7 +149,7 @@ export function MapSection() {
             <div key={poi.id} style={{
               position: 'absolute', zIndex: 500, pointerEvents: 'none',
               bottom: 'clamp(16px,2.5vw,28px)', left: 'clamp(20px,3vw,36px)',
-              width: 'clamp(230px,80vw,300px)',
+              width: 'clamp(300px,42vw,440px)',
               background: 'rgba(6,14,8,0.94)',
               border: '1px solid rgba(201,169,110,0.28)',
               backdropFilter: 'blur(14px)',
@@ -161,7 +161,7 @@ export function MapSection() {
                 <img
                   src={poi.img}
                   alt={poi.name}
-                  style={{ width: '100%', height: 132, objectFit: 'cover', display: 'block', filter: 'brightness(0.9)' }}
+                  style={{ width: '100%', height: 'clamp(200px,26vh,300px)', objectFit: 'cover', display: 'block', filter: 'brightness(0.9)' }}
                 />
                 {poi.primary && (
                   <span style={{

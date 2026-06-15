@@ -194,7 +194,7 @@ function VillaImageCarousel({
       className="villa-carousel elev-img"
       style={{
         position: 'relative', overflow: 'hidden',
-        height: 'clamp(420px,64vh,700px)',
+        height: 'clamp(440px,70vh,800px)',
         borderRadius: 'clamp(14px,1.4vw,22px)',
         touchAction: 'pan-y',
         userSelect: 'none',
@@ -224,7 +224,7 @@ function VillaImageCarousel({
               src={img.img}
               alt={img.alt}
               draggable={false}
-              loading="lazy"
+              loading="eager"
               decoding="async"
               style={{
                 width: '100%', height: '100%', objectFit: 'cover',
@@ -244,20 +244,20 @@ function VillaImageCarousel({
       }} />
 
       {/* Tap hint — bottom right of image */}
-      <span aria-hidden="true" style={{
-        position: 'absolute', bottom: 16, right: 16, zIndex: 10,
-        display: 'flex', alignItems: 'center', gap: 7,
-        padding: '8px 14px', borderRadius: 100,
-        background: 'rgba(6,14,8,0.55)',
-        border: '1px solid rgba(201,169,110,0.28)',
+      <span className="tap-hint" aria-hidden="true" style={{
+        position: 'absolute', bottom: 18, right: 18, zIndex: 10,
+        display: 'flex', alignItems: 'center', gap: 9,
+        padding: '11px 20px', borderRadius: 100,
+        background: 'rgba(6,14,8,0.6)',
+        border: '1px solid rgba(201,169,110,0.45)',
         backdropFilter: 'blur(8px)',
         color: 'var(--gold)',
-        fontFamily: ffs, fontSize: 7, fontWeight: 300,
-        letterSpacing: '0.22em', textTransform: 'uppercase',
+        fontFamily: ffs, fontSize: 'clamp(9px,0.95vw,11px)', fontWeight: 400,
+        letterSpacing: '0.2em', textTransform: 'uppercase',
         pointerEvents: 'none',
       }}>
         Tap to explore
-        <ArrowUpRight size={11} />
+        <ArrowUpRight size={14} />
       </span>
 
       {/* Index watermark — bottom left */}
@@ -419,11 +419,24 @@ export function VillasSection() {
     setActive(((idx % n) + n) % n);
   }, [n]);
 
+  // Preload every villa image (carousel + galleries) so switching/paging is instant — no lag.
+  useEffect(() => {
+    villas.forEach(v => {
+      [v.img, ...v.gallery.map(g => g.src)].forEach(src => {
+        const im = new Image();
+        im.decoding = 'async';
+        im.src = src;
+      });
+    });
+  }, []);
+
   const villa = villas[active];
 
   return (
     <>
       <style>{`
+        @keyframes tapPulse { 0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(201,169,110,0); } 50% { transform: scale(1.05); box-shadow: 0 0 26px -2px rgba(201,169,110,0.6); } }
+        .tap-hint { animation: tapPulse 1.9s ease-in-out infinite; }
         .vdot { border:none; cursor:pointer; padding:0; transition: width 0.45s cubic-bezier(0.16,1,0.3,1), background 0.3s; }
         .villa-stage { border-radius: clamp(16px,1.6vw,24px); transition: transform 0.6s cubic-bezier(0.16,1,0.3,1); }
         /* Static gold frame + soft glow halo — lifts the villa off the dark backdrop */
@@ -442,7 +455,7 @@ export function VillasSection() {
 
       <section id="villas" style={{
         background: 'transparent',
-        padding: 'clamp(80px,9vw,130px) clamp(24px,8vw,120px) clamp(80px,10vw,120px)',
+        padding: 'clamp(80px,9vw,130px) clamp(20px,4vw,64px) clamp(80px,10vw,120px)',
         minHeight: '100vh',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
       }}>

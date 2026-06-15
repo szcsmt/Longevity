@@ -70,13 +70,9 @@ export function InteriorSection() {
 
       {/* Intro */}
       <span style={{ display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.30em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.7, marginBottom: 'clamp(20px,2.5vw,30px)' }}>Make it yours</span>
-      <h2 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(38px,5.8vw,84px)', lineHeight: 1.04, letterSpacing: '-0.015em', color: 'var(--cream)', margin: '0 0 clamp(18px,2vw,26px)' }}>
+      <h2 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(38px,5.8vw,84px)', lineHeight: 1.04, letterSpacing: '-0.015em', color: 'var(--cream)', margin: '0 0 clamp(26px,3.5vw,48px)' }}>
         Your villa.<br /><em className="gold-text" style={{ fontStyle: 'italic' }}>Your interior.</em>
       </h2>
-      <p style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(15px,1.6vw,21px)', lineHeight: 1.7, color: 'var(--cr70)', maxWidth: 620, margin: '0 0 clamp(44px,6vw,72px)' }}>
-        The structure stays exactly as it is — every interior inside it is yours to design.
-        Choose how a room should live, and we build it to that brief.
-      </p>
 
       {/* Configurator */}
       <div className="lr-cols-2" style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.65fr', gap: 'clamp(28px,4vw,64px)', alignItems: 'start' }}>
@@ -109,7 +105,7 @@ export function InteriorSection() {
             <p style={{ fontFamily: ff, fontSize: 'clamp(14px,1.4vw,17px)', lineHeight: 1.8, color: 'var(--cr70)', margin: '0 0 clamp(18px,2vw,24px)', maxWidth: 640 }}>{cur.desc}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 12px' }}>
               {cur.features.map(f => (
-                <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: ffs, fontSize: 8.5, fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--cr70)', padding: '8px 14px', borderRadius: 100, border: '1px solid rgba(201,169,110,0.22)' }}>
+                <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: ffs, fontSize: 'clamp(9px,0.9vw,11px)', fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--cr70)', padding: '8px 15px', borderRadius: 100, border: '1px solid rgba(201,169,110,0.22)' }}>
                   <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />{f}
                 </span>
               ))}
@@ -119,7 +115,7 @@ export function InteriorSection() {
 
         {/* Selector */}
         <div>
-          <span style={{ display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.26em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.5, marginBottom: 'clamp(16px,2vw,22px)' }}>Choose the interior</span>
+          <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(10px,1vw,12.5px)', fontWeight: 400, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.8, marginBottom: 'clamp(16px,2vw,22px)' }}>Choose the interior</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {configs.map((c, i) => {
               const Icon = c.icon;
@@ -137,8 +133,8 @@ export function InteriorSection() {
                     <Icon size={18} strokeWidth={1.5} />
                   </span>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ fontFamily: ff, fontSize: 'clamp(15px,1.5vw,18px)', color: on ? 'var(--cream)' : 'var(--cr70)' }}>{c.name}</span>
-                    <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--cr40)' }}>{c.tagline}</span>
+                    <span style={{ fontFamily: ff, fontSize: 'clamp(16px,1.6vw,19px)', color: on ? 'var(--cream)' : 'var(--cr70)' }}>{c.name}</span>
+                    <span style={{ fontFamily: ffs, fontSize: 'clamp(10px,0.95vw,12px)', fontWeight: 400, letterSpacing: '0.08em', textTransform: 'uppercase', color: on ? 'var(--cr70)' : 'var(--cr40)' }}>{c.tagline}</span>
                   </span>
                 </button>
               );

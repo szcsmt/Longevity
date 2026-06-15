@@ -22,7 +22,7 @@ export function Nav() {
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0,
         zIndex: 1000,
-        padding: 'clamp(14px,2vw,24px) clamp(24px,5vw,60px) clamp(14px,2vw,24px) clamp(10px,1.2vw,20px)',
+        padding: 'clamp(14px,2vw,24px) clamp(24px,5vw,60px) clamp(14px,2vw,24px) clamp(0px,0.4vw,6px)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         animation: 'fadeIn 1.8s ease 0.6s both',
       }}>
