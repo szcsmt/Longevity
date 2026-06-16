@@ -6,9 +6,9 @@ import { useEffect, useRef, useState } from 'react';
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
-// Koh Samui bounding box — map cannot be panned outside this
-const KS_SW: [number, number] = [9.38,  99.77];
-const KS_NE: [number, number] = [9.63, 100.12];
+// Koh Samui bounding box — hugs the island so it sits centred (not adrift in sea)
+const KS_SW: [number, number] = [9.42,  99.94];
+const KS_NE: [number, number] = [9.60, 100.10];
 
 interface Poi {
   id:      string;
@@ -21,18 +21,18 @@ interface Poi {
 }
 
 const POIS: Poi[] = [
-  { id:'resort',     lat:9.568083, lng:100.076056, primary:true,  img:'/images/streets/entrance.webp',  name:'Longevity Resort',                desc:'Your private gated estate — 60+ villas across four themed lanes, five minutes from the shore.' },
+  { id:'resort',     lat:9.568083, lng:100.076056, primary:true,  img:'/images/streets/entrance.webp',  name:'Longevity Resort',                desc:'Your private gated estate. 60+ villas across four themed lanes, five minutes from the shore.' },
   { id:'bigbuddha',  lat:9.570853, lng:100.059840, primary:false, img:'/images/poi/temple.webp',    name:'Wat Phra Yai · Big Buddha',       desc:"Koh Samui's iconic 12-metre golden Buddha, watching over the north coast." },
-  { id:'legacyspa',  lat:9.565938, lng:100.083438, primary:false, img:'/images/poi/spa.webp',       name:'Legacy Spa Bophut',               desc:'Award-winning spa & wellness sanctuary near the north-east cape.' },
+  { id:'legacyspa',  lat:9.565938, lng:100.083438, primary:false, img:'/images/poi/spa.webp',       name:'Legacy Spa Bophut',               desc:'Award winning spa & wellness sanctuary near the northeast cape.' },
   { id:'khunsi',     lat:9.522938, lng:100.013188, primary:false, img:'/images/poi/waterfall.webp', name:'Khun Si Waterfall',               desc:'A hidden jungle waterfall and natural pools in the island’s green interior.' },
-  { id:'elephant',   lat:9.548065, lng:100.038457, primary:false, img:'/images/poi/elephant.webp',  name:'Samui Elephant Sanctuary',        desc:'Ethical sanctuary in the Bophut hills — retired elephants, no riding.' },
+  { id:'elephant',   lat:9.548065, lng:100.038457, primary:false, img:'/images/poi/elephant.webp',  name:'Samui Elephant Sanctuary',        desc:'Ethical sanctuary in the Bophut hills, home to retired elephants, with no riding.' },
   { id:'tarnim',     lat:9.482938, lng: 99.994438, primary:false, img:'/images/poi/temple.webp',    name:'Tarnim Magic Garden',             desc:'Mystical stone statues hidden high on Pom Mountain.' },
-  { id:'theroof',    lat:9.517000, lng:100.050500, primary:false, img:'/images/poi/rooftop.webp',   name:'The Roof Samui',                  desc:"Panoramic hilltop rooftop bar above Chaweng — the island's best sunset." },
-  { id:'bophut',     lat:9.561102, lng:100.028013, primary:false, img:'/images/poi/beach.webp',     name:'Bo Phut Beach',                   desc:'A calm, palm-lined north-shore beach beside Fisherman’s Village.' },
-  { id:'airport',    lat:9.547790, lng:100.061997, primary:false, img:'/images/poi/airport.webp',   name:'Samui Airport',                   desc:'A tropical garden airport — just 12 minutes from the estate.' },
-  { id:'choengmon',  lat:9.573770, lng:100.080686, primary:false, img:'/images/poi/beach.webp',     name:'Choeng Mon Beach',                desc:'A sheltered white-sand bay on the peaceful north-east cape.' },
-  { id:'chaweng',    lat:9.529000, lng:100.062000, primary:false, img:'/images/poi/beach.webp',     name:'Chaweng Beach',                   desc:"The island's most famous beach — 6 km of sand, dining and nightlife." },
-  { id:'fishermans', lat:9.558438, lng:100.031438, primary:false, img:'/images/poi/market.webp',    name:"Fisherman's Village Night Market",desc:'Bophut’s historic walking street — boutiques, seafood and the Friday market.' },
+  { id:'theroof',    lat:9.517000, lng:100.050500, primary:false, img:'/images/poi/rooftop.webp',   name:'The Roof Samui',                  desc:"Panoramic hilltop rooftop bar above Chaweng, with the island's best sunset." },
+  { id:'bophut',     lat:9.561102, lng:100.028013, primary:false, img:'/images/poi/beach.webp',     name:'Bo Phut Beach',                   desc:'A calm, palm lined beach on the north shore beside Fisherman’s Village.' },
+  { id:'airport',    lat:9.547790, lng:100.061997, primary:false, img:'/images/poi/airport.webp',   name:'Samui Airport',                   desc:'A tropical garden airport, just 12 minutes from the estate.' },
+  { id:'choengmon',  lat:9.573770, lng:100.080686, primary:false, img:'/images/poi/beach.webp',     name:'Choeng Mon Beach',                desc:'A sheltered white sand bay on the peaceful northeast cape.' },
+  { id:'chaweng',    lat:9.529000, lng:100.062000, primary:false, img:'/images/poi/beach.webp',     name:'Chaweng Beach',                   desc:"The island's most famous beach, with 6 km of sand, dining and nightlife." },
+  { id:'fishermans', lat:9.558438, lng:100.031438, primary:false, img:'/images/poi/market.webp',    name:"Fisherman's Village Night Market",desc:'Bophut’s historic walking street, with boutiques, seafood and the Friday market.' },
 ];
 
 export function MapSection() {
@@ -48,13 +48,28 @@ export function MapSection() {
   const [ready, setReady] = useState(false);
 
   const HIT = 44;   // generous touch target so markers are easy to tap
+  // The resort gets a pushpin (head on a needle whose tip marks the spot);
+  // every other place stays a simple dot.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function makeIcon(L: any, poi: Poi, isActive: boolean) {
-    const hot  = poi.primary || isActive;
-    const dot  = poi.primary ? 20 : (isActive ? 16 : 12);
-    const bg   = hot ? '#C9A96E' : 'rgba(228,217,195,0.7)';
-    const ring = hot ? '0 0 0 6px rgba(201,169,110,0.22)' : '0 0 0 3px rgba(201,169,110,0.16)';
-    const glow = hot ? '0 0 18px 2px rgba(201,169,110,0.45),' : '';
+    if (poi.primary) {
+      const W = 40, H = 50, cx = 20, headY = 13, tipY = 46, head = 10;
+      return L.divIcon({
+        html: `<div style="width:${W}px;height:${H}px;cursor:pointer;filter:drop-shadow(0 0 6px rgba(201,169,110,0.7)) drop-shadow(0 3px 3px rgba(0,0,0,0.55));">
+                 <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="none">
+                   <line x1="${cx}" y1="${headY + head}" x2="${cx}" y2="${tipY}" stroke="#C9A96E" stroke-width="2" stroke-linecap="round"/>
+                   <circle cx="${cx}" cy="${tipY}" r="1.8" fill="#C9A96E"/>
+                   <circle cx="${cx}" cy="${headY}" r="${head + 4}" fill="none" stroke="rgba(201,169,110,0.3)" stroke-width="1.5"/>
+                   <circle cx="${cx}" cy="${headY}" r="${head}" fill="#C9A96E" stroke="#E8C98A" stroke-width="1.3"/>
+                 </svg>
+               </div>`,
+        className: '', iconSize: [W, H], iconAnchor: [cx, tipY],
+      });
+    }
+    const dot  = isActive ? 16 : 12;
+    const bg   = isActive ? '#C9A96E' : 'rgba(228,217,195,0.7)';
+    const ring = isActive ? '0 0 0 6px rgba(201,169,110,0.22)' : '0 0 0 3px rgba(201,169,110,0.16)';
+    const glow = isActive ? '0 0 18px 2px rgba(201,169,110,0.45),' : '';
     return L.divIcon({
       html: `<div style="width:${HIT}px;height:${HIT}px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
                <div style="width:${dot}px;height:${dot}px;border-radius:50%;background:${bg};box-shadow:${glow}${ring};transition:width .25s,height .25s,box-shadow .25s;"></div>
@@ -82,9 +97,14 @@ export function MapSection() {
 
       const bounds = L.latLngBounds(KS_SW, KS_NE);
 
+      // On touch devices, dragging the map would trap the page scroll
+      // (a downward swipe pans the map instead of scrolling). Disable drag
+      // there — markers stay tappable and the zoom buttons still work.
+      const isTouch = window.matchMedia('(pointer: coarse)').matches;
+
       LRef.current = L;
       const map = L.map(mapEl.current, {
-        center:              [9.552, 100.052],
+        center:              [9.512, 100.022],
         zoom:                12,
         minZoom:             11,
         maxZoom:             15,
@@ -93,6 +113,7 @@ export function MapSection() {
         zoomControl:         false,
         attributionControl:  false,
         scrollWheelZoom:     false,
+        dragging:            !isTouch,
       });
       mapRef.current = map;
 
@@ -139,51 +160,69 @@ export function MapSection() {
         .lr-map .leaflet-control-attribution { display: none !important; }
       `}</style>
 
-      <section id="location" style={{ background: 'transparent' }}>
+      <section id="location" className="lr-split lr-location" style={{
+        background: 'transparent',
+        borderTop: '1px solid rgba(201,169,110,0.06)',
+        display: 'grid', gridTemplateColumns: '0.92fr 1.08fr', minHeight: '100vh',
+      }}>
 
-        <div ref={wrapRef} style={{ position: 'relative', height: 'clamp(440px,65vh,780px)' }}>
-          <div ref={mapEl} className="lr-map" style={{ width: '100%', height: '100%' }} />
+        {/* LEFT — heading (top, level with the map) + the selected place (large photo + text) */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
+          padding: 'clamp(44px,5vw,76px) clamp(24px,5vw,72px) clamp(56px,6vw,90px)',
+          borderRight: '1px solid rgba(201,169,110,0.06)',
+        }}>
+          <span style={{
+            display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300,
+            letterSpacing: '0.30em', textTransform: 'uppercase',
+            color: 'var(--gold)', opacity: 0.65, marginBottom: 'clamp(16px,2vw,24px)',
+          }}>Where we are</span>
+          <h2 style={{
+            fontFamily: ff, fontWeight: 400, fontSize: 'clamp(38px,4.6vw,68px)',
+            lineHeight: 1.04, letterSpacing: '-0.01em', margin: '0 0 clamp(14px,1.8vw,22px)',
+          }}>
+            <span className="gold-text" style={{ filter: 'drop-shadow(0 0 24px var(--gold-glow))' }}>Location</span>
+          </h2>
+          <p style={{
+            fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
+            fontSize: 'clamp(14px,1.4vw,18px)', lineHeight: 1.8,
+            color: 'var(--cr70)', margin: 0,
+          }}>
+            On the peaceful northeast cape of Koh Samui, minutes from the shore,
+            the airport, and the island&rsquo;s most beautiful corners.
+          </p>
 
-          {/* Active POI card — bottom left: photo + name + description */}
+          {/* Selected place — updates when a marker is tapped */}
           {poi && (
-            <div key={poi.id} style={{
-              position: 'absolute', zIndex: 500, pointerEvents: 'none',
-              bottom: 'clamp(16px,2.5vw,28px)', left: 'clamp(20px,3vw,36px)',
-              width: 'clamp(300px,42vw,440px)',
-              background: 'rgba(6,14,8,0.94)',
-              border: '1px solid rgba(201,169,110,0.28)',
-              backdropFilter: 'blur(14px)',
-              boxShadow: '0 30px 70px -24px rgba(0,0,0,0.85), 0 0 40px -12px var(--gold-glow)',
-              borderRadius: 12, overflow: 'hidden',
-              animation: 'fadeIn 0.35s ease both',
-            }}>
-              <div style={{ position: 'relative' }}>
-                <img
-                  src={poi.img}
-                  alt={poi.name}
-                  style={{ width: '100%', height: 'clamp(200px,26vh,300px)', objectFit: 'cover', display: 'block', filter: 'brightness(0.9)' }}
-                />
+            <div key={poi.id} style={{ marginTop: 'clamp(28px,3.5vw,48px)', animation: 'fadeIn 0.4s ease both' }}>
+              <div className="elev-img" style={{ position: 'relative', borderRadius: 'clamp(12px,1.4vw,18px)', overflow: 'hidden', border: '1px solid rgba(201,169,110,0.18)' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={poi.img} alt={poi.name} decoding="async"
+                  style={{ width: '100%', height: 'clamp(280px,40vh,480px)', objectFit: 'cover', display: 'block', filter: 'brightness(0.92)' }} />
                 {poi.primary && (
                   <span style={{
-                    position: 'absolute', top: 10, left: 10,
-                    fontFamily: ffs, fontSize: 7, fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase',
-                    color: 'var(--bg)', background: 'var(--gold)', padding: '4px 9px', borderRadius: 100,
+                    position: 'absolute', top: 14, left: 14,
+                    fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase',
+                    color: 'var(--bg)', background: 'var(--gold)', padding: '5px 12px', borderRadius: 100,
                   }}>The Estate</span>
                 )}
               </div>
-              <div style={{ padding: 'clamp(13px,1.6vw,17px) clamp(15px,2vw,18px)' }}>
-                <span style={{ display:'block', fontFamily:ff, fontSize:'clamp(14px,1.3vw,17px)', color:'var(--cream)', marginBottom:6, lineHeight:1.2 }}>
-                  {poi.name}
-                </span>
-                <span style={{ display:'block', fontFamily:ffs, fontSize:'clamp(10px,0.9vw,11px)', fontWeight:300, lineHeight:1.65, color:'var(--cr70)' }}>
-                  {poi.desc}
-                </span>
-              </div>
+              <h3 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(22px,2.3vw,32px)', color: 'var(--cream)', lineHeight: 1.2, margin: 'clamp(18px,2.2vw,26px) 0 10px' }}>
+                {poi.name}
+              </h3>
+              <p style={{ fontFamily: ffs, fontSize: 'clamp(13px,1.2vw,16px)', fontWeight: 300, lineHeight: 1.75, color: 'var(--cr70)', margin: 0 }}>
+                {poi.desc}
+              </p>
             </div>
           )}
+        </div>
 
-          {/* Zoom controls — bottom right */}
-          <div style={{
+        {/* RIGHT — the map */}
+        <div ref={wrapRef} style={{ position: 'relative', minHeight: 'clamp(440px,60vh,720px)' }}>
+          <div ref={mapEl} className="lr-map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+
+          {/* Zoom controls */}
+          <div className="lr-map-zoom" style={{
             position: 'absolute', zIndex: 500,
             bottom: 'clamp(16px,2.5vw,28px)', right: 'clamp(20px,3vw,36px)',
             display: 'flex', flexDirection: 'column', gap: 2,

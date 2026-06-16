@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { BrochureDownload } from '@/components/brochure-download';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
@@ -29,10 +30,10 @@ export function CtaSection() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    background: 'transparent',
-    border: 'none',
-    borderBottom: '1px solid rgba(228,217,195,0.12)',
-    padding: '16px 0',
+    background: 'rgba(255,252,248,0.06)',
+    border: '1px solid rgba(201,169,110,0.35)',
+    borderRadius: 8,
+    padding: '14px 16px',
     fontFamily: ff,
     fontSize: 'clamp(14px,1.3vw,16px)',
     color: 'var(--cream)',
@@ -43,20 +44,20 @@ export function CtaSection() {
   const labelStyle: React.CSSProperties = {
     display: 'block',
     fontFamily: ffs,
-    fontSize: 7,
-    fontWeight: 300,
-    letterSpacing: '0.26em',
+    fontSize: 8,
+    fontWeight: 400,
+    letterSpacing: '0.22em',
     textTransform: 'uppercase',
     color: 'var(--gold)',
-    opacity: 0.55,
-    marginBottom: 4,
+    opacity: 0.85,
+    marginBottom: 8,
   };
 
   return (
     <>
       <style>{`
-        .cta-input::placeholder { color: rgba(228,217,195,0.22); font-style: italic; font-family: var(--font-playfair), serif; }
-        .cta-input:focus { border-bottom-color: rgba(201,169,110,0.50) !important; }
+        .cta-input::placeholder { color: rgba(228,217,195,0.45); font-style: italic; font-family: var(--font-playfair), serif; }
+        .cta-input:focus { border-color: rgba(201,169,110,0.75) !important; background: rgba(255,252,248,0.10) !important; }
         select.cta-input option { background: #0A1A0D; color: var(--cream); }
         .cta-submit {
           display: flex; align-items: center; justify-content: center; gap: 14px;
@@ -158,43 +159,12 @@ export function CtaSection() {
             </p>
 
             {/* Details strip */}
-            <div className="reveal" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              {[
-                ['Private estate', 'Koh Samui, Thailand'],
-                ['Limited to 12 villas', 'Each villa individually owned'],
-                ['Enquiry within 24 h', 'Personal response guaranteed'],
-              ].map(([a, b]) => (
-                <div key={a} style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-                  <span style={{ display: 'block', width: 18, height: 1, background: 'var(--gold-40)', flexShrink: 0 }} />
-                  <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--cr40)' }}>{a}</span>
-                  <span style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 11, color: 'rgba(228,217,195,0.22)', marginLeft: 4 }}>{b}</span>
-                </div>
-              ))}
+            <div className="reveal">
+              <span style={{ fontFamily: ffs, fontSize: 'clamp(11px,1.1vw,13px)', fontWeight: 400, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gold)' }}>Enquiry within 24 h</span>
             </div>
 
-            {/* Brochure download */}
-            <a
-              className="reveal"
-              href="/brochure/longevity-brochure-2026.pdf"
-              download
-              onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
-              onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.45)'; }}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 12,
-                marginTop: 'clamp(36px,4.5vw,52px)', width: 'fit-content',
-                fontFamily: ffs, fontSize: 9, fontWeight: 300,
-                letterSpacing: '0.26em', textTransform: 'uppercase',
-                color: 'var(--gold)', background: 'transparent',
-                border: '1px solid rgba(201,169,110,0.45)', borderRadius: 100,
-                padding: '15px 26px', textDecoration: 'none',
-                transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
-              }}
-            >
-              Download the brochure
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M7 1v9M3.5 6.5L7 10l3.5-3.5M2 12.5h10" />
-              </svg>
-            </a>
+            {/* Brochure download — email-gated */}
+            <BrochureDownload variant="cta" />
 
             {/* Bottom brand */}
             <span style={{
@@ -202,7 +172,7 @@ export function CtaSection() {
               fontFamily: ffs, fontSize: 7, fontWeight: 300,
               letterSpacing: '0.28em', textTransform: 'uppercase',
               color: 'rgba(228,217,195,0.15)',
-            }}>Longevity Resort · Est. 2025</span>
+            }}>Longevity Resort · Est. 2026</span>
           </div>
 
           {/* RIGHT — Form */}
@@ -223,7 +193,7 @@ export function CtaSection() {
             ) : (
               <form className="reveal glass-card" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(28px,3.5vw,40px)', padding: 'clamp(28px,4vw,52px)' }}>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(20px,3vw,36px)' }}>
+                <div className="lr-form-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(20px,3vw,36px)' }}>
                   <div>
                     <span style={labelStyle}>Name</span>
                     <input className="cta-input" style={inputStyle} type="text" placeholder="Your name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
@@ -238,9 +208,9 @@ export function CtaSection() {
                   <span style={labelStyle}>Preferred Villa</span>
                   <select className="cta-input" style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }} value={form.villa} onChange={e => setForm(f => ({ ...f, villa: e.target.value }))}>
                     <option value="">Any villa</option>
-                    <option value="M">Villa M — 76.46 m²</option>
-                    <option value="L">Villa L — 79.19 m²</option>
-                    <option value="XL">Villa XL — 126.65 m²</option>
+                    <option value="M">Villa M · 76.46 m²</option>
+                    <option value="L">Villa L · 79.19 m²</option>
+                    <option value="XL">Villa XL · 126.65 m²</option>
                   </select>
                 </div>
 
@@ -263,8 +233,8 @@ export function CtaSection() {
                 </button>
 
                 <p style={{
-                  fontFamily: ffs, fontSize: 7, fontWeight: 300,
-                  letterSpacing: '0.14em', color: 'rgba(228,217,195,0.22)',
+                  fontFamily: ffs, fontSize: 'clamp(8.5px,0.8vw,10px)', fontWeight: 300,
+                  letterSpacing: '0.08em', color: 'var(--cr40)',
                   lineHeight: 1.8, margin: 0,
                 }}>
                   Your information is kept strictly private. No marketing. No third parties.

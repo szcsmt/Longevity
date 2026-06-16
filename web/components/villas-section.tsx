@@ -19,6 +19,10 @@ interface VillaData {
   img: string;
   gallery: { src: string; caption: string }[];
   alt: string;
+  /* 3D twin walkthrough URL (Matterport / Kuula / etc.).
+     Leave empty until the tour is ready — the button then shows an
+     elegant "coming soon" state instead of a broken link. */
+  tourUrl?: string;
 }
 
 const villas: VillaData[] = [
@@ -27,7 +31,7 @@ const villas: VillaData[] = [
     bedrooms: '1 Bedroom', guests: 'Up to 2 Guests', pool: 'Private plunge pool',
     tagline: 'Intimate seclusion. Full privacy.',
     desc: 'One bedroom. Private plunge pool. Surrounded by ancient jungle, steps from the shoreline.',
-    highlights: ['Private garden terrace', 'Open-air bathroom', 'Daily housekeeping'],
+    highlights: ['Private garden terrace', 'Daily housekeeping', 'Spa access included'],
     img: '/images/villa/ext-1.webp',
     gallery: [
       { src: '/images/villa/ext-1.webp',        caption: 'Exterior · golden hour' },
@@ -37,13 +41,14 @@ const villas: VillaData[] = [
       { src: '/images/villa/int-bathroom-1.webp',caption: 'Bathroom' },
     ],
     alt: 'Villa M exterior',
+    tourUrl: '',   // ← paste Villa M's 3D twin link here
   },
   {
     index: '02', name: 'Villa L', size: '79.19 m²',
     bedrooms: '1 Bedroom', guests: 'Up to 2 Guests', pool: '12 m private pool',
-    tagline: 'Elevated living. Sea horizon.',
-    desc: 'One spacious bedroom. A 12-metre pool facing the open sea. A view that resets everything.',
-    highlights: ['Panoramic ocean terrace', 'Spa access included', 'Concierge 24/7', 'Sunset sala'],
+    tagline: 'Elevated living. Pure calm.',
+    desc: 'One spacious bedroom. A 12 metre private pool wrapped in green. A calm that resets everything.',
+    highlights: ['Private pool deck', 'Daily housekeeping', 'Spa access included'],
     img: '/images/villa/ext-2.webp',
     gallery: [
       { src: '/images/villa/ext-2.webp',         caption: 'Exterior · pool & terrace' },
@@ -54,13 +59,14 @@ const villas: VillaData[] = [
       { src: '/images/villa/int-bathroom-2.webp',caption: 'Bathroom' },
     ],
     alt: 'Villa L exterior',
+    tourUrl: '',   // ← paste Villa L's 3D twin link here
   },
   {
     index: '03', name: 'Villa XL', size: '126.65 m²',
-    bedrooms: '2 Bedrooms', guests: 'Up to 4 Guests', pool: 'Heated infinity pool',
+    bedrooms: '2 Bedrooms', guests: 'Up to 4 Guests', pool: 'Large private pool',
     tagline: 'The estate. The pinnacle.',
-    desc: 'Two bedrooms. Heated infinity pool. Dedicated butler. The most secluded residence on the estate.',
-    highlights: ['Private butler service', 'Full kitchen', 'Meditation pavilion', 'Outdoor cinema'],
+    desc: 'Two bedrooms. A large private pool. The most secluded residence on the estate.',
+    highlights: ['Full kitchen', 'Private garden', 'Spa access included'],
     img: '/images/villa/ext-4.webp',
     gallery: [
       { src: '/images/villa/ext-4.webp',            caption: 'Exterior' },
@@ -73,6 +79,7 @@ const villas: VillaData[] = [
       { src: '/images/villa/int-bathroom-3.webp',   caption: 'Bathroom' },
     ],
     alt: 'Villa XL exterior',
+    tourUrl: '',   // ← paste Villa XL's 3D twin link here
   },
 ];
 
@@ -182,7 +189,7 @@ function VillaImageCarousel({
     <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px,1.4vw,18px)', width: '100%' }}>
 
       {/* Previous villa — OUTSIDE the frame (switch villa type) */}
-      <button aria-label="Previous villa" onClick={() => onNavigate(prevIdx)} style={arrowStyle}
+      <button className="villa-nav-arrow" aria-label="Previous villa" onClick={() => onNavigate(prevIdx)} style={arrowStyle}
         onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
         onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.4)'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.5)'; }}>
         <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2L4 6.5L9 11" /></svg>
@@ -228,7 +235,6 @@ function VillaImageCarousel({
               decoding="async"
               style={{
                 width: '100%', height: '100%', objectFit: 'cover',
-                filter: 'brightness(0.96) saturate(1.12)',
                 pointerEvents: 'none',
                 display: 'block',
               }}
@@ -272,7 +278,7 @@ function VillaImageCarousel({
     </div>
 
       {/* Next villa — OUTSIDE the frame (switch villa type) */}
-      <button aria-label="Next villa" onClick={() => onNavigate(nextIdx)} style={arrowStyle}
+      <button className="villa-nav-arrow" aria-label="Next villa" onClick={() => onNavigate(nextIdx)} style={arrowStyle}
         onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
         onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.4)'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.5)'; }}>
         <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2l5 4.5L4 11" /></svg>
@@ -413,11 +419,28 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
 export function VillasSection() {
   const [active, setActive] = useState(0);
   const [modal,  setModal]  = useState<VillaData | null>(null);
+  const [tour,   setTour]   = useState<VillaData | null>(null);   // 3D "coming soon" dialog
   const n = villas.length;
 
   const navigate = useCallback((idx: number) => {
     setActive(((idx % n) + n) % n);
   }, [n]);
+
+  // Open the 3D twin walkthrough — real link in a new tab if set, otherwise
+  // an elegant "coming soon" dialog so the button always does something.
+  const open3D = useCallback((v: VillaData) => {
+    if (v.tourUrl) window.open(v.tourUrl, '_blank', 'noopener,noreferrer');
+    else setTour(v);
+  }, []);
+
+  // Lock body scroll + Escape-to-close while the 3D dialog is open
+  useEffect(() => {
+    if (!tour) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setTour(null); };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+  }, [tour]);
 
   // Preload every villa image (carousel + galleries) so switching/paging is instant — no lag.
   useEffect(() => {
@@ -435,11 +458,12 @@ export function VillasSection() {
   return (
     <>
       <style>{`
-        @keyframes tapPulse { 0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(201,169,110,0); } 50% { transform: scale(1.05); box-shadow: 0 0 26px -2px rgba(201,169,110,0.6); } }
+        /* Transform-only pulse (no box-shadow animation) for a GPU-light, repaint-free loop */
+        @keyframes tapPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .tap-hint { animation: tapPulse 1.9s ease-in-out infinite; }
         .vdot { border:none; cursor:pointer; padding:0; transition: width 0.45s cubic-bezier(0.16,1,0.3,1), background 0.3s; }
         .villa-stage { border-radius: clamp(16px,1.6vw,24px); transition: transform 0.6s cubic-bezier(0.16,1,0.3,1); }
-        /* Static gold frame + soft glow halo — lifts the villa off the dark backdrop */
+        /* Gold frame + soft glow halo that lifts the villa off the dark backdrop */
         .villa-stage::before {
           content: ''; position: absolute; inset: -3px; border-radius: inherit;
           border: 1.5px solid rgba(201,169,110,0.5);
@@ -453,9 +477,11 @@ export function VillasSection() {
         .villa-stage:hover .villa-carousel { box-shadow: 0 55px 120px -30px rgba(0,0,0,0.9); }
       `}</style>
 
-      <section id="villas" style={{
+      <section id="villas" className="lr-villas" style={{
         background: 'transparent',
-        padding: 'clamp(80px,9vw,130px) clamp(20px,4vw,64px) clamp(80px,10vw,120px)',
+        /* Asymmetric: roomy LEFT keeps the heading + text clear of the fixed logo,
+           tighter RIGHT lets the villa image run wide (its original size). */
+        padding: 'clamp(80px,9vw,130px) clamp(20px,4vw,64px) clamp(80px,10vw,120px) clamp(24px,8vw,120px)',
         minHeight: '100vh',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
       }}>
@@ -471,14 +497,14 @@ export function VillasSection() {
         {/* Card: text left + image right */}
         <div className="lr-villa-card" style={{
           display: 'flex', flexDirection: 'row', alignItems: 'center',
-          gap: 'clamp(28px,3.5vw,56px)', width: '100%',
+          gap: 'clamp(22px,2.6vw,40px)', width: '100%',
         }}>
 
           {/* LEFT: Text */}
-          <div style={{ flex: '0 0 clamp(220px,25%,320px)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: '0 0 clamp(200px,22%,280px)', display: 'flex', flexDirection: 'column' }}>
 
             <h3 style={{ margin: '0 0 clamp(8px,1.2vw,14px)', lineHeight: 1 }}>
-              <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(48px,6vw,88px)', letterSpacing: '-0.01em', lineHeight: 1.0, filter: 'drop-shadow(0 0 24px var(--gold-glow))' }}>{villa.name}</span>
+              <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(48px,6vw,88px)', letterSpacing: '-0.01em', lineHeight: 1.0 }}>{villa.name}</span>
               <span style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(17px,2vw,28px)', letterSpacing: '0.01em', color: 'var(--gold)', lineHeight: 1.4 }}>{villa.tagline}</span>
             </h3>
 
@@ -490,25 +516,51 @@ export function VillasSection() {
 
             <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr40)', margin: '0 0 clamp(24px,3.5vw,36px)' }}>{villa.desc}</p>
 
-            <button
-              onClick={() => setModal(villa)}
-              style={{
-                alignSelf: 'flex-start',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-                fontFamily: ffs, fontSize: 9, fontWeight: 300,
-                letterSpacing: '0.28em', textTransform: 'uppercase',
-                color: 'var(--gold)',
-                background: 'transparent', border: '1px solid rgba(201,169,110,0.55)',
-                borderRadius: 100, padding: '16px 38px', cursor: 'pointer',
-                transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
-                animation: 'goldGlow 3.4s ease-in-out infinite',
-              }}
-              onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
-              onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.55)'; }}
-            >
-              View Details
-              <ArrowUpRight size={14} />
-            </button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px 14px' }}>
+              {/* View it in 3D — primary, opens the photoreal twin walkthrough.
+                  Static styling only (no animated shadow) so hover stays smooth. */}
+              <button
+                onClick={() => open3D(villa)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 11,
+                  fontFamily: ffs, fontSize: 9, fontWeight: 300,
+                  letterSpacing: '0.24em', textTransform: 'uppercase',
+                  color: 'var(--gold)',
+                  background: 'rgba(201,169,110,0.12)', border: '1px solid rgba(201,169,110,0.6)',
+                  borderRadius: 100, padding: '16px 30px', cursor: 'pointer',
+                  boxShadow: '0 0 24px -12px var(--gold-glow)',
+                  transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
+                }}
+                onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
+                onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(201,169,110,0.12)'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.6)'; }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 1.6 14 5v6L8 14.4 2 11V5z" />
+                  <path d="M2 5l6 3.4L14 5" />
+                  <path d="M8 8.4v6" />
+                </svg>
+                View it in 3D
+              </button>
+
+              {/* View Details — secondary, opens the photo + spec modal */}
+              <button
+                onClick={() => setModal(villa)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                  fontFamily: ffs, fontSize: 9, fontWeight: 300,
+                  letterSpacing: '0.28em', textTransform: 'uppercase',
+                  color: 'var(--gold)',
+                  background: 'transparent', border: '1px solid rgba(201,169,110,0.4)',
+                  borderRadius: 100, padding: '16px 30px', cursor: 'pointer',
+                  transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
+                }}
+                onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
+                onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.4)'; }}
+              >
+                View Details
+                <ArrowUpRight size={14} />
+              </button>
+            </div>
           </div>
 
           {/* RIGHT: Swipe image carousel with arrows */}
@@ -540,13 +592,84 @@ export function VillasSection() {
             ))}
           </div>
           <span style={{ fontFamily:ffs, fontSize:8, fontWeight:300, letterSpacing:'0.18em', textTransform:'uppercase', color:'rgba(228,217,195,0.20)' }}>
-            {villa.name} — {villa.index} / 0{n}
+            {villa.name} · {villa.index} / 0{n}
           </span>
         </div>
 
       </section>
 
       {modal && <VillaModal villa={modal} onClose={() => setModal(null)} />}
+
+      {/* 3D walkthrough — "coming soon" dialog (shown until a tourUrl is set) */}
+      {tour && (
+        <div
+          onClick={() => setTour(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(6,14,8,0.97)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 'clamp(16px,4vw,48px)', animation: 'fadeIn 0.3s ease both',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 460, textAlign: 'center',
+              background: '#0A1A0D', border: '1px solid rgba(201,169,110,0.22)',
+              borderRadius: 'clamp(16px,1.8vw,24px)', padding: 'clamp(36px,5vw,56px)',
+              boxShadow: '0 50px 120px -30px rgba(0,0,0,0.9), 0 0 60px -10px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.05)',
+              position: 'relative',
+            }}
+          >
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 64, height: 64, borderRadius: '50%', marginBottom: 'clamp(20px,2.5vw,28px)',
+              border: '1px solid rgba(201,169,110,0.4)', color: 'var(--gold)',
+              background: 'rgba(201,169,110,0.08)', animation: 'goldGlow 3.4s ease-in-out infinite',
+            }}>
+              <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 1.6 14 5v6L8 14.4 2 11V5z" />
+                <path d="M2 5l6 3.4L14 5" />
+                <path d="M8 8.4v6" />
+              </svg>
+            </span>
+            <span style={{ display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.7, marginBottom: 12 }}>
+              {tour.name} · 3D Twin
+            </span>
+            <h3 style={{ fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(24px,3vw,34px)', lineHeight: 1.15, color: 'var(--cream)', margin: '0 0 14px' }}>
+              Step inside, virtually.
+            </h3>
+            <p style={{ fontFamily: ff, fontSize: 'clamp(14px,1.4vw,16px)', lineHeight: 1.8, color: 'var(--cr70)', margin: '0 0 clamp(28px,3.5vw,36px)' }}>
+              We&rsquo;re finishing a photoreal 3D walkthrough of {tour.name}. Explore every
+              room and walk the grounds from anywhere. Leave your details and we&rsquo;ll
+              send you the private link the moment it&rsquo;s live.
+            </p>
+            <a
+              href="#reserve"
+              onClick={(e) => {
+                e.preventDefault();
+                setTour(null);
+                const el = document.getElementById('reserve');
+                const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                el?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+              }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.26em', textTransform: 'uppercase',
+                color: 'var(--bg)', background: 'var(--gold)', border: '1px solid var(--gold)',
+                borderRadius: 100, padding: '16px 32px', textDecoration: 'none', cursor: 'pointer',
+              }}
+            >
+              Request the 3D tour
+              <ArrowUpRight size={14} />
+            </a>
+          </div>
+
+          <button onClick={(e) => { e.stopPropagation(); setTour(null); }} aria-label="Close" style={{ position: 'fixed', top: 'clamp(16px,3vw,28px)', right: 'clamp(16px,3vw,28px)', zIndex: 2001, width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(228,217,195,0.30)', background: 'rgba(6,14,8,0.85)', backdropFilter: 'blur(8px)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="13" height="13" viewBox="0 0 10 10" fill="none" stroke="var(--cream)" strokeWidth="1.3" strokeLinecap="round"><path d="M1 1l8 8M9 1L1 9"/></svg>
+          </button>
+        </div>
+      )}
     </>
   );
 }

@@ -306,14 +306,124 @@ body {
   .lr-split  { grid-template-columns: 1fr !important; min-height: 0 !important; }
   .lr-split > * { border-right: none !important; }
 
-  /* Villas: text + carousel side-by-side → stack */
-  .lr-villa-card { flex-direction: column !important; align-items: stretch !important; gap: clamp(28px,7vw,40px) !important; }
-  .lr-villa-card > * { flex: 0 0 auto !important; width: 100% !important; }
-
   /* Tame the cinematic scroll heights so mobile isn't an endless scroll */
   .lr-tall-350 { height: 220vh !important; }
   .lr-tall-problem { height: 320vh !important; }
 
   /* Hero side editorial box → hide on mobile (static poster stays clean) */
   .hero-sidebox { display: none !important; }
+}
+
+/* ══════════ Persistent "Reserve" floating button ══════════
+   Quiet glass pill that matches the hero "Step Inside" button — dark glass +
+   gold hairline, fills gold on hover. No pulsing (kept calm + GPU-light). */
+.reserve-fab {
+  position: fixed;
+  z-index: 800;
+  right: clamp(18px, 2.5vw, 40px);
+  bottom: calc(clamp(18px, 2.5vw, 40px) + env(safe-area-inset-bottom, 0px));
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 30px;
+  border-radius: 100px;
+  font-family: var(--font-raleway), sans-serif;
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--cream);
+  /* Solid (no backdrop-filter): a fixed blurred layer re-samples the page every
+     scroll frame, which hurts scroll smoothness — an opaque pill is free. */
+  background: rgba(8,18,11,0.92);
+  border: 1px solid rgba(201,169,110,0.42);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 18px 48px -20px rgba(0,0,0,0.8),
+              0 0 22px -10px var(--gold-glow),
+              inset 0 1px 0 rgba(255,255,255,0.05);
+  /* Hidden until scrolled past the hero — see ReserveFab */
+  opacity: 0;
+  transform: translateY(16px);
+  pointer-events: none;
+  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1),
+              transform 0.7s cubic-bezier(0.16,1,0.3,1),
+              background 0.5s cubic-bezier(0.16,1,0.3,1),
+              color 0.5s, border-color 0.5s, box-shadow 0.5s;
+}
+.reserve-fab[data-show="true"] {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.reserve-fab:hover {
+  background: var(--gold);
+  color: var(--bg);
+  border-color: var(--gold);
+  box-shadow: 0 18px 48px -16px rgba(0,0,0,0.8), 0 0 34px -10px rgba(201,169,110,0.4);
+}
+.reserve-fab svg { transition: transform 0.45s cubic-bezier(0.16,1,0.3,1); }
+.reserve-fab:hover svg { transform: translateX(4px); }
+
+@media (max-width: 768px) {
+  .reserve-fab {
+    padding: 13px 24px;
+    letter-spacing: 0.22em;
+    gap: 10px;
+  }
+}
+
+/* ══════════ Contact form: stack name/email on narrow phones ══════════ */
+@media (max-width: 560px) {
+  .lr-form-2 { grid-template-columns: 1fr !important; }
+}
+
+/* ══════════ Footer grid collapses gracefully ══════════ */
+@media (max-width: 900px) {
+  .lr-footer-grid { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 520px) {
+  .lr-footer-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ══════════ Location: stack on tablets & phones (text+photo above, map below) ══════════ */
+@media (max-width: 900px) {
+  .lr-location { grid-template-columns: 1fr !important; min-height: 0 !important; }
+  .lr-location > * { border-right: none !important; }
+}
+
+/* ══════════ Villas: stack on tablets & phones — full-width photo, no side arrows
+   (swipe + dots still navigate) so the text isn't squeezed and the image isn't a sliver ══════════ */
+@media (max-width: 900px) {
+  .lr-villa-card { flex-direction: column !important; align-items: stretch !important; gap: clamp(28px,5vw,40px) !important; }
+  .lr-villa-card > * { flex: 0 0 auto !important; width: 100% !important; }
+  .lr-villas { padding-left: clamp(20px,5vw,44px) !important; padding-right: clamp(20px,5vw,44px) !important; }
+  .villa-nav-arrow { display: none !important; }
+  .villa-carousel { height: clamp(360px,52vh,560px) !important; }
+}
+
+/* ══════════ Amenities: taller interactive image on phones (room for hotspots) ══════════ */
+@media (max-width: 768px) {
+  .lr-amenities-canvas { aspect-ratio: 4 / 5 !important; }
+}
+
+/* ══════════ Map: keep card / zoom / reserve button clear on phones ══════════
+   - card spans the width and is lifted above the floating Reserve button
+   - zoom buttons move to the TOP-LEFT (clear of the nav menu button on the
+     right and of the card at the bottom) */
+@media (max-width: 768px) {
+  .lr-map-card {
+    width: min(440px, calc(100vw - 40px)) !important;
+    left: 20px !important;
+    right: auto !important;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .lr-map-card img { height: clamp(140px, 20vh, 200px) !important; }
+  .lr-map-zoom {
+    top: clamp(14px, 3vw, 20px) !important;
+    left: 20px !important;
+    right: auto !important;
+    bottom: auto !important;
+  }
 }

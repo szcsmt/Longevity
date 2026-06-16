@@ -13,6 +13,7 @@ import { InteriorSection }   from '@/components/interior-section';
 import { MapSection }        from '@/components/map-section';
 import { CtaSection }        from '@/components/cta-section';
 import { FooterSection }     from '@/components/footer-section';
+import { ReserveFab }        from '@/components/reserve-fab';
 
 export default function Home() {
   return (
@@ -32,6 +33,7 @@ export default function Home() {
       <MapSection />
       <CtaSection />
       <FooterSection />
+      <ReserveFab />
     </main>
   );
 }

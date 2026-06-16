@@ -41,7 +41,7 @@ const streets: Street[] = [
   {
     index: '03', name: 'Carnival Street', icon: Sparkles,
     tagline: 'Where the estate comes alive.',
-    desc: 'The social heart — lantern-lit lanes for strolling, gathering, and life after the sun goes down.',
+    desc: 'The social heart, with lanes lit by lanterns for strolling, gathering, and life after the sun goes down.',
     keywords: ['Festive lighting', 'Social lanes', 'Evenings out'],
     tint: 'rgba(206,138,120,0.32)', img: '/images/streets/carnival.webp',
   },
@@ -49,7 +49,7 @@ const streets: Street[] = [
     index: '04', name: 'Garden Street', icon: Trees,
     tagline: 'Lush green, softly lit.',
     desc: 'A leafy residential lane wrapped in tropical planting, with warm light tracing every villa at dusk.',
-    keywords: ['Tropical planting', 'Evening glow', 'Family-friendly'],
+    keywords: ['Tropical planting', 'Evening glow', 'Family friendly'],
     tint: 'rgba(176,160,118,0.30)', img: '/images/streets/garden.webp',
   },
 ];
@@ -101,7 +101,7 @@ export function ParkLifeSection() {
     <>
     <section id="park" ref={ref} style={{
       background: 'transparent',
-      padding: 'clamp(110px,13vw,170px) clamp(24px,8vw,120px) clamp(60px,7vw,96px)',
+      padding: 'clamp(78px,9vw,120px) clamp(24px,8vw,120px) clamp(60px,7vw,96px)',
       position: 'relative', overflow: 'hidden', isolation: 'isolate',
       borderTop: '1px solid rgba(201,169,110,0.06)',
     }}>
@@ -135,13 +135,13 @@ export function ParkLifeSection() {
         letterSpacing: '0.30em', textTransform: 'uppercase',
         color: 'var(--gold)', opacity: 0.65,
         marginBottom: 'clamp(28px,3.5vw,44px)',
-      }}>The Park · Bophut Longevity Park</span>
+      }}>The Park · Plai Leam Longevity Park</span>
 
       {/* Two-column header */}
       <div className="reveal" style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: 'clamp(28px,5vw,72px)', alignItems: 'end',
-        marginBottom: 'clamp(56px,7vw,96px)',
+        marginBottom: 'clamp(28px,3.5vw,48px)',
       }}>
         <h2 style={{
           fontFamily: ff, fontWeight: 400,
@@ -157,7 +157,7 @@ export function ParkLifeSection() {
           fontSize: 'clamp(15px,1.5vw,20px)',
           lineHeight: 1.9, color: 'var(--cr70)', margin: 0,
         }}>
-          A private, gated park of 60+ residences — laid out as four
+          A private, gated park of 60+ residences, laid out as four
           themed lanes, each with its own atmosphere. One guarded entrance, no through
           traffic, utilities buried underground. You don&rsquo;t arrive at a building.
           You come home to a neighbourhood.
@@ -183,9 +183,9 @@ export function ParkLifeSection() {
           display: 'inline-flex', alignItems: 'center', gap: 10,
           padding: '11px 20px', borderRadius: 100,
           background: 'rgba(6,14,8,0.6)', border: '1px solid rgba(201,169,110,0.35)', backdropFilter: 'blur(8px)',
-          fontFamily: ffs, fontSize: 'clamp(10px,1.1vw,13px)', fontWeight: 400, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--cream)',
+          fontFamily: ffs, fontSize: 'clamp(9px,0.95vw,11px)', fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--cr70)',
         }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--gold)' }} />
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)' }} />
           Guarded Entrance
         </span>
       </div>
@@ -228,8 +228,9 @@ export function ParkLifeSection() {
           return (
             <article key={s.name} className="street-card" onClick={() => setLightbox(s)} style={{
               position: 'relative', overflow: 'hidden', cursor: 'pointer',
-              minHeight: 'clamp(320px,34vw,400px)',
-              display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              minHeight: 'clamp(292px,29vw,368px)',
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
+              gap: 'clamp(16px,2vw,26px)', textAlign: 'center',
               padding: 'clamp(26px,2.6vw,40px)',
               borderRadius: 'clamp(12px,1.2vw,18px)',
               border: '1px solid var(--glass-border)',
@@ -280,24 +281,26 @@ export function ParkLifeSection() {
                 </span>
               </div>
 
-              {/* Bottom: text */}
+              {/* Text — title aligned at top, everything centred */}
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <h3 style={{
                   fontFamily: ff, fontWeight: 400,
                   fontSize: 'clamp(26px,2.6vw,38px)', lineHeight: 1.05,
                   color: 'var(--cream)', margin: '0 0 6px',
+                  textShadow: '0 2px 18px rgba(6,14,8,0.92)',
                 }}>{s.name}</h3>
                 <p style={{
                   fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
                   fontSize: 'clamp(14px,1.4vw,18px)', color: 'var(--gold)',
-                  margin: '0 0 16px',
+                  margin: '0 0 16px', textShadow: '0 1px 14px rgba(6,14,8,0.92)',
                 }}>{s.tagline}</p>
                 <p style={{
                   fontFamily: ffs, fontWeight: 300,
                   fontSize: 'clamp(12px,0.95vw,13px)', lineHeight: 1.8,
-                  color: 'var(--cr40)', margin: '0 0 20px', letterSpacing: '0.01em',
+                  color: 'var(--cr70)', margin: '0 0 20px', letterSpacing: '0.01em',
+                  textShadow: '0 1px 12px rgba(6,14,8,0.92)',
                 }}>{s.desc}</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px 8px' }}>
                   {s.keywords.map((k) => (
                     <span key={k} style={{
                       fontFamily: ffs, fontSize: 7.5, fontWeight: 300,
@@ -305,6 +308,7 @@ export function ParkLifeSection() {
                       color: 'var(--cr70)',
                       padding: '5px 11px', borderRadius: 100,
                       border: '1px solid rgba(201,169,110,0.20)',
+                      background: 'rgba(6,14,8,0.35)',
                     }}>{k}</span>
                   ))}
                 </div>

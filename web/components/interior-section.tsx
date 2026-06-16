@@ -24,29 +24,29 @@ const configs: Config[] = [
   {
     id: 'living', name: 'Living Lounge', icon: Sofa,
     tagline: 'The heart of the home.',
-    desc: 'An open, light-filled lounge that flows to the terrace and pool — the default expression of the villa.',
-    features: ['Indoor–outdoor flow', 'Custom lounge seating', 'Circadian lighting'],
+    desc: 'An open, sunlit lounge that flows to the terrace and pool. The natural default for the villa.',
+    features: ['Indoor and outdoor flow', 'Custom lounge seating', 'Circadian lighting'],
     img: '/images/villa/int-living-1.webp', tint: 'rgba(201,169,110,0.30)',
   },
   {
     id: 'office', name: 'Home Office', icon: Briefcase,
     tagline: 'Focus, framed by the jungle.',
-    desc: 'A quiet, glare-free workspace with built-in desk, soundproofing and fibre — productivity with a view.',
-    features: ['Soundproofed walls', 'Built-in desk & storage', 'High-speed fibre'],
+    desc: 'A quiet workspace with no glare, a built in desk, soundproofing and fibre. Productivity with a view.',
+    features: ['Soundproofed walls', 'Built in desk & storage', 'Fast fibre'],
     img: '/images/villa/int-living-4.webp', tint: 'rgba(150,170,190,0.28)',
   },
   {
     id: 'gaming', name: 'Gaming Suite', icon: Gamepad2,
     tagline: 'Built for play.',
-    desc: 'An immersive setup with ambient lighting, low-latency network and acoustic comfort for long sessions.',
-    features: ['Ambient RGB scene lighting', 'Low-latency network', 'Acoustic treatment'],
+    desc: 'An immersive setup with ambient lighting, a low latency network and acoustic comfort for long sessions.',
+    features: ['Ambient RGB scene lighting', 'Low latency network', 'Acoustic treatment'],
     img: '/images/villa/int-living-2.webp', tint: 'rgba(150,120,200,0.30)',
   },
   {
     id: 'podcast', name: 'Podcast Studio', icon: Mic,
-    tagline: 'Acoustic-treated, ready to record.',
-    desc: 'A sound-isolated room with warm lighting and a recording-ready layout — press record and create.',
-    features: ['Sound isolation', 'Recording-ready wiring', 'Warm key lighting'],
+    tagline: 'Acoustically treated, ready to record.',
+    desc: 'A soundproofed room with warm lighting and a layout ready to record in. Press record and create.',
+    features: ['Sound isolation', 'Recording ready wiring', 'Warm key lighting'],
     img: '/images/villa/int-bedroom-living.webp', tint: 'rgba(206,138,120,0.30)',
   },
 ];
@@ -155,7 +155,7 @@ export function InteriorSection() {
             Enquire about a bespoke interior <ArrowUpRight size={14} />
           </a>
           <p style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.1em', color: 'rgba(228,217,195,0.3)', lineHeight: 1.7, margin: 'clamp(16px,2vw,22px) 0 0' }}>
-            Visuals shown are indicative — your interior is rendered and agreed before build.
+            Visuals shown are indicative. Your interior is rendered and agreed before build.
           </p>
         </div>
       </div>

@@ -80,13 +80,26 @@ export function EstateSection() {
       }
     }
 
+    // Only react to scroll while the section is near the viewport. Off-screen
+    // (e.g. when the visitor is down at Villas) we skip the getBoundingClientRect
+    // reads entirely, so this scroll-zoom never taxes the rest of the page.
+    let active = true;
     function onScroll() {
-      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+      if (active && !ticking) { ticking = true; requestAnimationFrame(update); }
     }
+
+    const el = scrollRef.current;
+    const io = el
+      ? new IntersectionObserver(([e]) => {
+          active = e.isIntersecting;
+          if (active && !ticking) { ticking = true; requestAnimationFrame(update); }
+        }, { rootMargin: '200px 0px' })
+      : null;
+    io?.observe(el!);
 
     window.addEventListener('scroll', onScroll, { passive: true });
     update(); // sync on mount
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => { window.removeEventListener('scroll', onScroll); io?.disconnect(); };
   }, []);
 
   return (
@@ -209,7 +222,7 @@ export function EstateSection() {
             color: 'rgba(255,252,248,0.42)',
             letterSpacing: '0.01em',
             textShadow: '0 1px 16px rgba(6,14,8,0.8)',
-          }}>Koh Samui &nbsp;·&nbsp; Private Estate &nbsp;·&nbsp; 12 hectares</p>
+          }}>Koh Samui &nbsp;·&nbsp; Private Estate &nbsp;·&nbsp; 8 rai</p>
         </div>
 
       </div>

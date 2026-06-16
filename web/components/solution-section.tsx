@@ -7,15 +7,15 @@ const ffs = 'var(--font-raleway), sans-serif';
 
 const stats = [
   { value: '330',       label: 'days of sunshine per year' },
-  { value: '29°C',      label: 'average temperature year-round' },
-  { value: '5 min',     label: 'walk to the private shore' },
+  { value: '29°C',      label: 'average temperature all year' },
+  { value: '5 min',     label: 'walk to the shore' },
   { value: '15 min',    label: 'from villa to the airport' },
 ];
 
 const lifestyle = [
-  { label: 'Crystal-clear coastline', sub: 'Gulf of Thailand, northeast shore' },
+  { label: 'Crystal clear coastline', sub: 'Gulf of Thailand, northeast shore' },
   { label: 'Ancient jungle canopy',   sub: 'Native rainforest surrounding the estate' },
-  { label: 'Year-round warmth',       sub: '29°C average, minimal rain season' },
+  { label: 'Warmth all year',         sub: '29°C average, minimal rain season' },
   { label: 'Absolute silence',        sub: 'No traffic, no concrete, no noise' },
 ];
 
@@ -111,21 +111,21 @@ export function SolutionSection() {
         }}>
           {stats.map(({ value, label }, i) => (
             <div key={i} className="glass-card" style={{
-              padding: 'clamp(22px,2.8vw,36px) clamp(12px,1.5vw,20px)',
+              padding: 'clamp(18px,2.2vw,28px) clamp(10px,1.3vw,18px)',
               textAlign: 'center',
             }}>
               <span className="gold-text" style={{
                 display: 'block',
                 fontFamily: ff, fontWeight: 400,
-                fontSize: 'clamp(20px,2.4vw,36px)',
+                fontSize: 'clamp(19px,2vw,30px)',
                 letterSpacing: '-0.01em',
-                marginBottom: 8,
+                marginBottom: 'clamp(6px,0.8vw,10px)',
                 filter: 'drop-shadow(0 0 14px var(--gold-glow))',
               }}>{value}</span>
               <span style={{
-                fontFamily: ffs, fontSize: 7, fontWeight: 300,
-                letterSpacing: '0.14em', textTransform: 'uppercase',
-                color: 'var(--cr40)',
+                fontFamily: ffs, fontSize: 'clamp(8.5px,0.8vw,10px)', fontWeight: 300,
+                letterSpacing: '0.13em', textTransform: 'uppercase', lineHeight: 1.45,
+                color: 'var(--cr70)',
               }}>{label}</span>
             </div>
           ))}
@@ -146,8 +146,8 @@ export function SolutionSection() {
               lineHeight: 1.9, letterSpacing: '0.01em',
               color: 'var(--cr70)', margin: 0,
             }}>
-              Koh Samui sits in the Gulf of Thailand — 330 days of sun, ancient jungle,
-              crystal-clear water. The northeast coast is one of the last untouched
+              Koh Samui sits in the Gulf of Thailand. 330 days of sun, ancient jungle,
+              crystal clear water. The northeast coast is one of the last untouched
               stretches on the island. That is precisely where Longevity Resort is.
             </p>
           </div>

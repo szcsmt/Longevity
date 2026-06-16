@@ -139,7 +139,7 @@ export function HeroSection() {
         />
 
         <div aria-hidden="true" style={{
-          position:'absolute', inset:0, zIndex:1,
+          position:'absolute', inset:0, zIndex:1, pointerEvents:'none',
           background:'linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.58) 100%)'
         }} />
         <div aria-hidden="true" style={{

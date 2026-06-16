@@ -22,7 +22,11 @@ export function Nav() {
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0,
         zIndex: 1000,
-        padding: 'clamp(14px,2vw,24px) clamp(24px,5vw,60px) clamp(14px,2vw,24px) clamp(0px,0.4vw,6px)',
+        // The bar itself is click-through — only the logo and hamburger below
+        // re-enable pointer events. Without this, the transparent bar would
+        // silently swallow clicks on anything scrolled beneath the top strip.
+        pointerEvents: 'none',
+        padding: 'clamp(14px,2vw,24px) clamp(24px,5vw,60px) clamp(14px,2vw,24px) clamp(6px,0.8vw,14px)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         animation: 'fadeIn 1.8s ease 0.6s both',
       }}>
@@ -32,7 +36,7 @@ export function Nav() {
           <img
             src="/LOGO.svg"
             alt="Longevity Resort"
-            style={{ height: 'clamp(68px,8.5vw,110px)', width: 'auto', display: 'block', opacity: 1 }}
+            style={{ height: 'clamp(58px,6.8vw,92px)', width: 'auto', display: 'block', opacity: 1 }}
           />
         </a>
 

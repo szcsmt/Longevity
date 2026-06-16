@@ -8,17 +8,17 @@ const ffs = 'var(--font-raleway), sans-serif';
 const chapters = [
   {
     title: 'The Feeling',
-    body: 'Travelling between capitals and luxury hotels, something was always missing. Every resort looked expensive. None of them felt healing. The founder wanted a place that actually changed how you lived — not just where you stayed.',
+    body: 'It started with a feeling, not a blueprint. The sense that a home should give something back: calm in the morning, clarity through the day, deep rest at night. Most places are built to be seen. This one was built to be felt.',
     bg: '/images/story/feeling.webp',
   },
   {
     title: 'The Place',
-    body: 'Bophut, northeast Koh Samui. Untouched jungle, a private shore five minutes on foot, the first development of its kind on the island. 330 days of sunshine. Ancient trees. The Gulf of Thailand at your doorstep. The moment he stood here, the search was over.',
+    body: 'Plai Leam, northeast Koh Samui. Untouched jungle, a private shore five minutes on foot, the first development of its kind on the island. 330 days of sunshine. Ancient trees. The Gulf of Thailand at your doorstep. The moment he stood here, the search was over.',
     bg: '/images/story/place.webp',
   },
   {
     title: 'The Standard',
-    body: 'Thai warmth, Dubai precision. Thermo-glazed windows, central climate control engineered for the tropics, full soundproofing, private pools. Not a compromise anywhere. Built around a single belief: that where you live should make you healthier, sharper, and more alive — every single day.',
+    body: 'Thai warmth, Dubai precision. Thermally glazed windows, central climate control engineered for the tropics, full soundproofing, private pools. Not a compromise anywhere. Built around a single belief: that where you live should make you healthier, sharper, and more alive, every single day.',
     bg: '/images/story/standard.webp',
   },
 ];
@@ -48,7 +48,7 @@ export function StorySection() {
       <style>{`
         .story-card:hover .story-card-img  { opacity: 0.5 !important; transform: scale(1) !important; }
         .story-card:hover .story-card-veil { opacity: 1 !important; }
-        .story-card:hover p { color: var(--cr70) !important; }
+        .story-card:hover p { color: rgba(255,252,248,0.9) !important; }
         .story-card:hover h3 { color: #fff !important; }
       `}</style>
 
@@ -92,7 +92,8 @@ export function StorySection() {
             padding: 'clamp(32px,4vw,56px) clamp(24px,3vw,44px)',
             position: 'relative', overflow: 'hidden',
             minHeight: 'clamp(300px,26vw,360px)',
-            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
+            textAlign: 'center',
           }}>
             {/* Material image — revealed on hover */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -119,6 +120,7 @@ export function StorySection() {
               color: 'var(--cream)',
               margin: '0 0 18px',
               letterSpacing: '0.01em',
+              textShadow: '0 2px 18px rgba(6,14,8,0.92)',
             }}>{ch.title}</h3>
 
             <p style={{
@@ -127,6 +129,7 @@ export function StorySection() {
               fontSize: 'clamp(13px,1.15vw,15px)',
               lineHeight: 1.9, color: 'var(--cr40)',
               margin: 0, transition: 'color 0.5s',
+              textShadow: '0 1px 14px rgba(6,14,8,0.92)',
             }}>{ch.body}</p>
           </div>
         ))}
@@ -149,10 +152,10 @@ export function StorySection() {
           That is what this place is built for.&rdquo;
         </blockquote>
         <p style={{
-          fontFamily: ffs, fontSize: 8, fontWeight: 300,
+          fontFamily: ffs, fontSize: 'clamp(10px,1vw,11px)', fontWeight: 300,
           letterSpacing: '0.24em', textTransform: 'uppercase',
-          color: 'var(--gold)', opacity: 0.45, marginTop: 22,
-        }}>— The Founder</p>
+          color: 'var(--gold)', opacity: 0.7, marginTop: 22,
+        }}>The Founder</p>
       </div>
 
     </section>

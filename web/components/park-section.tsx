@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 // Placeholder icons — swap Shield/Gem/Sofa for your uploaded SVGs later.
-import { Shield, Gem, Sofa, Waves, HeartPulse } from 'lucide-react';
+import { Shield, Gem, Sofa, Waves, HeartPulse, Building2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const ff  = 'var(--font-playfair), serif';
@@ -25,14 +25,15 @@ export function ParkSection() {
 
   // `num` shows the value, `icon` shows an icon (swap for custom SVGs).
   const highlights: { value: string | null; icon: LucideIcon | null; label: string; desc: string }[] = [
-    { value: '10%', icon: null,   label: 'Fixed annual return', desc: 'Guaranteed, paid yearly on your investment.' },
+    { value: '10%', icon: null,   label: 'Fixed return',        desc: 'Guaranteed, paid to you every 3 months.' },
     { value: null,  icon: Shield, label: 'Buyback guarantee',   desc: 'Full repurchase option after 3 years, at your discretion.' },
-    { value: null,  icon: Gem,    label: 'Premium Quality',     desc: 'Thermo-glazed, soundproofed, climate-engineered — a standard you can feel.' },
+    { value: null,  icon: Gem,    label: 'Premium Quality',     desc: 'Thermally glazed, soundproofed, engineered for the climate. A standard you can feel.' },
   ];
   const facts: { icon: LucideIcon; v: string; l: string }[] = [
-    { icon: Waves,      v: '5–7 min',        l: 'To the nearest beach' },
-    { icon: HeartPulse, v: 'Included',       l: 'Wellness membership' },
-    { icon: Sofa,       v: 'Fully furnished', l: 'Move-in ready' },
+    { icon: Waves,      v: '5 to 7 min',      l: 'To the nearest beach' },
+    { icon: HeartPulse, v: 'Included',        l: 'Wellness membership' },
+    { icon: Sofa,       v: 'Fully furnished', l: 'Move in ready' },
+    { icon: Building2,  v: 'On-site',         l: 'Longevity facility' },
   ];
 
   return (
@@ -109,8 +110,8 @@ export function ParkSection() {
           <div style={{ borderTop: '1px solid rgba(201,169,110,0.12)' }} />
         </div>
 
-        {/* Facts */}
-        <div className="reveal" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'clamp(16px,2.2vw,30px)', marginTop: 'clamp(24px,3vw,38px)' }}>
+        {/* Facts — 2-column grid so every icon lines up (incl. the 4th, under Wellness) */}
+        <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, max-content)', alignItems: 'center', gap: 'clamp(16px,2vw,24px) clamp(32px,4vw,60px)', marginTop: 'clamp(24px,3vw,38px)' }}>
           {facts.map(({ icon: Icon, v, l }) => (
             <div key={v} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, flexShrink: 0, borderRadius: '50%', border: '1px solid rgba(201,169,110,0.28)', color: 'var(--gold)' }}>
@@ -151,7 +152,7 @@ export function ParkSection() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/images/pays-you-back.webp"
-            alt="Longevity Resort villa — poolside dining"
+            alt="Longevity Resort villa, poolside dining"
             loading="lazy"
             decoding="async"
             style={{

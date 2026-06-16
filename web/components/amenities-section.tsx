@@ -1,29 +1,41 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Sun, Droplets, Moon, Snowflake, Flame, Waves, Activity } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { Lightbulb, Droplets, Moon, Wind, Flame, Waves, Leaf, Activity } from 'lucide-react';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
+type IconProps = { size?: number; strokeWidth?: number };
+
+/* A seated, meditating figure (no lucide equivalent) used for "Soundproof". */
+const Meditation = ({ size = 16, strokeWidth = 1.6 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="5.5" r="2.6" />
+    <path d="M12 11c-3.6 0-6.6 2.6-7.4 6.1a1 1 0 0 0 1 1.4h12.8a1 1 0 0 0 1-1.4C18.6 13.6 15.6 11 12 11Z" />
+    <path d="M8.5 14.5 12 16.5l3.5-2" />
+  </svg>
+);
+
 interface Hotspot {
   x: number;            // % from left
   y: number;            // % from top
-  icon: LucideIcon;
+  icon: ComponentType<IconProps>;
   title: string;
   body: string;
 }
 
 /* Positions tuned to the heals-you render (open villa, pool, interior). */
 const hotspots: Hotspot[] = [
-  { x: 42, y: 18, icon: Sun,       title: 'Circadian Lighting',     body: 'Light that follows the sun — morning white, evening amber. Your internal clock supported by architecture.' },
-  { x: 24, y: 45, icon: Droplets,  title: 'Filtered Water Everywhere', body: 'Pure water at every point of use. Kitchen, bathroom, shower. No exceptions.' },
-  { x: 68, y: 39, icon: Moon,      title: 'Full Blackout Bedrooms', body: 'Not curtains — architecture. Every bedroom sealed from light for complete sleep quality.' },
-  { x: 80, y: 50, icon: Snowflake, title: 'Cooled Mattresses',      body: 'Clinical sleep-cooling technology. Optimal core temperature for deep, uninterrupted rest.' },
-  { x: 92, y: 35, icon: Flame,     title: 'Infrared Sauna',         body: 'Deep heat therapy. Reduces inflammation, improves circulation, accelerates cellular recovery.' },
-  { x: 23, y: 84, icon: Waves,     title: 'Ice Bath',               body: 'Cold immersion for recovery, immune function, and mental resilience — on your schedule.' },
-  { x: 80, y: 74, icon: Activity,  title: 'On-site Wellness Lab',   body: 'VO₂ max testing, body-composition analysis, and a personal dietitian. Your biology, tracked and coached.' },
+  { x: 38, y: 15, icon: Lightbulb,  title: 'Circadian Lighting',  body: 'Light that follows the sun, warm white by morning, soft amber by night. Your body clock, supported by the architecture itself.' },
+  { x: 20, y: 44, icon: Droplets,   title: 'Filtered Water Everywhere', body: 'Pure water at every point of use. Kitchen, bathroom, shower. No exceptions.' },
+  { x: 63, y: 28, icon: Moon,       title: 'Full Blackout Bedrooms', body: 'Not curtains, but architecture. Every bedroom sealed from light for complete sleep quality.' },
+  { x: 49, y: 58, icon: Meditation, title: 'Soundproof',          body: 'Walls engineered for silence. No traffic, no neighbours, nothing between you and deep, undisturbed calm.' },
+  { x: 85, y: 20, icon: Wind,       title: 'Central Cooling',     body: 'Climate control for the whole villa, tuned for the tropics. Even, quiet, fresh air in every room, day and night.' },
+  { x: 90, y: 54, icon: Flame,      title: 'Mobile Infrared Sauna', body: 'A portable infrared sauna, yours on request. Deep heat that eases the body and speeds recovery, wherever you want it.' },
+  { x: 18, y: 80, icon: Waves,      title: 'Ice Bath',            body: 'Cold immersion for recovery, immune function, and mental resilience, on your schedule.' },
+  { x: 40, y: 78, icon: Leaf,       title: 'Natural Materials',   body: 'Stone, timber and linen throughout. Honest, breathable materials chosen to calm the senses and last for decades.' },
+  { x: 77, y: 80, icon: Activity,   title: 'Vitality Lab',        body: 'VO₂ max testing, body composition analysis and a personal dietitian. Your biology, measured and coached.' },
 ];
 
 export function AmenitiesSection() {
@@ -89,11 +101,11 @@ export function AmenitiesSection() {
         fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,18px)',
         lineHeight: 1.8, color: 'var(--cr40)', margin: '0 0 clamp(44px,5vw,64px)', maxWidth: 520,
       }}>
-        Explore the residence — tap each point to see the longevity technology built into it.
+        Explore the residence. Tap each point to see the longevity technology built into it.
       </p>
 
       {/* Interactive image */}
-      <div className="reveal elev-img" style={{
+      <div className="reveal elev-img lr-amenities-canvas" style={{
         position: 'relative', width: '100%',
         aspectRatio: '16 / 9', overflow: 'hidden',
         borderRadius: 'clamp(12px,1.4vw,20px)',
