@@ -24,6 +24,9 @@ export function HeroSection() {
     // Only users who ask for reduced motion get the static poster — the
     // scroll-scrub now runs on phones & tablets too (it's GPU-cheap drawImage).
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // On phones the title + button reveal almost immediately (a tiny scroll),
+    // so they're never something you have to hunt for.
+    const coarse = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
 
     const frames: (HTMLImageElement | null)[] = new Array(FRAME_COUNT).fill(null);
     let poster: HTMLImageElement | null = null;
@@ -69,8 +72,8 @@ export function HeroSection() {
       targetFrame = Math.round(prog * (FRAME_COUNT - 1));
       render(targetFrame);
       if (window.scrollY > 30) setCueHidden(true);
-      if (prog >= 0.12) setTitleVisible(true);
-      if (prog >= 0.25) setCtaVisible(true);
+      if (prog >= (coarse ? 0.03 : 0.12)) setTitleVisible(true);
+      if (prog >= (coarse ? 0.06 : 0.25)) setCtaVisible(true);
     }
 
     function resize() {
@@ -149,7 +152,7 @@ export function HeroSection() {
 
   return (
     <div ref={scrollEl} className="hero-scroll" style={{ position: 'relative' }}>
-      <div className="hero-sticky" style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden', willChange: 'transform' }}>
+      <div className="hero-sticky" style={{ position: 'sticky', top: 0, overflow: 'hidden', willChange: 'transform' }}>
 
         <canvas
           ref={canvasRef}

@@ -57,7 +57,7 @@ export function InteriorSection() {
 
   return (
     <section id="personalise" style={{
-      background: 'transparent', position: 'relative', isolation: 'isolate',
+      background: 'transparent', position: 'relative', isolation: 'isolate', overflow: 'hidden',
       padding: 'clamp(44px,5.5vw,80px) clamp(24px,8vw,120px) clamp(110px,13vw,170px)',
       borderTop: '1px solid rgba(201,169,110,0.06)',
     }}>

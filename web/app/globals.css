@@ -158,11 +158,18 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { scroll-behavior: auto; }
+/* Lock the page to vertical scrolling only — no horizontal drag / rubber-band */
+html {
+  scroll-behavior: auto;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
 
 body {
   overflow-x: hidden;
+  overscroll-behavior-x: none;
   background: var(--bg);
+  max-width: 100%;
 }
 
 /* ── Atmosphere layer — GPU-composited fixed layer (no scroll repaint) ──
@@ -283,6 +290,9 @@ body {
 
 /* ── Hero scroll-scrub height (shorter scroll range on phones/tablets) ── */
 .hero-scroll { height: 350vh; }
+/* The pinned hero fills the *visible* viewport — dvh accounts for the mobile
+   URL bar so the title, button and scroll cue are never pushed off-screen. */
+.hero-sticky { height: 100vh; height: 100dvh; }
 /* Reduced-motion users get a single static screen (no scrub) */
 @media (prefers-reduced-motion: reduce) { .hero-scroll { height: 100vh !important; } }
 
@@ -428,6 +438,13 @@ body {
     grid-template-areas: "image" "selector" "details" !important;
     row-gap: clamp(24px,4vw,36px) !important;
   }
+}
+
+/* ══════════ Estate ("jungle meets the sea"): light, smooth zoom on phones/touch
+   — hide the 8 outer tiles and let the centre photo fill the frame ══════════ */
+@media (max-width: 768px), (pointer: coarse) {
+  .lr-estate-outer { display: none !important; }
+  .lr-estate-center { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; }
 }
 
 /* ══════════ Map: keep card / zoom / reserve button clear on phones ══════════

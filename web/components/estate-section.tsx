@@ -40,6 +40,11 @@ export function EstateSection() {
     const el = scrollRef.current;
     if (!el) return;
 
+    // On phones/tablets the 8 outer images are hidden (CSS) and only the
+    // full-bleed centre image gently zooms — one composited layer, so it stays
+    // perfectly smooth instead of compositing 9 large layers per frame.
+    const isMobile = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
+
     let ticking = false;
     let active  = true;
     let secTop  = 0;   // section's document-relative top (cached)
@@ -62,15 +67,17 @@ export function EstateSection() {
       const p = raw * raw * (3 - 2 * raw);
 
       if (centerRef.current) {
-        centerRef.current.style.transform = `scale(${1 + p * 0.84})`;
+        centerRef.current.style.transform = `scale(${1 + p * (isMobile ? 0.16 : 0.84)})`;
       }
-      const outerOp = Math.max(0, 1 - p * 1.65).toFixed(3);
-      outerRefs.current.forEach((div, i) => {
-        if (!div) return;
-        const { dx, dy } = OUTER[i];
-        div.style.transform = `translate3d(${dx * p * 34}vw, ${dy * p * 34}vh, 0)`;
-        div.style.opacity   = outerOp;
-      });
+      if (!isMobile) {
+        const outerOp = Math.max(0, 1 - p * 1.65).toFixed(3);
+        outerRefs.current.forEach((div, i) => {
+          if (!div) return;
+          const { dx, dy } = OUTER[i];
+          div.style.transform = `translate3d(${dx * p * 34}vw, ${dy * p * 34}vh, 0)`;
+          div.style.opacity   = outerOp;
+        });
+      }
       if (textRef.current) {
         textRef.current.style.opacity = Math.max(0, (p - 0.70) * 3.33).toFixed(3);
       }
@@ -109,10 +116,11 @@ export function EstateSection() {
         background: 'transparent',
       }}>
 
-        {/* ── Outer images ── */}
+        {/* ── Outer images (hidden on phones — see CSS — for a light, smooth zoom) ── */}
         {OUTER.map((cell, i) => (
           <div
             key={i}
+            className="lr-estate-outer"
             ref={el => { outerRefs.current[i] = el; }}
             style={{
               position: 'absolute',
@@ -137,9 +145,10 @@ export function EstateSection() {
           </div>
         ))}
 
-        {/* ── Center image (zooms to fill) ── */}
+        {/* ── Center image (zooms to fill; goes full-bleed on phones) ── */}
         <div
           ref={centerRef}
+          className="lr-estate-center"
           style={{
             position: 'absolute',
             left: '20.2%', top: '21.2%',
