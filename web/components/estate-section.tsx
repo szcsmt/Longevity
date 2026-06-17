@@ -67,7 +67,7 @@ export function EstateSection() {
       const p = raw * raw * (3 - 2 * raw);
 
       if (centerRef.current) {
-        centerRef.current.style.transform = `scale(${1 + p * (isMobile ? 0.16 : 0.84)})`;
+        centerRef.current.style.transform = `scale(${1 + p * (isMobile ? 0.28 : 0.84)})`;
       }
       if (!isMobile) {
         const outerOp = Math.max(0, 1 - p * 1.65).toFixed(3);

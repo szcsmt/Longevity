@@ -158,15 +158,18 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-/* Lock the page to vertical scrolling only — no horizontal drag / rubber-band */
+/* Lock the page to vertical scrolling only — no horizontal drag / rubber-band.
+   IMPORTANT: use overflow-x: clip, NOT hidden. `hidden` makes the root a scroll
+   container and breaks position: sticky on iOS Safari (the hero + estate
+   scroll animations stop). `clip` clips the same way without that side effect. */
 html {
   scroll-behavior: auto;
-  overflow-x: hidden;
+  overflow-x: clip;
   overscroll-behavior-x: none;
 }
 
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
   overscroll-behavior-x: none;
   background: var(--bg);
   max-width: 100%;
