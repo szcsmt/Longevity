@@ -74,11 +74,21 @@ export function InteriorSection() {
         Your villa.<br /><em className="gold-text" style={{ fontStyle: 'italic' }}>Your interior.</em>
       </h2>
 
-      {/* Configurator */}
-      <div className="lr-cols-2" style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.65fr', gap: 'clamp(28px,4vw,64px)', alignItems: 'start' }}>
+      {/* Configurator.
+          Desktop = preview (image over details) left, selector right.
+          Phone/tablet = heading, image, then "Choose the interior" selector,
+          then the description + feature pills below. */}
+      <div className="lr-interior" style={{
+        display: 'grid',
+        gridTemplateColumns: '1.35fr 0.65fr',
+        gridTemplateAreas: '"image selector" "details selector"',
+        columnGap: 'clamp(28px,4vw,64px)',
+        rowGap: 'clamp(22px,2.6vw,32px)',
+        alignItems: 'start',
+      }}>
 
-        {/* Preview */}
-        <div>
+        {/* IMAGE preview */}
+        <div style={{ gridArea: 'image' }}>
           <div className="elev-img" style={{
             position: 'relative', width: '100%', aspectRatio: '16 / 10', overflow: 'hidden',
             borderRadius: 'clamp(14px,1.6vw,22px)', border: '1px solid rgba(201,169,110,0.18)',
@@ -100,21 +110,22 @@ export function InteriorSection() {
               <p style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.5vw,20px)', color: 'var(--gold)', margin: 0 }}>{cur.tagline}</p>
             </div>
           </div>
+        </div>
 
-          <div key={cur.id + '-d'} style={{ marginTop: 'clamp(22px,2.6vw,32px)', animation: 'fadeIn 0.5s ease both' }}>
-            <p style={{ fontFamily: ff, fontSize: 'clamp(14px,1.4vw,17px)', lineHeight: 1.8, color: 'var(--cr70)', margin: '0 0 clamp(18px,2vw,24px)', maxWidth: 640 }}>{cur.desc}</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 12px' }}>
-              {cur.features.map(f => (
-                <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: ffs, fontSize: 'clamp(9px,0.9vw,11px)', fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--cr70)', padding: '8px 15px', borderRadius: 100, border: '1px solid rgba(201,169,110,0.22)' }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />{f}
-                </span>
-              ))}
-            </div>
+        {/* DETAILS: description + feature pills */}
+        <div key={cur.id + '-d'} style={{ gridArea: 'details', animation: 'fadeIn 0.5s ease both' }}>
+          <p style={{ fontFamily: ff, fontSize: 'clamp(14px,1.4vw,17px)', lineHeight: 1.8, color: 'var(--cr70)', margin: '0 0 clamp(18px,2vw,24px)', maxWidth: 640 }}>{cur.desc}</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 12px' }}>
+            {cur.features.map(f => (
+              <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: ffs, fontSize: 'clamp(9px,0.9vw,11px)', fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--cr70)', padding: '8px 15px', borderRadius: 100, border: '1px solid rgba(201,169,110,0.22)' }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />{f}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* Selector */}
-        <div>
+        {/* SELECTOR */}
+        <div style={{ gridArea: 'selector' }}>
           <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(10px,1vw,12.5px)', fontWeight: 400, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.8, marginBottom: 'clamp(16px,2vw,22px)' }}>Choose the interior</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {configs.map((c, i) => {

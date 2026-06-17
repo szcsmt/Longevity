@@ -21,15 +21,17 @@ export function HeroSection() {
     if (!ctx) return;
     ctx.imageSmoothingQuality = 'low';
 
-    const isMobile = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
-    const reduce   = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Only users who ask for reduced motion get the static poster — the
+    // scroll-scrub now runs on phones & tablets too (it's GPU-cheap drawImage).
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const frames: (HTMLImageElement | null)[] = new Array(FRAME_COUNT).fill(null);
     let poster: HTMLImageElement | null = null;
-    let drawn = -1;            // index of frame currently painted
+    let drawn = -1;            // index of frame currently painted (-1 = canvas needs repaint)
     let targetFrame = 0;
     let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    let maxScroll = 0;         // cached in resize() — avoids layout reads on scroll
+    let maxScroll = 0;         // cached — avoids layout reads on scroll
+    let ticking = false;
 
     // cover-fit a source image onto the full canvas
     function paint(img: HTMLImageElement) {
@@ -57,14 +59,33 @@ export function HeroSection() {
       if (img) { paint(img); drawn = frames[idx] ? idx : -1; }
     }
 
+    // Map the current scroll position to a frame + reveal the overlays.
+    // Defensive: if the canvas isn't measured yet (maxScroll <= 0) we just
+    // paint the first frame and wait — we never get stuck on a blank canvas.
+    function update() {
+      ticking = false;
+      if (maxScroll <= 0) { render(0); return; }
+      const prog = Math.min(1, Math.max(0, window.scrollY / maxScroll));
+      targetFrame = Math.round(prog * (FRAME_COUNT - 1));
+      render(targetFrame);
+      if (window.scrollY > 30) setCueHidden(true);
+      if (prog >= 0.12) setTitleVisible(true);
+      if (prog >= 0.25) setCtaVisible(true);
+    }
+
     function resize() {
+      const cw = canvas!.clientWidth, ch = canvas!.clientHeight;
+      if (!cw || !ch) return;     // not laid out yet — the ResizeObserver will re-fire
       dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      canvas!.width  = Math.round(canvas!.clientWidth  * dpr);
-      canvas!.height = Math.round(canvas!.clientHeight * dpr);
+      canvas!.width  = Math.round(cw * dpr);
+      canvas!.height = Math.round(ch * dpr);
       ctx!.imageSmoothingQuality = 'low';
       maxScroll = scroller!.offsetHeight - window.innerHeight;
-      render(targetFrame, true);
+      drawn = -1;                 // setting canvas.width cleared it — force a repaint
+      update();                   // re-apply the current scroll position
     }
+
+    function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
 
     // ── Poster first → instant paint ──
     const p = new Image();
@@ -72,14 +93,26 @@ export function HeroSection() {
     p.onload = () => { poster = p; if (drawn === -1) render(targetFrame, true); };
     p.src = POSTER;
 
-    resize();
+    resize();   // synchronous first attempt (may be skipped if not laid out yet)
 
-    // ── Mobile / reduced-motion: static poster, no scrub, no sequence load ──
-    if (isMobile || reduce) {
+    // ── Robust sizing: a ResizeObserver re-runs resize() the moment the canvas
+    //    actually gets its box (fixes the intermittent "blank hero" race) and on
+    //    every viewport change — replacing the brittle one-shot measurement. ──
+    let detachSizer: () => void;
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => resize());
+      ro.observe(canvas);
+      detachSizer = () => ro.disconnect();
+    } else {
+      window.addEventListener('resize', resize, { passive: true });
+      detachSizer = () => window.removeEventListener('resize', resize);
+    }
+
+    // ── Reduced-motion only: static poster, no scrub, no sequence load ──
+    if (reduce) {
       setTitleVisible(true);
       setCtaVisible(true);
-      window.addEventListener('resize', resize, { passive: true });
-      return () => window.removeEventListener('resize', resize);
+      return () => detachSizer();
     }
 
     // ── Desktop: concurrency-limited progressive frame load ──
@@ -105,26 +138,12 @@ export function HeroSection() {
     }
     for (let k = 0; k < CONCURRENCY; k++) loadOne();
 
-    // ── rAF-throttled scroll → frame index + overlay states ──
-    let ticking = false;
-    function update() {
-      ticking = false;
-      const prog = maxScroll > 0 ? Math.min(1, Math.max(0, window.scrollY / maxScroll)) : 0;
-      targetFrame = Math.round(prog * (FRAME_COUNT - 1));
-      render(targetFrame);
-      if (window.scrollY > 30) setCueHidden(true);
-      if (prog >= 0.12) setTitleVisible(true);
-      if (prog >= 0.25) setCtaVisible(true);
-    }
-    function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
-
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', resize, { passive: true });
     update();
 
     return () => {
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', resize);
+      detachSizer();
     };
   }, []);
 

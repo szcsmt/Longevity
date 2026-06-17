@@ -494,26 +494,46 @@ export function VillasSection() {
           </h2>
         </div>
 
-        {/* Card: text left + image right */}
+        {/* Card: head + image + body.
+            Desktop = text column (centred) left, carousel right.
+            Phone/tablet = Villa name + specs ON TOP, then the image, then desc + buttons
+            (so the title and photo sit together on one screen). */}
         <div className="lr-villa-card" style={{
-          display: 'flex', flexDirection: 'row', alignItems: 'center',
-          gap: 'clamp(22px,2.6vw,40px)', width: '100%',
+          display: 'grid',
+          gridTemplateColumns: 'clamp(200px,22%,280px) 1fr',
+          gridTemplateRows: '1fr auto auto 1fr',
+          gridTemplateAreas: '". media" "head media" "body media" ". media"',
+          columnGap: 'clamp(22px,2.6vw,40px)',
+          rowGap: 'clamp(18px,2.2vw,26px)',
+          width: '100%',
         }}>
 
-          {/* LEFT: Text */}
-          <div style={{ flex: '0 0 clamp(200px,22%,280px)', display: 'flex', flexDirection: 'column' }}>
-
+          {/* HEAD: name + tagline + specs */}
+          <div style={{ gridArea: 'head', display: 'flex', flexDirection: 'column' }}>
             <h3 style={{ margin: '0 0 clamp(8px,1.2vw,14px)', lineHeight: 1 }}>
               <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(48px,6vw,88px)', letterSpacing: '-0.01em', lineHeight: 1.0 }}>{villa.name}</span>
               <span style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(17px,2vw,28px)', letterSpacing: '0.01em', color: 'var(--gold)', lineHeight: 1.4 }}>{villa.tagline}</span>
             </h3>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 22px', margin: 'clamp(16px,2.5vw,28px) 0 clamp(20px,3vw,32px)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 22px', margin: 'clamp(16px,2.5vw,28px) 0 0' }}>
               {[villa.bedrooms, villa.size, villa.guests].map(s => (
                 <span key={s} style={{ fontFamily: ffs, fontSize: 'clamp(11px,1.05vw,13px)', fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--cream)', borderLeft: '2px solid var(--gold-40)', paddingLeft: 12 }}>{s}</span>
               ))}
             </div>
+          </div>
 
+          {/* MEDIA: swipe image carousel */}
+          <div style={{ gridArea: 'media', minWidth: 0 }}>
+            <VillaImageCarousel
+              villas={villas}
+              active={active}
+              onNavigate={navigate}
+              onExplore={() => setModal(villa)}
+            />
+          </div>
+
+          {/* BODY: description + actions */}
+          <div style={{ gridArea: 'body', display: 'flex', flexDirection: 'column' }}>
             <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr40)', margin: '0 0 clamp(24px,3.5vw,36px)' }}>{villa.desc}</p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px 14px' }}>
@@ -561,16 +581,6 @@ export function VillasSection() {
                 <ArrowUpRight size={14} />
               </button>
             </div>
-          </div>
-
-          {/* RIGHT: Swipe image carousel with arrows */}
-          <div style={{ flex: 1 }}>
-            <VillaImageCarousel
-              villas={villas}
-              active={active}
-              onNavigate={navigate}
-              onExplore={() => setModal(villa)}
-            />
           </div>
         </div>
 

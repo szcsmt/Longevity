@@ -91,6 +91,8 @@ export function MapSection() {
   useEffect(() => {
     if (!ready || !mapEl.current || mapRef.current) return;
     let mounted = true;
+    let ro: ResizeObserver | null = null;
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
     import('leaflet').then(({ default: L }) => {
       if (!mounted || !mapEl.current || mapRef.current) return;
@@ -129,11 +131,22 @@ export function MapSection() {
         markersRef.current[poi.id] = marker;
       });
 
-      requestAnimationFrame(() => { if (mounted) map.invalidateSize(); });
+      // Load tiles reliably even if the container is sized after init (e.g. the
+      // stacked mobile layout): invalidate next frame, after short delays, and
+      // whenever the container's box actually changes.
+      const refresh = () => { if (mounted) map.invalidateSize(); };
+      requestAnimationFrame(refresh);
+      timers.push(setTimeout(refresh, 300), setTimeout(refresh, 900));
+      if (typeof ResizeObserver !== 'undefined' && mapEl.current) {
+        ro = new ResizeObserver(refresh);
+        ro.observe(mapEl.current);
+      }
     });
 
     return () => {
       mounted = false;
+      ro?.disconnect();
+      timers.forEach(clearTimeout);
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -166,17 +179,12 @@ export function MapSection() {
         display: 'grid', gridTemplateColumns: '0.92fr 1.08fr', minHeight: '100vh',
       }}>
 
-        {/* LEFT — heading (top, level with the map) + the selected place (large photo + text) */}
+        {/* LEFT — heading (level with the map top) + the selected place (large photo + text) */}
         <div style={{
           display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
-          padding: 'clamp(44px,5vw,76px) clamp(24px,5vw,72px) clamp(56px,6vw,90px)',
+          padding: 'clamp(20px,2.4vw,44px) clamp(24px,5vw,72px) clamp(48px,6vw,80px)',
           borderRight: '1px solid rgba(201,169,110,0.06)',
         }}>
-          <span style={{
-            display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300,
-            letterSpacing: '0.30em', textTransform: 'uppercase',
-            color: 'var(--gold)', opacity: 0.65, marginBottom: 'clamp(16px,2vw,24px)',
-          }}>Where we are</span>
           <h2 style={{
             fontFamily: ff, fontWeight: 400, fontSize: 'clamp(38px,4.6vw,68px)',
             lineHeight: 1.04, letterSpacing: '-0.01em', margin: '0 0 clamp(14px,1.8vw,22px)',
@@ -198,7 +206,7 @@ export function MapSection() {
               <div className="elev-img" style={{ position: 'relative', borderRadius: 'clamp(12px,1.4vw,18px)', overflow: 'hidden', border: '1px solid rgba(201,169,110,0.18)' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={poi.img} alt={poi.name} decoding="async"
-                  style={{ width: '100%', height: 'clamp(280px,40vh,480px)', objectFit: 'cover', display: 'block', filter: 'brightness(0.92)' }} />
+                  style={{ width: '100%', height: 'clamp(300px,46vh,560px)', objectFit: 'cover', display: 'block', filter: 'brightness(0.92)' }} />
                 {poi.primary && (
                   <span style={{
                     position: 'absolute', top: 14, left: 14,

@@ -37,30 +37,33 @@ export function EstateSection() {
   const labelRef   = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    let ticking = false;
+    const el = scrollRef.current;
+    if (!el) return;
 
-    // rAF-throttled: runs the layout read + style writes at most once per
-    // frame, regardless of how many scroll events fire. Keeps the zoom smooth.
+    let ticking = false;
+    let active  = true;
+    let secTop  = 0;   // section's document-relative top (cached)
+    let maxScroll = 0; // cached — never read layout on the scroll path
+
+    // Measure layout ONCE per change (mount / resize / re-entry), never per frame.
+    function measure() {
+      const rect = el!.getBoundingClientRect();
+      secTop = rect.top + window.scrollY;
+      maxScroll = el!.offsetHeight - window.innerHeight;
+    }
+
+    // Per frame: only reads window.scrollY (cheap) + GPU-composited writes.
     function update() {
       ticking = false;
-      const el = scrollRef.current;
-      if (!el) return;
-      const rect     = el.getBoundingClientRect();
-      const scrolled = -rect.top;
-      const maxScroll = el.offsetHeight - window.innerHeight;
       if (maxScroll <= 0) return;
-
-      const raw = Math.min(1, Math.max(0, scrolled / maxScroll));
+      const raw = Math.min(1, Math.max(0, (window.scrollY - secTop) / maxScroll));
 
       // Smoothstep — feels natural, not mechanical
       const p = raw * raw * (3 - 2 * raw);
 
-      // Center image: scale 1 → ~1.84 (fills the viewport)
       if (centerRef.current) {
         centerRef.current.style.transform = `scale(${1 + p * 0.84})`;
       }
-
-      // Outer images: fly outward + fade
       const outerOp = Math.max(0, 1 - p * 1.65).toFixed(3);
       outerRefs.current.forEach((div, i) => {
         if (!div) return;
@@ -68,38 +71,34 @@ export function EstateSection() {
         div.style.transform = `translate3d(${dx * p * 34}vw, ${dy * p * 34}vh, 0)`;
         div.style.opacity   = outerOp;
       });
-
-      // Text overlay: fades in after p > 0.70
       if (textRef.current) {
         textRef.current.style.opacity = Math.max(0, (p - 0.70) * 3.33).toFixed(3);
       }
-
-      // Label: fades out quickly
       if (labelRef.current) {
         labelRef.current.style.opacity = Math.max(0, 1 - p * 4).toFixed(3);
       }
     }
 
-    // Only react to scroll while the section is near the viewport. Off-screen
-    // (e.g. when the visitor is down at Villas) we skip the getBoundingClientRect
-    // reads entirely, so this scroll-zoom never taxes the rest of the page.
-    let active = true;
-    function onScroll() {
-      if (active && !ticking) { ticking = true; requestAnimationFrame(update); }
-    }
+    function tick() { if (active && !ticking) { ticking = true; requestAnimationFrame(update); } }
+    function onResize() { measure(); tick(); }
 
-    const el = scrollRef.current;
-    const io = el
-      ? new IntersectionObserver(([e]) => {
-          active = e.isIntersecting;
-          if (active && !ticking) { ticking = true; requestAnimationFrame(update); }
-        }, { rootMargin: '200px 0px' })
-      : null;
-    io?.observe(el!);
+    // Only animate while the section is near the viewport.
+    const io = new IntersectionObserver(([e]) => {
+      active = e.isIntersecting;
+      if (active) { measure(); tick(); }
+    }, { rootMargin: '200px 0px' });
+    io.observe(el);
 
-    window.addEventListener('scroll', onScroll, { passive: true });
+    measure();
+    window.addEventListener('scroll', tick, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
     update(); // sync on mount
-    return () => { window.removeEventListener('scroll', onScroll); io?.disconnect(); };
+
+    return () => {
+      window.removeEventListener('scroll', tick);
+      window.removeEventListener('resize', onResize);
+      io.disconnect();
+    };
   }, []);
 
   return (

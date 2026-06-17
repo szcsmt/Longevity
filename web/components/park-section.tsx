@@ -110,8 +110,10 @@ export function ParkSection() {
           <div style={{ borderTop: '1px solid rgba(201,169,110,0.12)' }} />
         </div>
 
-        {/* Facts — 2-column grid so every icon lines up (incl. the 4th, under Wellness) */}
-        <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, max-content)', alignItems: 'center', gap: 'clamp(16px,2vw,24px) clamp(32px,4vw,60px)', marginTop: 'clamp(24px,3vw,38px)' }}>
+        {/* Facts — 2-column grid so every icon lines up (incl. the 4th, under Wellness).
+            minmax(0,max-content) lets the columns shrink on narrow phones instead of
+            overflowing (which used to clip the framed photo on the right). */}
+        <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, max-content))', alignItems: 'center', gap: 'clamp(16px,2vw,24px) clamp(24px,4vw,60px)', marginTop: 'clamp(24px,3vw,38px)' }}>
           {facts.map(({ icon: Icon, v, l }) => (
             <div key={v} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, flexShrink: 0, borderRadius: '50%', border: '1px solid rgba(201,169,110,0.28)', color: 'var(--gold)' }}>

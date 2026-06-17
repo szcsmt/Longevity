@@ -165,7 +165,7 @@ export function ParkLifeSection() {
       </div>
 
       {/* Entrance banner */}
-      <div className="reveal elev-img" style={{
+      <div className="reveal elev-img lr-entrance" style={{
         position: 'relative', width: '100%', aspectRatio: '2.3 / 1', minHeight: 220,
         borderRadius: 'clamp(12px,1.4vw,20px)', overflow: 'hidden',
         marginBottom: 'clamp(48px,6vw,80px)',
@@ -178,21 +178,22 @@ export function ParkLifeSection() {
           position: 'absolute', inset: 0, pointerEvents: 'none',
           background: 'linear-gradient(to top, rgba(6,14,8,0.6) 0%, transparent 45%)',
         }} />
-        <span style={{
-          position: 'absolute', left: 'clamp(20px,2.5vw,40px)', bottom: 'clamp(18px,2.2vw,30px)',
-          display: 'inline-flex', alignItems: 'center', gap: 10,
-          padding: '11px 20px', borderRadius: 100,
+        <span className="lr-entrance-chip" style={{
+          position: 'absolute', left: 'clamp(16px,2.5vw,40px)', bottom: 'clamp(12px,2.2vw,30px)',
+          display: 'inline-flex', alignItems: 'center', gap: 9,
+          padding: '9px 16px', borderRadius: 100,
           background: 'rgba(6,14,8,0.6)', border: '1px solid rgba(201,169,110,0.35)', backdropFilter: 'blur(8px)',
-          fontFamily: ffs, fontSize: 'clamp(9px,0.95vw,11px)', fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--cr70)',
+          fontFamily: ffs, fontSize: 'clamp(8.5px,0.95vw,11px)', fontWeight: 300, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cr70)',
         }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)' }} />
           Guarded Entrance
         </span>
       </div>
 
-      {/* Stats strip */}
-      <div className="reveal" style={{
-        display: 'flex', flexWrap: 'wrap', gap: 'clamp(28px,5vw,72px)',
+      {/* Stats strip — even 4-up on desktop, symmetric 2×2 grid on phones */}
+      <div className="reveal lr-park-stats" style={{
+        display: 'grid', gridTemplateColumns: 'repeat(4, max-content)',
+        gap: 'clamp(22px,3vw,34px) clamp(28px,5vw,72px)',
         padding: 'clamp(22px,3vw,34px) 0',
         borderTop: '1px solid rgba(201,169,110,0.10)',
         borderBottom: '1px solid rgba(201,169,110,0.10)',
