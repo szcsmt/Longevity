@@ -19,7 +19,7 @@ export function HeroSection() {
     if (!canvas || !scroller) return;
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
-    ctx.imageSmoothingQuality = 'low';
+    ctx.imageSmoothingQuality = 'high';
 
     // Only users who ask for reduced motion get the static poster — the
     // scroll-scrub now runs on phones & tablets too (it's GPU-cheap drawImage).
@@ -32,8 +32,11 @@ export function HeroSection() {
     let poster: HTMLImageElement | null = null;
     let drawn = -1;            // index of frame currently painted (-1 = canvas needs repaint)
     let targetFrame = 0;
-    let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    // Cap at 2× — sharp on phones (1.5× left the cropped portrait frame visibly soft)
+    // without the memory/fill cost of a full 3× backing store.
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
     let maxScroll = 0;         // cached — avoids layout reads on scroll
+    let lastW = 0;             // last canvas width we sized to (for the height-only resize guard)
     let ticking = false;
 
     // cover-fit a source image onto the full canvas
@@ -79,10 +82,17 @@ export function HeroSection() {
     function resize() {
       const cw = canvas!.clientWidth, ch = canvas!.clientHeight;
       if (!cw || !ch) return;     // not laid out yet — the ResizeObserver will re-fire
-      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      // On touch devices the mobile URL bar shows/hides as you scroll, which
+      // changes the viewport height and re-fires the ResizeObserver. Re-measuring
+      // there recomputes maxScroll mid-scroll and snaps the frame — that's the
+      // "sudden zoom" on first scroll. So once sized, ignore height-only changes
+      // (width unchanged) on coarse pointers and keep the mapping stable.
+      if (coarse && lastW === cw && canvas!.width) return;
+      lastW = cw;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas!.width  = Math.round(cw * dpr);
       canvas!.height = Math.round(ch * dpr);
-      ctx!.imageSmoothingQuality = 'low';
+      ctx!.imageSmoothingQuality = 'high';
       maxScroll = scroller!.offsetHeight - window.innerHeight;
       drawn = -1;                 // setting canvas.width cleared it — force a repaint
       update();                   // re-apply the current scroll position

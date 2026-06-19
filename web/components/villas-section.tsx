@@ -185,6 +185,16 @@ function VillaImageCarousel({
     transition: 'background 0.35s, color 0.35s, border-color 0.35s',
   };
 
+  // In-image edge arrows — shown only on phones/tablets (where the outside
+  // arrows are hidden) so it's obvious you can move between villa types.
+  const edgeArrowStyle: React.CSSProperties = {
+    position: 'absolute', top: '50%', transform: 'translateY(-50%)', zIndex: 12,
+    width: 46, height: 46, borderRadius: '50%',
+    border: '1px solid rgba(201,169,110,0.6)', background: 'rgba(6,14,8,0.55)', backdropFilter: 'blur(8px)',
+    color: 'var(--gold)', cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 8px 26px -8px rgba(0,0,0,0.7)',
+  };
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px,1.4vw,18px)', width: '100%' }}>
 
@@ -246,8 +256,33 @@ function VillaImageCarousel({
       {/* Depth gradient overlay */}
       <div aria-hidden="true" style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5,
-        background: 'linear-gradient(to top, rgba(6,14,8,0.55) 0%, transparent 32%, transparent 78%, rgba(6,14,8,0.22) 100%)',
+        background: 'linear-gradient(to top, rgba(6,14,8,0.62) 0%, transparent 32%, transparent 72%, rgba(6,14,8,0.42) 100%)',
       }} />
+
+      {/* Villa name badge — top left. Keyed on `active` so the name visibly
+          re-animates each swipe: you always know which villa you're looking at. */}
+      <div key={`badge-${active}`} aria-hidden="true" style={{
+        position: 'absolute', top: 18, left: 20, zIndex: 11,
+        pointerEvents: 'none', animation: 'fadeIn 0.5s ease both',
+      }}>
+        <span style={{
+          display: 'block', fontFamily: ff, fontWeight: 400,
+          fontSize: 'clamp(24px,2.6vw,34px)', lineHeight: 1, color: 'var(--cream)',
+          textShadow: '0 2px 18px rgba(6,14,8,0.92)',
+        }}>{vs[active].name}</span>
+        <span style={{
+          display: 'block', marginTop: 7, fontFamily: ffs, fontSize: 9, fontWeight: 300,
+          letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)',
+        }}>{vs[active].index} / 0{n} &nbsp;·&nbsp; {vs[active].bedrooms}</span>
+      </div>
+
+      {/* In-image edge arrows — phones/tablets only (see CSS) */}
+      <button className="villa-edge-arrow" aria-label="Previous villa" onClick={() => onNavigate(prevIdx)} style={{ ...edgeArrowStyle, left: 12 }}>
+        <svg width="15" height="15" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2L4 6.5L9 11" /></svg>
+      </button>
+      <button className="villa-edge-arrow" aria-label="Next villa" onClick={() => onNavigate(nextIdx)} style={{ ...edgeArrowStyle, right: 12 }}>
+        <svg width="15" height="15" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2l5 4.5L4 11" /></svg>
+      </button>
 
       {/* Tap hint — bottom right of image */}
       <span className="tap-hint" aria-hidden="true" style={{
@@ -266,13 +301,24 @@ function VillaImageCarousel({
         <ArrowUpRight size={14} />
       </span>
 
-      {/* Index watermark — bottom left */}
-      <span style={{
-        position: 'absolute', bottom: 14, left: 16,
-        fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.12em',
-        color: 'rgba(228,217,195,0.22)', userSelect: 'none',
-        zIndex: 10,
-      }}>{vs[active].index} / 0{n}</span>
+      {/* Swipe hint — bottom left, phones/tablets only. Makes it clear you can
+          move between the three villas with a swipe. */}
+      <span className="swipe-hint" aria-hidden="true" style={{
+        position: 'absolute', bottom: 18, left: 20, zIndex: 10,
+        alignItems: 'center', gap: 10,
+        padding: '10px 16px', borderRadius: 100,
+        background: 'rgba(6,14,8,0.6)',
+        border: '1px solid rgba(201,169,110,0.45)',
+        backdropFilter: 'blur(8px)',
+        color: 'var(--gold)',
+        fontFamily: ffs, fontSize: 10, fontWeight: 400,
+        letterSpacing: '0.2em', textTransform: 'uppercase',
+        pointerEvents: 'none',
+      }}>
+        <svg className="swipe-cue-l" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2L4 6.5L9 11" /></svg>
+        Swipe
+        <svg className="swipe-cue-r" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2l5 4.5L4 11" /></svg>
+      </span>
     </div>
 
     </div>
@@ -461,6 +507,15 @@ export function VillasSection() {
         /* Transform-only pulse (no box-shadow animation) for a GPU-light, repaint-free loop */
         @keyframes tapPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .tap-hint { animation: tapPulse 1.9s ease-in-out infinite; }
+        /* Swipe affordance: only on phones/tablets, where the outside arrows are hidden */
+        .villa-edge-arrow, .swipe-hint { display: none; }
+        @media (max-width: 900px) {
+          .villa-edge-arrow, .swipe-hint { display: flex !important; }
+        }
+        @keyframes swipeNudgeL { 0%,100% { transform: translateX(0); opacity: 0.65; } 50% { transform: translateX(-4px); opacity: 1; } }
+        @keyframes swipeNudgeR { 0%,100% { transform: translateX(0); opacity: 0.65; } 50% { transform: translateX(4px); opacity: 1; } }
+        .swipe-cue-l { animation: swipeNudgeL 1.5s ease-in-out infinite; }
+        .swipe-cue-r { animation: swipeNudgeR 1.5s ease-in-out infinite; }
         .vdot { border:none; cursor:pointer; padding:0; transition: width 0.45s cubic-bezier(0.16,1,0.3,1), background 0.3s; }
         .villa-stage { border-radius: clamp(16px,1.6vw,24px); transition: transform 0.6s cubic-bezier(0.16,1,0.3,1); }
         /* Gold frame + soft glow halo that lifts the villa off the dark backdrop */
@@ -508,8 +563,9 @@ export function VillasSection() {
           width: '100%',
         }}>
 
-          {/* HEAD: name + tagline + specs */}
-          <div style={{ gridArea: 'head', display: 'flex', flexDirection: 'column' }}>
+          {/* HEAD: name + tagline + specs — keyed on `active` so it re-animates
+              on every swipe, making the villa change obvious. */}
+          <div key={`head-${active}`} style={{ gridArea: 'head', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease both' }}>
             <h3 style={{ margin: '0 0 clamp(8px,1.2vw,14px)', lineHeight: 1 }}>
               <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(48px,6vw,88px)', letterSpacing: '-0.01em', lineHeight: 1.0 }}>{villa.name}</span>
               <span style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(17px,2vw,28px)', letterSpacing: '0.01em', color: 'var(--gold)', lineHeight: 1.4 }}>{villa.tagline}</span>
@@ -534,7 +590,7 @@ export function VillasSection() {
 
           {/* BODY: description + actions */}
           <div style={{ gridArea: 'body', display: 'flex', flexDirection: 'column' }}>
-            <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr40)', margin: '0 0 clamp(24px,3.5vw,36px)' }}>{villa.desc}</p>
+            <p key={`desc-${active}`} style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr40)', margin: '0 0 clamp(24px,3.5vw,36px)', animation: 'fadeIn 0.5s ease both' }}>{villa.desc}</p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px 14px' }}>
               {/* View it in 3D — primary, opens the photoreal twin walkthrough.

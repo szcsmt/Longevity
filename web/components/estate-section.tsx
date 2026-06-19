@@ -67,7 +67,9 @@ export function EstateSection() {
       const p = raw * raw * (3 - 2 * raw);
 
       if (centerRef.current) {
-        centerRef.current.style.transform = `scale(${1 + p * (isMobile ? 0.28 : 0.84)})`;
+        // translateZ(0) keeps this on its own GPU layer so the zoom stays smooth
+        // on phones (iOS Safari otherwise repaints the sticky layer each frame → jank).
+        centerRef.current.style.transform = `translateZ(0) scale(${1 + p * (isMobile ? 0.30 : 0.84)})`;
       }
       if (!isMobile) {
         const outerOp = Math.max(0, 1 - p * 1.65).toFixed(3);
@@ -156,17 +158,19 @@ export function EstateSection() {
             overflow: 'hidden',
             transformOrigin: 'center center',
             willChange: 'transform',
+            backfaceVisibility: 'hidden',
             zIndex: 2,
           }}
         >
           <img
             src={CENTER}
             alt="The Estate"
-            loading="lazy"
+            loading="eager"
             decoding="async"
             style={{
               width: '100%', height: '100%',
               objectFit: 'cover', display: 'block',
+              transform: 'translateZ(0)',
               filter: 'brightness(0.80) saturate(1.05)',
             }}
           />

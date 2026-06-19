@@ -191,33 +191,6 @@ export function AmenitiesSection() {
         )}
       </div>
 
-      {/* Chips — quick legend / also drive the active state */}
-      <div className="reveal" style={{
-        display: 'flex', flexWrap: 'wrap', gap: '8px 10px',
-        marginTop: 'clamp(24px,3vw,36px)',
-      }}>
-        {hotspots.map((h, i) => (
-          <button
-            key={h.title}
-            onClick={() => show(i)}
-            onMouseEnter={() => show(i)}
-            onMouseLeave={scheduleHide}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '8px 15px', borderRadius: 100, cursor: 'pointer',
-              fontFamily: ffs, fontSize: 9, fontWeight: 300,
-              letterSpacing: '0.12em', textTransform: 'uppercase',
-              color: i === active ? 'var(--bg)' : 'var(--cr70)',
-              background: i === active ? 'var(--gold)' : 'transparent',
-              border: `1px solid ${i === active ? 'var(--gold)' : 'rgba(201,169,110,0.25)'}`,
-              transition: 'background 0.3s, color 0.3s, border-color 0.3s',
-            }}
-          >
-            {h.title}
-          </button>
-        ))}
-      </div>
-
     </section>
   );
 }
