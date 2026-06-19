@@ -300,25 +300,6 @@ function VillaImageCarousel({
         Tap to explore
         <ArrowUpRight size={14} />
       </span>
-
-      {/* Swipe hint — bottom left, phones/tablets only. Makes it clear you can
-          move between the three villas with a swipe. */}
-      <span className="swipe-hint" aria-hidden="true" style={{
-        position: 'absolute', bottom: 18, left: 20, zIndex: 10,
-        alignItems: 'center', gap: 10,
-        padding: '10px 16px', borderRadius: 100,
-        background: 'rgba(6,14,8,0.6)',
-        border: '1px solid rgba(201,169,110,0.45)',
-        backdropFilter: 'blur(8px)',
-        color: 'var(--gold)',
-        fontFamily: ffs, fontSize: 10, fontWeight: 400,
-        letterSpacing: '0.2em', textTransform: 'uppercase',
-        pointerEvents: 'none',
-      }}>
-        <svg className="swipe-cue-l" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2L4 6.5L9 11" /></svg>
-        Swipe
-        <svg className="swipe-cue-r" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2l5 4.5L4 11" /></svg>
-      </span>
     </div>
 
     </div>
@@ -507,15 +488,11 @@ export function VillasSection() {
         /* Transform-only pulse (no box-shadow animation) for a GPU-light, repaint-free loop */
         @keyframes tapPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .tap-hint { animation: tapPulse 1.9s ease-in-out infinite; }
-        /* Swipe affordance: only on phones/tablets, where the outside arrows are hidden */
-        .villa-edge-arrow, .swipe-hint { display: none; }
+        /* In-image edge arrows: only on phones/tablets, where the outside arrows are hidden */
+        .villa-edge-arrow { display: none; }
         @media (max-width: 900px) {
-          .villa-edge-arrow, .swipe-hint { display: flex !important; }
+          .villa-edge-arrow { display: flex !important; }
         }
-        @keyframes swipeNudgeL { 0%,100% { transform: translateX(0); opacity: 0.65; } 50% { transform: translateX(-4px); opacity: 1; } }
-        @keyframes swipeNudgeR { 0%,100% { transform: translateX(0); opacity: 0.65; } 50% { transform: translateX(4px); opacity: 1; } }
-        .swipe-cue-l { animation: swipeNudgeL 1.5s ease-in-out infinite; }
-        .swipe-cue-r { animation: swipeNudgeR 1.5s ease-in-out infinite; }
         .vdot { border:none; cursor:pointer; padding:0; transition: width 0.45s cubic-bezier(0.16,1,0.3,1), background 0.3s; }
         .villa-stage { border-radius: clamp(16px,1.6vw,24px); transition: transform 0.6s cubic-bezier(0.16,1,0.3,1); }
         /* Gold frame + soft glow halo that lifts the villa off the dark backdrop */
