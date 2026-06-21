@@ -132,9 +132,14 @@ export function HeroSection() {
       return () => detachSizer();
     }
 
-    // ── Desktop: concurrency-limited progressive frame load ──
+    // ── Concurrency-limited progressive frame load ──
+    // The full sequence is ~8MB. The poster paints instantly, so we hold the
+    // frame load until the browser is idle (first paint, fonts and nav done) and
+    // run it 4-wide instead of 8 — otherwise it saturates the connection and the
+    // whole page feels slow to load. Until a frame arrives, the scrub falls back
+    // to the nearest loaded frame / poster, so this is invisible to the user.
     let next = 0;
-    const CONCURRENCY = 8;
+    const CONCURRENCY = 4;
     function loadOne() {
       if (next >= FRAME_COUNT) return;
       const i = next++;
@@ -153,7 +158,11 @@ export function HeroSection() {
       img.onerror = loadOne;
       img.src = framePath(i);
     }
-    for (let k = 0; k < CONCURRENCY; k++) loadOne();
+    const startLoad = () => { for (let k = 0; k < CONCURRENCY; k++) loadOne(); };
+    const hasRIC = typeof window.requestIdleCallback === 'function';
+    const idleHandle: number = hasRIC
+      ? window.requestIdleCallback(startLoad, { timeout: 1500 })
+      : window.setTimeout(startLoad, 400);
 
     window.addEventListener('scroll', onScroll, { passive: true });
     update();
@@ -161,6 +170,7 @@ export function HeroSection() {
     return () => {
       window.removeEventListener('scroll', onScroll);
       detachSizer();
+      if (hasRIC) window.cancelIdleCallback(idleHandle); else clearTimeout(idleHandle);
     };
   }, []);
 

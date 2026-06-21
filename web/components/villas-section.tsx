@@ -469,16 +469,10 @@ export function VillasSection() {
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
   }, [tour]);
 
-  // Preload every villa image (carousel + galleries) so switching/paging is instant — no lag.
-  useEffect(() => {
-    villas.forEach(v => {
-      [v.img, ...v.gallery.map(g => g.src)].forEach(src => {
-        const im = new Image();
-        im.decoding = 'async';
-        im.src = src;
-      });
-    });
-  }, []);
+  // A villa's gallery is only fetched the first time its modal opens (browser
+  // loads the <img>s then). The carousel itself already eager-loads the three
+  // visible villa photos, so there's nothing to preload up front — doing so on
+  // mount used to pull ~20 images in parallel and starve the initial page load.
 
   const villa = villas[active];
 
