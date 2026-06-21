@@ -305,6 +305,12 @@ body {
 @media (max-width: 1000px) {
   .lr-cols-3 { grid-template-columns: repeat(2, 1fr) !important; }
   .lr-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Two-column full-height split sections → stack on tablets and small / display-
+     scaled laptops. Above 1000px there's room for two columns; below it the image
+     or form was being crushed into a narrow sliver. */
+  .lr-split { grid-template-columns: 1fr !important; min-height: 0 !important; }
+  .lr-split > * { border-right: none !important; }
 }
 
 /* Phone / touch: a shorter scrub range than desktop (still animates on scroll) */
@@ -317,9 +323,7 @@ body {
   .lr-cols-3 { grid-template-columns: 1fr !important; }
   .lr-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
 
-  /* Two-column full-height split sections → stack */
-  .lr-split  { grid-template-columns: 1fr !important; min-height: 0 !important; }
-  .lr-split > * { border-right: none !important; }
+  /* (.lr-split already stacks at ≤1000px above) */
 
   /* Tame the cinematic scroll heights so mobile isn't an endless scroll */
   .lr-tall-350 { height: 220vh !important; }

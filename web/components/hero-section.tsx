@@ -19,7 +19,9 @@ export function HeroSection() {
     if (!canvas || !scroller) return;
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
-    ctx.imageSmoothingQuality = 'high';
+    // 'low' keeps each scrub frame cheap — 'high' re-samples the whole frame on
+    // every scroll tick, which is what made the hero feel laggy.
+    ctx.imageSmoothingQuality = 'low';
 
     // Only users who ask for reduced motion get the static poster — the
     // scroll-scrub now runs on phones & tablets too (it's GPU-cheap drawImage).
@@ -32,9 +34,11 @@ export function HeroSection() {
     let poster: HTMLImageElement | null = null;
     let drawn = -1;            // index of frame currently painted (-1 = canvas needs repaint)
     let targetFrame = 0;
-    // Cap at 2× — sharp on phones (1.5× left the cropped portrait frame visibly soft)
-    // without the memory/fill cost of a full 3× backing store.
-    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Phones get a 2× backing store (the cropped portrait frame looked soft at
+    // 1.5×); laptops/desktops stay at 1.5× — Retina screens otherwise draw a huge
+    // canvas every scrub frame, which made the hero laggy.
+    const dprCap = coarse ? 2 : 1.5;
+    let dpr = Math.min(window.devicePixelRatio || 1, dprCap);
     let maxScroll = 0;         // cached — avoids layout reads on scroll
     let lastW = 0;             // last canvas width we sized to (for the height-only resize guard)
     let ticking = false;
@@ -89,10 +93,10 @@ export function HeroSection() {
       // (width unchanged) on coarse pointers and keep the mapping stable.
       if (coarse && lastW === cw && canvas!.width) return;
       lastW = cw;
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, dprCap);
       canvas!.width  = Math.round(cw * dpr);
       canvas!.height = Math.round(ch * dpr);
-      ctx!.imageSmoothingQuality = 'high';
+      ctx!.imageSmoothingQuality = 'low';
       maxScroll = scroller!.offsetHeight - window.innerHeight;
       drawn = -1;                 // setting canvas.width cleared it — force a repaint
       update();                   // re-apply the current scroll position
