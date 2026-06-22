@@ -7,19 +7,20 @@ const ffs = 'var(--font-raleway), sans-serif';
 
 const CONTACT_EMAIL = 'info@longevityresort.com';
 
+// Leading "/" so the anchors also work from the legal pages (jump home, then scroll).
 const explore = [
-  { label: 'The Park',     href: '#park'        },
-  { label: 'The Villas',   href: '#villas'      },
-  { label: 'Personalise',  href: '#personalise' },
-  { label: 'Location',     href: '#location'    },
-  { label: 'Partners',     href: '#'            },
-  { label: 'Reserve',      href: '#reserve'     },
+  { label: 'The Park',     href: '/#park'        },
+  { label: 'The Villas',   href: '/#villas'      },
+  { label: 'Personalise',  href: '/#personalise' },
+  { label: 'Location',     href: '/#location'    },
+  { label: 'Partners',     href: '/#'            },
+  { label: 'Reserve',      href: '/#reserve'     },
 ];
 
 const legal = [
-  { label: 'Privacy & GDPR', href: '#' },
-  { label: 'Cookie Policy',  href: '#' },
-  { label: 'Imprint',        href: '#' },
+  { label: 'Privacy & GDPR', href: '/privacy' },
+  { label: 'Cookie Policy',  href: '/cookies' },
+  { label: 'Imprint',        href: '/imprint' },
 ];
 
 const colLabel: React.CSSProperties = {

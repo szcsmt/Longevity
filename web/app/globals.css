@@ -472,3 +472,73 @@ body {
     bottom: auto !important;
   }
 }
+
+/* ══════════ Legal pages (Privacy / Cookies / Imprint) ══════════ */
+.legal-topbar {
+  position: relative; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  max-width: 980px; margin: 0 auto;
+  padding: clamp(20px,3vw,34px) clamp(22px,6vw,48px) 0;
+}
+.legal-logo { height: clamp(46px,5vw,60px); width: auto; display: block; }
+.legal-back {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: var(--font-raleway), sans-serif; font-size: 10px; font-weight: 300;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--cr70); text-decoration: none; white-space: nowrap;
+  transition: color 0.3s;
+}
+.legal-back:hover { color: var(--gold); }
+.legal-back svg { transition: transform 0.3s; }
+.legal-back:hover svg { transform: translateX(-3px); }
+
+.legal-wrap {
+  position: relative; z-index: 2; max-width: 820px; margin: 0 auto;
+  padding: clamp(30px,5vw,60px) clamp(22px,6vw,48px) clamp(64px,9vw,110px);
+}
+.legal-eyebrow { display: block; font-family: var(--font-raleway), sans-serif; font-size: 9px; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); opacity: 0.7; margin-bottom: 18px; }
+.legal-prose h1 { font-family: var(--font-playfair), serif; font-weight: 400; font-size: clamp(34px,5vw,58px); line-height: 1.1; color: var(--cream); margin: 0 0 14px; }
+.legal-meta { font-family: var(--font-raleway), sans-serif; font-size: 11px; font-weight: 300; letter-spacing: 0.04em; color: var(--cr40); margin: 0 0 clamp(28px,4vw,44px); }
+.legal-prose h2 { font-family: var(--font-playfair), serif; font-weight: 400; font-size: clamp(21px,2.6vw,30px); line-height: 1.25; color: var(--cream); margin: clamp(34px,4vw,50px) 0 14px; }
+.legal-prose h3 { font-family: var(--font-raleway), sans-serif; font-weight: 400; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin: 26px 0 10px; }
+.legal-prose p, .legal-prose li { font-family: var(--font-raleway), sans-serif; font-weight: 300; font-size: clamp(14px,1.1vw,15.5px); line-height: 1.85; color: var(--cr70); }
+.legal-prose p { margin: 0 0 16px; }
+.legal-prose ul { margin: 0 0 18px; padding-left: 22px; }
+.legal-prose li { margin: 0 0 8px; }
+.legal-prose li::marker { color: var(--gold); }
+.legal-prose a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(201,169,110,0.4); transition: text-decoration-color 0.3s; }
+.legal-prose a:hover { text-decoration-color: var(--gold); }
+.legal-prose strong { color: var(--cream); font-weight: 400; }
+.legal-note { border: 1px solid rgba(201,169,110,0.22); border-radius: 12px; background: rgba(201,169,110,0.05); padding: clamp(16px,2vw,22px) clamp(18px,2.2vw,26px); margin: 0 0 clamp(26px,3.5vw,38px); }
+.legal-note p { margin: 0; color: var(--cr70); font-style: italic; }
+.legal-prose table { width: 100%; border-collapse: collapse; margin: 4px 0 24px; }
+.legal-prose th, .legal-prose td { text-align: left; padding: 11px 12px; border-bottom: 1px solid rgba(201,169,110,0.12); font-family: var(--font-raleway), sans-serif; font-size: 13px; font-weight: 300; color: var(--cr70); vertical-align: top; }
+.legal-prose th { color: var(--gold); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; }
+
+/* ══════════ Cookie consent banner ══════════ */
+.cookie-banner {
+  position: fixed; z-index: 900;
+  left: clamp(14px,2.5vw,28px);
+  bottom: calc(clamp(14px,2.5vw,28px) + env(safe-area-inset-bottom, 0px));
+  width: min(420px, calc(100vw - 28px));
+  background: rgba(8,18,11,0.97);
+  border: 1px solid rgba(201,169,110,0.28);
+  border-radius: 16px;
+  padding: clamp(18px,2vw,24px);
+  box-shadow: 0 24px 60px -22px rgba(0,0,0,0.85), 0 0 30px -12px var(--gold-glow);
+  animation: cookieIn 0.6s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes cookieIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.cookie-banner h2 { font-family: var(--font-playfair), serif; font-weight: 400; font-size: 18px; color: var(--cream); margin: 0 0 8px; }
+.cookie-banner p { font-family: var(--font-raleway), sans-serif; font-weight: 300; font-size: 12.5px; line-height: 1.7; color: var(--cr70); margin: 0 0 16px; }
+.cookie-banner p a { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
+.cookie-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.cookie-btn { flex: 1 1 auto; min-width: 128px; cursor: pointer; font-family: var(--font-raleway), sans-serif; font-size: 9.5px; font-weight: 300; letter-spacing: 0.2em; text-transform: uppercase; padding: 13px 18px; border-radius: 100px; transition: background 0.35s, color 0.35s, border-color 0.35s; }
+.cookie-btn-primary { background: var(--gold); color: var(--bg); border: 1px solid var(--gold); }
+.cookie-btn-primary:hover { background: var(--gold-bright); border-color: var(--gold-bright); }
+.cookie-btn-ghost { background: transparent; color: var(--cream); border: 1px solid rgba(201,169,110,0.4); }
+.cookie-btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+@media (max-width: 768px) { .cookie-banner { left: 12px; right: 12px; width: auto; } }
+
+.cookie-reset-btn { cursor: pointer; font-family: var(--font-raleway), sans-serif; font-size: 10px; font-weight: 300; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); background: transparent; border: 1px solid rgba(201,169,110,0.45); border-radius: 100px; padding: 13px 24px; transition: background 0.35s, color 0.35s, border-color 0.35s; }
+.cookie-reset-btn:hover { background: var(--gold); color: var(--bg); border-color: var(--gold); }

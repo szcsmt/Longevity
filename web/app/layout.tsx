@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Raleway } from 'next/font/google';
 import './globals.css';
+import { CookieConsent } from '@/components/cookie-consent';
 
 // Only the weights/styles the design actually uses are fetched (Playfair 400 +
 // italic, Raleway 300/400). The unused 500/700/200 just added font files.
@@ -34,7 +35,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${playfair.variable} ${raleway.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <CookieConsent />
+      </body>
     </html>
   );
 }
