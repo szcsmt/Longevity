@@ -41,8 +41,8 @@ export function Nav() {
           on scroll (never fully opaque). Sits just under the nav, click-through. */}
       <div aria-hidden="true" style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 999,
-        height: 'clamp(78px,11vw,128px)', pointerEvents: 'none',
-        background: 'linear-gradient(to bottom, rgba(6,14,8,0.72) 0%, rgba(6,14,8,0.42) 46%, transparent 100%)',
+        height: 'clamp(88px,12vw,140px)', pointerEvents: 'none',
+        background: 'linear-gradient(to bottom, rgba(6,14,8,0.88) 0%, rgba(6,14,8,0.55) 46%, transparent 100%)',
         opacity: scrolled ? 1 : 0,
         transition: 'opacity 0.5s cubic-bezier(0.16,1,0.3,1)',
       }} />
@@ -64,7 +64,10 @@ export function Nav() {
           <img
             src="/LOGO.svg"
             alt="Longevity Resort"
-            style={{ height: 'clamp(58px,6.8vw,92px)', width: 'auto', display: 'block', opacity: 1 }}
+            /* Soft dark halo so the logo always reads as a distinct mark and never
+               looks like it's bleeding into whatever scrolls under it. */
+            style={{ height: 'clamp(58px,6.8vw,92px)', width: 'auto', display: 'block', opacity: 1,
+              filter: 'drop-shadow(0 2px 14px rgba(6,14,8,0.7)) drop-shadow(0 0 4px rgba(6,14,8,0.55))' }}
           />
         </a>
 

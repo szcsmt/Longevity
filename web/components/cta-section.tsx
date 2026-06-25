@@ -194,9 +194,6 @@ export function CtaSection() {
               <span style={{ fontFamily: ffs, fontSize: 'clamp(11px,1.1vw,13px)', fontWeight: 400, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gold)' }}>Enquiry within 24 h</span>
             </div>
 
-            {/* Brochure download — email-gated */}
-            <BrochureDownload variant="cta" />
-
             {/* Bottom brand */}
             <span style={{
               display: 'block', marginTop: 'auto', paddingTop: 'clamp(48px,7vw,80px)',
@@ -211,20 +208,6 @@ export function CtaSection() {
             display: 'flex', flexDirection: 'column', justifyContent: 'center',
             padding: 'clamp(100px,12vw,160px) clamp(24px,8vw,120px) clamp(80px,10vw,120px) clamp(24px,6vw,80px)',
           }}>
-
-            {/* Form heading — gives the enquiry panel a clear invitation */}
-            <div className="reveal" style={{ marginBottom: 'clamp(26px,3vw,40px)' }}>
-              <span style={{ ...labelStyle, fontSize: 9, letterSpacing: '0.30em', opacity: 0.6, marginBottom: 12 }}>Get in touch</span>
-              <h3 style={{
-                fontFamily: ff, fontWeight: 400, fontSize: 'clamp(28px,3.4vw,46px)',
-                lineHeight: 1.1, letterSpacing: '-0.01em', color: 'var(--cream)', margin: '0 0 12px',
-              }}>
-                We&rsquo;re ready<br /><em className="gold-text" style={{ fontStyle: 'italic' }}>when you are.</em>
-              </h3>
-              <p style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,17px)', lineHeight: 1.7, color: 'var(--cr70)', margin: 0, maxWidth: 380 }}>
-                Leave your name, email and phone, and we will reply within 24 hours.
-              </p>
-            </div>
 
             {sent ? (
               <div className="reveal" style={{ textAlign: 'center', padding: 'clamp(40px,5vw,60px)', border: '1px solid rgba(201,169,110,0.14)' }}>
@@ -305,6 +288,15 @@ export function CtaSection() {
             )}
           </div>
 
+        </div>
+
+        {/* Brochure — moved to the bottom of the section, centred */}
+        <div style={{
+          position: 'relative', zIndex: 2,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+          padding: '0 clamp(24px,6vw,80px) clamp(64px,9vw,110px)',
+        }}>
+          <BrochureDownload variant="cta" />
         </div>
       </section>
     </>

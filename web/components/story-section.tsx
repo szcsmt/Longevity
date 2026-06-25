@@ -1,37 +1,33 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Heart, MapPin, Gem } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
 interface Chapter {
-  index: string;
   title: string;
   tagline: string;
   body: string;
   bg: string;
-  icon: LucideIcon;
   tint: string;
 }
 
 const chapters: Chapter[] = [
   {
-    index: '01', title: 'The Feeling', icon: Heart, tint: 'rgba(206,138,120,0.32)',
+    title: 'The Feeling', tint: 'rgba(206,138,120,0.32)',
     tagline: 'Built to be felt.',
     body: 'It started with a feeling, not a blueprint. The sense that a home should give something back: calm in the morning, clarity through the day, deep rest at night. Most places are built to be seen. This one was built to be felt.',
     bg: '/images/story/feeling.webp',
   },
   {
-    index: '02', title: 'The Place', icon: MapPin, tint: 'rgba(120,178,150,0.30)',
+    title: 'The Place', tint: 'rgba(120,178,150,0.30)',
     tagline: 'Northeast Koh Samui.',
     body: 'Plai Leam, northeast Koh Samui. Untouched jungle, a private shore five minutes on foot, the first development of its kind on the island. 330 days of sunshine. Ancient trees. The Gulf of Thailand at your doorstep. The moment he stood here, the search was over.',
     bg: '/images/story/place.webp',
   },
   {
-    index: '03', title: 'The Standard', icon: Gem, tint: 'rgba(201,169,110,0.34)',
+    title: 'The Standard', tint: 'rgba(201,169,110,0.34)',
     tagline: 'Thai warmth, Dubai precision.',
     body: 'Thermally glazed windows, central climate control engineered for the tropics, full soundproofing, private pools. Not a compromise anywhere. Built around a single belief: that where you live should make you healthier, sharper, and more alive, every single day.',
     bg: '/images/story/standard.webp',
@@ -52,11 +48,12 @@ export function StorySection() {
       obs.observe(el);
     });
 
-    // Touch devices (no hover): reveal only the card crossing the screen centre.
+    // Touch devices (no hover): a 0-height band at the screen centre means only the
+    // single card spanning the centre line is ever active — never two at once.
     const cards = ref.current?.querySelectorAll<HTMLElement>('.story-card') ?? [];
     const obs = new IntersectionObserver((entries) => {
       entries.forEach(e => e.target.classList.toggle('lane-active', e.isIntersecting));
-    }, { rootMargin: '-42% 0px -42% 0px', threshold: 0 });
+    }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
     cards.forEach(c => obs.observe(c));
     return () => obs.disconnect();
   }, []);
@@ -82,8 +79,11 @@ export function StorySection() {
         .story-card:hover .story-glow { opacity: 1; }
         .story-card-img { opacity: 0; transform: scale(1.08); transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 1.2s cubic-bezier(0.16,1,0.3,1); }
         .story-card:hover .story-card-img { opacity: 0.9; transform: scale(1); }
+        /* Touch: only the centred card shows its image; the incoming one waits for
+           the outgoing one to fade out first (delayed fade-in), so they never overlap. */
         @media (hover: none) {
-          .story-card.lane-active .story-card-img { opacity: 0.85; transform: scale(1); }
+          .story-card .story-card-img { transition: opacity 0.45s ease; }
+          .story-card.lane-active .story-card-img { opacity: 0.85; transform: scale(1); transition: opacity 0.45s ease 0.45s; }
         }
       `}</style>
 
@@ -122,15 +122,13 @@ export function StorySection() {
         gap: 'clamp(14px,1.6vw,24px)',
         marginBottom: 'clamp(64px,9vw,120px)',
       }}>
-        {chapters.map((ch) => {
-          const Icon = ch.icon;
-          return (
-            <article key={ch.index} className="story-card" style={{
+        {chapters.map((ch) => (
+            <article key={ch.title} className="story-card" style={{
               position: 'relative', overflow: 'hidden',
               minHeight: 'clamp(320px,28vw,400px)',
-              display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
-              gap: 'clamp(16px,2vw,26px)', textAlign: 'center',
-              padding: 'clamp(26px,2.6vw,40px)',
+              display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              textAlign: 'center',
+              padding: 'clamp(30px,3vw,48px)',
               borderRadius: 'clamp(12px,1.2vw,18px)',
               border: '1px solid var(--glass-border)',
               background: 'linear-gradient(165deg, rgba(228,217,195,0.045), rgba(228,217,195,0.01))',
@@ -153,26 +151,12 @@ export function StorySection() {
                 opacity: 0.72, transition: 'opacity 0.55s cubic-bezier(0.16,1,0.3,1)',
               }} />
 
-              {/* Top: index + icon */}
-              <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: 10, letterSpacing: '0.12em', color: 'rgba(201,169,110,0.55)' }}>
-                  {ch.index} / 0{chapters.length}
-                </span>
-                <span style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 46, height: 46, borderRadius: '50%',
-                  border: '1px solid rgba(201,169,110,0.30)', color: 'var(--gold)',
-                }}>
-                  <Icon size={20} strokeWidth={1.4} />
-                </span>
-              </div>
-
               {/* Text */}
               <div style={{ position: 'relative', zIndex: 1 }}>
                 <h3 style={{
                   fontFamily: ff, fontWeight: 400,
                   fontSize: 'clamp(24px,2.4vw,34px)', lineHeight: 1.06,
-                  color: 'var(--cream)', margin: '0 0 6px',
+                  color: 'var(--cream)', margin: '0 0 8px',
                   textShadow: '0 2px 18px rgba(6,14,8,0.92)',
                 }}>{ch.title}</h3>
                 <p style={{
@@ -188,8 +172,7 @@ export function StorySection() {
                 }}>{ch.body}</p>
               </div>
             </article>
-          );
-        })}
+        ))}
       </div>
 
       {/* Pull quote — centered */}

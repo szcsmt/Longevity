@@ -82,7 +82,7 @@ export function ParkLifeSection() {
     const cards = ref.current?.querySelectorAll<HTMLElement>('.street-card') ?? [];
     const laneObs = new IntersectionObserver((entries) => {
       entries.forEach(e => e.target.classList.toggle('lane-active', e.isIntersecting));
-    }, { rootMargin: '-42% 0px -42% 0px', threshold: 0 });
+    }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
     cards.forEach(c => laneObs.observe(c));
     return () => laneObs.disconnect();
   }, []);
@@ -133,10 +133,12 @@ export function ParkLifeSection() {
         .street-card .street-zoom { opacity: 0; transition: opacity 0.4s ease; }
         .street-card:hover .street-zoom { opacity: 1; }
 
-        /* Touch devices (no hover): only the lane crossing the screen centre shows
-           its street render — one at a time as you scroll. */
+        /* Touch devices (no hover): only the lane crossing the screen centre shows its
+           render — and the incoming one waits for the outgoing one to fade out first
+           (delayed fade-in), so the image is never on two cards at once. */
         @media (hover: none) {
-          .street-card.lane-active .street-card-img { opacity: 0.85; transform: scale(1); }
+          .street-card .street-card-img { transition: opacity 0.45s ease; }
+          .street-card.lane-active .street-card-img { opacity: 0.85; transform: scale(1); transition: opacity 0.45s ease 0.45s; }
           .street-card.lane-active .street-zoom { opacity: 1; }
         }
       `}</style>
