@@ -9,6 +9,7 @@ const framePath = (i: number) => `/hero/f-${String(i + 1).padStart(3, '0')}.webp
 export function HeroSection() {
   const scrollEl  = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef    = useRef<HTMLImageElement>(null);   // phones: sharp static hero image
   const [titleVisible, setTitleVisible] = useState(false);
   const [ctaVisible,   setCtaVisible]   = useState(false);
   const [cueHidden,    setCueHidden]    = useState(false);
@@ -19,21 +20,49 @@ export function HeroSection() {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     if (!window.location.hash) window.scrollTo(0, 0);
 
-    const canvas  = canvasRef.current;
     const scroller = scrollEl.current;
-    if (!canvas || !scroller) return;
+    if (!scroller) return;
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const coarse = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
+
+    // ── PHONES / touch: a sharp STATIC image with a subtle scroll zoom, not the
+    //    canvas scrub. The per-frame canvas redraw janked on phones, and the
+    //    dpr-capped canvas looked soft; a plain <img> renders at full device
+    //    resolution (sharper) and one transform is GPU-smooth. Also skips
+    //    downloading the ~9MB frame sequence on phones (faster load). ──
+    if (coarse) {
+      let mMax = scroller.offsetHeight - window.innerHeight;
+      let mTick = false;
+      const mUpdate = () => {
+        mTick = false;
+        const sc = window.scrollY;
+        const prog = mMax > 0 ? Math.min(1, Math.max(0, sc / mMax)) : 0;
+        if (imgRef.current) imgRef.current.style.transform = `translateZ(0) scale(${1 + prog * 0.1})`;
+        if (sc > 30) setCueHidden(true);
+        if (prog >= 0.03) setTitleVisible(true);
+        if (prog >= 0.06) setCtaVisible(true);
+      };
+      const mScroll = () => { if (!mTick) { mTick = true; requestAnimationFrame(mUpdate); } };
+      const mResize = () => { mMax = scroller.offsetHeight - window.innerHeight; mUpdate(); };
+      if (reduce) requestAnimationFrame(() => { setTitleVisible(true); setCtaVisible(true); });
+      window.addEventListener('scroll', mScroll, { passive: true });
+      window.addEventListener('resize', mResize, { passive: true });
+      mUpdate();
+      return () => {
+        window.removeEventListener('scroll', mScroll);
+        window.removeEventListener('resize', mResize);
+      };
+    }
+
+    // ── DESKTOP: full-quality canvas image-sequence scrub ──
+    const canvas  = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
     // 'low' keeps each scrub frame cheap — 'high' re-samples the whole frame on
     // every scroll tick, which is what made the hero feel laggy.
     ctx.imageSmoothingQuality = 'low';
-
-    // Only users who ask for reduced motion get the static poster — the
-    // scroll-scrub now runs on phones & tablets too (it's GPU-cheap drawImage).
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // On phones the title + button reveal almost immediately (a tiny scroll),
-    // so they're never something you have to hunt for.
-    const coarse = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
 
     const frames: (HTMLImageElement | null)[] = new Array(FRAME_COUNT).fill(null);
     let poster: HTMLImageElement | null = null;
@@ -193,6 +222,18 @@ export function HeroSection() {
           ref={canvasRef}
           aria-hidden="true"
           className="hero-canvas"
+        />
+
+        {/* Phones: sharp static hero image (replaces the canvas — see CSS + effect) */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          ref={imgRef}
+          className="hero-img-mobile"
+          src={POSTER}
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          fetchPriority="high"
         />
 
         <div aria-hidden="true" style={{
