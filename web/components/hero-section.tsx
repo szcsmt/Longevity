@@ -86,19 +86,25 @@ export function HeroSection() {
     function resize() {
       const cw = canvas!.clientWidth, ch = canvas!.clientHeight;
       if (!cw || !ch) return;     // not laid out yet — the ResizeObserver will re-fire
-      // On touch devices the mobile URL bar shows/hides as you scroll, which
-      // changes the viewport height and re-fires the ResizeObserver. Re-measuring
-      // there recomputes maxScroll mid-scroll and snaps the frame — that's the
-      // "sudden zoom" on first scroll. So once sized, ignore height-only changes
-      // (width unchanged) on coarse pointers and keep the mapping stable.
-      if (coarse && lastW === cw && canvas!.width) return;
-      lastW = cw;
+      const widthChanged = cw !== lastW;
+
+      // Always keep the canvas BITMAP matched to its displayed box — including the
+      // height-only change when the mobile URL bar shows/hides on first scroll.
+      // If we skip it, the browser CSS-scales the old (shorter) bitmap into the new
+      // (taller) box and the whole frame visibly STRETCHES. Re-sizing + re-painting
+      // cover-fit instead only ever re-crops a hair, never distorts.
       dpr = Math.min(window.devicePixelRatio || 1, dprCap);
       canvas!.width  = Math.round(cw * dpr);
       canvas!.height = Math.round(ch * dpr);
       ctx!.imageSmoothingQuality = 'low';
-      maxScroll = scroller!.offsetHeight - window.innerHeight;
       drawn = -1;                 // setting canvas.width cleared it — force a repaint
+
+      // Only re-measure the scroll→frame mapping on a real WIDTH change. Recomputing
+      // maxScroll on every URL-bar height change is what used to snap the frame.
+      if (widthChanged || maxScroll <= 0) {
+        lastW = cw;
+        maxScroll = scroller!.offsetHeight - window.innerHeight;
+      }
       update();                   // re-apply the current scroll position
     }
 
@@ -181,7 +187,7 @@ export function HeroSection() {
         <canvas
           ref={canvasRef}
           aria-hidden="true"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, background: 'var(--bg)' }}
+          className="hero-canvas"
         />
 
         <div aria-hidden="true" style={{
