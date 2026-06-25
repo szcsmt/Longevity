@@ -333,8 +333,15 @@ body {
 }
 
 /* ══════════ Persistent "Reserve" floating button ══════════
-   Quiet glass pill that matches the hero "Step Inside" button — dark glass +
-   gold hairline, fills gold on hover. No pulsing (kept calm + GPU-light). */
+   A solid gold pill so it reads instantly against the dark site (the old dark-
+   glass version melted into the page). Dark text, a soft breathing glow, and a
+   gold ring. Solid fill (no backdrop-filter) keeps it GPU-light during scroll. */
+@keyframes fabBreathe {
+  0%, 100% { box-shadow: 0 16px 40px -16px rgba(0,0,0,0.7),
+                         0 0 24px -4px rgba(201,169,110,0.45); }
+  50%      { box-shadow: 0 16px 44px -14px rgba(0,0,0,0.7),
+                         0 0 40px -2px rgba(201,169,110,0.75); }
+}
 .reserve-fab {
   position: fixed;
   z-index: 800;
@@ -343,51 +350,48 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  padding: 15px 30px;
+  padding: 16px 32px;
   border-radius: 100px;
   font-family: var(--font-raleway), sans-serif;
-  font-size: 10px;
-  font-weight: 300;
-  letter-spacing: 0.26em;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--cream);
-  /* Solid (no backdrop-filter): a fixed blurred layer re-samples the page every
-     scroll frame, which hurts scroll smoothness — an opaque pill is free. */
-  background: rgba(8,18,11,0.92);
-  border: 1px solid rgba(201,169,110,0.42);
+  color: #0A1A0D;
+  background: linear-gradient(135deg, var(--gold-bright) 0%, var(--gold) 58%, #B8975D 100%);
+  border: 1px solid rgba(244,228,194,0.55);
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 18px 48px -20px rgba(0,0,0,0.8),
-              0 0 22px -10px var(--gold-glow),
-              inset 0 1px 0 rgba(255,255,255,0.05);
   /* Hidden until scrolled past the hero — see ReserveFab */
   opacity: 0;
   transform: translateY(16px);
   pointer-events: none;
+  box-shadow: 0 16px 40px -16px rgba(0,0,0,0.7), 0 0 24px -4px rgba(201,169,110,0.45);
   transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1),
               transform 0.7s cubic-bezier(0.16,1,0.3,1),
-              background 0.5s cubic-bezier(0.16,1,0.3,1),
-              color 0.5s, border-color 0.5s, box-shadow 0.5s;
+              filter 0.4s cubic-bezier(0.16,1,0.3,1),
+              box-shadow 0.5s;
 }
 .reserve-fab[data-show="true"] {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
+  /* Gentle pulse only once visible (transform-free → cheap) */
+  animation: fabBreathe 3.2s ease-in-out infinite;
 }
 .reserve-fab:hover {
-  background: var(--gold);
-  color: var(--bg);
-  border-color: var(--gold);
-  box-shadow: 0 18px 48px -16px rgba(0,0,0,0.8), 0 0 34px -10px rgba(201,169,110,0.4);
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  box-shadow: 0 22px 52px -16px rgba(0,0,0,0.75), 0 0 46px -2px rgba(201,169,110,0.85) !important;
 }
 .reserve-fab svg { transition: transform 0.45s cubic-bezier(0.16,1,0.3,1); }
 .reserve-fab:hover svg { transform: translateX(4px); }
 
 @media (max-width: 768px) {
   .reserve-fab {
-    padding: 13px 24px;
-    letter-spacing: 0.22em;
+    padding: 14px 26px;
+    letter-spacing: 0.2em;
     gap: 10px;
   }
 }
@@ -405,10 +409,22 @@ body {
   .lr-footer-grid { grid-template-columns: 1fr !important; }
 }
 
-/* ══════════ Location: stack on tablets & phones (text+photo above, map below) ══════════ */
-@media (max-width: 900px) {
-  .lr-location { grid-template-columns: 1fr !important; min-height: 0 !important; }
+/* ══════════ Location: stack on tablets & phones as heading → MAP → selected card.
+   Putting the map directly under the heading (and shrinking both map + photo) means
+   you see the map, tap a point, and the photo/details sit right below it — no more
+   scrolling a tall photo and a tall map past each other to connect them. ══════════ */
+@media (max-width: 1000px) {
+  .lr-location {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto auto !important;
+    grid-template-areas: "head" "map" "card" !important;
+    min-height: 0 !important;
+    gap: clamp(20px,5vw,30px) !important;
+    padding-bottom: clamp(40px,7vw,64px);
+  }
   .lr-location > * { border-right: none !important; }
+  .lr-loc-map   { min-height: 54vh !important; }
+  .lr-loc-photo { height: clamp(200px,30vh,300px) !important; }
 }
 
 /* ══════════ Villas: stack on tablets & phones — full-width photo, no side arrows
@@ -423,12 +439,16 @@ body {
   }
   .lr-villas { padding-left: clamp(20px,5vw,44px) !important; padding-right: clamp(20px,5vw,44px) !important; }
   .villa-nav-arrow { display: none !important; }
-  .villa-carousel { height: clamp(360px,52vh,560px) !important; }
+  /* Frame height is driven inline by the carousel (aspect-ratio: 16/9 landscape,
+     or 3/4 once a portrait render is supplied) so the whole villa is visible. */
 }
 
-/* ══════════ Amenities: taller interactive image on phones (room for hotspots) ══════════ */
+/* ══════════ Amenities: keep the heals-you render at its native 16:9 on phones
+   too — the old 4/5 portrait crop chopped the villa off the sides and pulled the
+   hotspots out of place. 16:9 shows the whole villa and keeps the dots aligned.
+   (Swap in a dedicated 9:16 render here later + re-place the hotspots if wanted.) */
 @media (max-width: 768px) {
-  .lr-amenities-canvas { aspect-ratio: 4 / 5 !important; }
+  .lr-amenities-canvas { aspect-ratio: 16 / 10 !important; }
 }
 
 /* ══════════ Park-life: symmetric 2×2 stats + a more compact entrance banner on phones ══════════ */
@@ -437,21 +457,21 @@ body {
   .lr-entrance { min-height: 150px !important; aspect-ratio: 16 / 10 !important; }
 }
 
-/* ══════════ Interior: stack on tablets & phones — image, then selector, then details ══════════ */
+/* ══════════ Interior: stack on tablets & phones — image, its description, then
+   the selector last. Keeping the image + its text together means you read the
+   interior without scrolling past the chooser to find the copy. ══════════ */
 @media (max-width: 900px) {
   .lr-interior {
     grid-template-columns: 1fr !important;
-    grid-template-areas: "image" "selector" "details" !important;
-    row-gap: clamp(24px,4vw,36px) !important;
+    grid-template-areas: "image" "details" "selector" !important;
+    row-gap: clamp(20px,4vw,32px) !important;
   }
 }
 
-/* ══════════ Estate ("jungle meets the sea"): light, smooth zoom on phones/touch
-   — hide the 8 outer tiles and let the centre photo fill the frame ══════════ */
-@media (max-width: 768px), (pointer: coarse) {
-  .lr-estate-outer { display: none !important; }
-  .lr-estate-center { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; }
-}
+/* ══════════ Estate ("jungle meets the sea") ══════════
+   The full 3×3 collage opens into the centre image on every device — phones
+   included (visitors preferred seeing all the tiles zoom in, not just the
+   centre). Transform + opacity only, so it stays GPU-composited. */
 
 /* ══════════ Map: keep card / zoom / reserve button clear on phones ══════════
    - card spans the width and is lifted above the floating Reserve button

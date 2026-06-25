@@ -6,12 +6,22 @@ import { BrochureDownload } from '@/components/brochure-download';
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
+/* Real-format checks so the enquiry list stays clean (no junk numbers / addresses) */
+const emailOk = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+const phoneOk = (v: string) => {
+  const digits = v.replace(/\D/g, '');
+  return digits.length >= 7 && digits.length <= 15 && /^[+\d\s().\-/]+$/.test(v.trim());
+};
+
 export function CtaSection() {
   const ref   = useRef<HTMLElement>(null);
   const [sent, setSent] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', villa: '', note: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', villa: '', note: '', company: '' });
+  const [errors, setErrors] = useState<{ name?: string; email?: string; phone?: string }>({});
+  const mountedAt = useRef(0);
 
   useEffect(() => {
+    mountedAt.current = Date.now();   // start the spam time-trap clock on mount
     const items = ref.current?.querySelectorAll<HTMLElement>('.reveal') ?? [];
     items.forEach((el, i) => {
       const obs = new IntersectionObserver(([e]) => {
@@ -23,8 +33,27 @@ export function CtaSection() {
     });
   }, []);
 
+  const update = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm(f => ({ ...f, [k]: e.target.value }));
+    if (k in errors) setErrors(prev => ({ ...prev, [k]: undefined }));   // clear the error as they fix it
+  };
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // ── Spam guards (silently accepted so bots get no feedback to learn from) ──
+    // 1) Honeypot: a hidden field only an automated script would fill.
+    if (form.company) { setSent(true); return; }
+    // 2) Time trap: a genuine visitor can't complete the form in under ~2.5s.
+    if (Date.now() - mountedAt.current < 2500) { setSent(true); return; }
+
+    // ── Real-person validation ──
+    const errs: typeof errors = {};
+    if (!form.name.trim())     errs.name  = 'Please enter your name.';
+    if (!emailOk(form.email))  errs.email = 'Please enter a valid email address.';
+    if (!phoneOk(form.phone))  errs.phone = 'Please enter a valid phone number.';
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+
     setSent(true);
   }
 
@@ -58,6 +87,8 @@ export function CtaSection() {
       <style>{`
         .cta-input::placeholder { color: rgba(228,217,195,0.45); font-style: italic; font-family: var(--font-playfair), serif; }
         .cta-input:focus { border-color: rgba(201,169,110,0.75) !important; background: rgba(255,252,248,0.10) !important; }
+        .cta-input.err { border-color: rgba(224,138,138,0.8) !important; background: rgba(224,138,138,0.07) !important; }
+        .cta-err { display: block; margin-top: 7px; font-family: var(--font-raleway), sans-serif; font-size: 10px; font-weight: 300; letter-spacing: 0.04em; color: rgba(228,160,160,0.92); }
         select.cta-input option { background: #0A1A0D; color: var(--cream); }
         .cta-submit {
           display: flex; align-items: center; justify-content: center; gap: 14px;
@@ -181,6 +212,20 @@ export function CtaSection() {
             padding: 'clamp(100px,12vw,160px) clamp(24px,8vw,120px) clamp(80px,10vw,120px) clamp(24px,6vw,80px)',
           }}>
 
+            {/* Form heading — gives the enquiry panel a clear invitation */}
+            <div className="reveal" style={{ marginBottom: 'clamp(26px,3vw,40px)' }}>
+              <span style={{ ...labelStyle, fontSize: 9, letterSpacing: '0.30em', opacity: 0.6, marginBottom: 12 }}>Get in touch</span>
+              <h3 style={{
+                fontFamily: ff, fontWeight: 400, fontSize: 'clamp(28px,3.4vw,46px)',
+                lineHeight: 1.1, letterSpacing: '-0.01em', color: 'var(--cream)', margin: '0 0 12px',
+              }}>
+                We&rsquo;re ready<br /><em className="gold-text" style={{ fontStyle: 'italic' }}>when you are.</em>
+              </h3>
+              <p style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,17px)', lineHeight: 1.7, color: 'var(--cr70)', margin: 0, maxWidth: 380 }}>
+                Leave your name, email and phone, and we will reply within 24 hours.
+              </p>
+            </div>
+
             {sent ? (
               <div className="reveal" style={{ textAlign: 'center', padding: 'clamp(40px,5vw,60px)', border: '1px solid rgba(201,169,110,0.14)' }}>
                 <span style={{ display: 'block', fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(22px,2.8vw,32px)', color: 'var(--cream)', marginBottom: 14 }}>
@@ -191,22 +236,38 @@ export function CtaSection() {
                 </span>
               </div>
             ) : (
-              <form className="reveal glass-card" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(28px,3.5vw,40px)', padding: 'clamp(28px,4vw,52px)' }}>
+              <form className="reveal glass-card" onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(22px,3vw,32px)', padding: 'clamp(28px,4vw,52px)' }}>
+
+                {/* Honeypot — invisible to people, irresistible to bots. If filled, the
+                    submission is silently dropped. Kept out of the layout + tab order. */}
+                <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: 0, width: 1, height: 1, overflow: 'hidden' }}>
+                  <label>Company
+                    <input type="text" name="company_website" tabIndex={-1} autoComplete="off" value={form.company} onChange={update('company')} />
+                  </label>
+                </div>
 
                 <div className="lr-form-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(20px,3vw,36px)' }}>
                   <div>
                     <span style={labelStyle}>Name</span>
-                    <input className="cta-input" style={inputStyle} type="text" placeholder="Your name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+                    <input className={`cta-input${errors.name ? ' err' : ''}`} style={inputStyle} type="text" placeholder="Your name" value={form.name} onChange={update('name')} />
+                    {errors.name && <span className="cta-err">{errors.name}</span>}
                   </div>
                   <div>
                     <span style={labelStyle}>Email</span>
-                    <input className="cta-input" style={inputStyle} type="email" placeholder="your@email.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
+                    <input className={`cta-input${errors.email ? ' err' : ''}`} style={inputStyle} type="email" inputMode="email" autoComplete="email" placeholder="your@email.com" value={form.email} onChange={update('email')} />
+                    {errors.email && <span className="cta-err">{errors.email}</span>}
                   </div>
                 </div>
 
                 <div>
+                  <span style={labelStyle}>Phone</span>
+                  <input className={`cta-input${errors.phone ? ' err' : ''}`} style={inputStyle} type="tel" inputMode="tel" autoComplete="tel" placeholder="+66 00 000 0000" value={form.phone} onChange={update('phone')} />
+                  {errors.phone && <span className="cta-err">{errors.phone}</span>}
+                </div>
+
+                <div>
                   <span style={labelStyle}>Preferred Villa</span>
-                  <select className="cta-input" style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }} value={form.villa} onChange={e => setForm(f => ({ ...f, villa: e.target.value }))}>
+                  <select className="cta-input" style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }} value={form.villa} onChange={update('villa')}>
                     <option value="">Any villa</option>
                     <option value="M">Villa M · 76.46 m²</option>
                     <option value="L">Villa L · 79.19 m²</option>
@@ -221,7 +282,7 @@ export function CtaSection() {
                     style={{ ...inputStyle, resize: 'none', height: 88, paddingTop: 12 }}
                     placeholder="Arrival date, duration, enquiry about ownership…"
                     value={form.note}
-                    onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                    onChange={update('note')}
                   />
                 </div>
 

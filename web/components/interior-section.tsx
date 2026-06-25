@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sofa, Briefcase, Gamepad2, Mic, ArrowUpRight } from 'lucide-react';
+import { Sofa, Briefcase, Mic, ArrowUpRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const ff  = 'var(--font-playfair), serif';
@@ -34,13 +34,6 @@ const configs: Config[] = [
     desc: 'A quiet workspace with no glare, a built in desk, soundproofing and fibre. Productivity with a view.',
     features: ['Soundproofed walls', 'Built in desk & storage', 'Fast fibre'],
     img: '/images/villa/int-living-4.webp', tint: 'rgba(150,170,190,0.28)',
-  },
-  {
-    id: 'gaming', name: 'Gaming Suite', icon: Gamepad2,
-    tagline: 'Built for play.',
-    desc: 'An immersive setup with ambient lighting, a low latency network and acoustic comfort for long sessions.',
-    features: ['Ambient RGB scene lighting', 'Low latency network', 'Acoustic treatment'],
-    img: '/images/villa/int-living-2.webp', tint: 'rgba(150,120,200,0.30)',
   },
   {
     id: 'podcast', name: 'Podcast Studio', icon: Mic,

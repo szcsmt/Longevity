@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const ffs = 'var(--font-raleway), sans-serif';
 const ff  = 'var(--font-playfair), serif';
@@ -15,10 +15,38 @@ const links = [
 ];
 
 export function Nav() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen]         = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Once the page is scrolled, lay a soft dark gradient behind the top strip so
+  // the fixed logo never collides illegibly with photos/text passing under it.
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        setScrolled(window.scrollY > 24);
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
     <>
+      {/* Top scrim — a gentle dark veil that fades the logo cleanly into the page
+          on scroll (never fully opaque). Sits just under the nav, click-through. */}
+      <div aria-hidden="true" style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 999,
+        height: 'clamp(78px,11vw,128px)', pointerEvents: 'none',
+        background: 'linear-gradient(to bottom, rgba(6,14,8,0.72) 0%, rgba(6,14,8,0.42) 46%, transparent 100%)',
+        opacity: scrolled ? 1 : 0,
+        transition: 'opacity 0.5s cubic-bezier(0.16,1,0.3,1)',
+      }} />
+
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0,
         zIndex: 1000,

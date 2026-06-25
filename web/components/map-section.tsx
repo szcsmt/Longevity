@@ -6,9 +6,11 @@ import { useEffect, useRef, useState } from 'react';
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
-// Koh Samui bounding box — hugs the island so it sits centred (not adrift in sea)
-const KS_SW: [number, number] = [9.42,  99.94];
-const KS_NE: [number, number] = [9.60, 100.10];
+// Koh Samui — full island extent. The map is framed to this on load (fitBounds)
+// so the WHOLE island always shows; the old box hugged it too tightly and the
+// hard max-bounds clipped the south coast + east cape off the view.
+const KS_SW: [number, number] = [9.40,  99.92];
+const KS_NE: [number, number] = [9.61, 100.095];
 
 interface Poi {
   id:      string;
@@ -46,6 +48,7 @@ export function MapSection() {
   const markersRef = useRef<Record<string, any>>({});
   const [active, setActive] = useState('resort');
   const [ready, setReady] = useState(false);
+  const [interacted, setInteracted] = useState(false);   // hides the "tap a point" hint
 
   const HIT = 44;   // generous touch target so markers are easy to tap
   // The resort gets a pushpin (head on a needle whose tip marks the spot);
@@ -97,7 +100,7 @@ export function MapSection() {
     import('leaflet').then(({ default: L }) => {
       if (!mounted || !mapEl.current || mapRef.current) return;
 
-      const bounds = L.latLngBounds(KS_SW, KS_NE);
+      const islandBounds = L.latLngBounds(KS_SW, KS_NE);
 
       // On touch devices, dragging the map would trap the page scroll
       // (a downward swipe pans the map instead of scrolling). Disable drag
@@ -106,18 +109,18 @@ export function MapSection() {
 
       LRef.current = L;
       const map = L.map(mapEl.current, {
-        center:              [9.512, 100.022],
-        zoom:                12,
-        minZoom:             11,
+        minZoom:             10,
         maxZoom:             15,
-        maxBounds:           bounds,
-        maxBoundsViscosity:  1.0,   // hard boundary — cannot pan outside
+        maxBounds:           islandBounds.pad(0.4),  // roomy → the island edges never clip
+        maxBoundsViscosity:  1.0,
         zoomControl:         false,
         attributionControl:  false,
         scrollWheelZoom:     false,
         dragging:            !isTouch,
       });
       mapRef.current = map;
+      // Frame the whole island (handles any container shape — tall mobile or wide desktop)
+      map.fitBounds(islandBounds, { padding: [18, 18], animate: false });
 
       L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -126,15 +129,17 @@ export function MapSection() {
 
       POIS.forEach(poi => {
         const marker = L.marker([poi.lat, poi.lng], { icon: makeIcon(L, poi, poi.id === 'resort'), riseOnHover: true })
-          .on('click', () => { if (mounted) setActive(poi.id); })
+          .on('click', () => { if (mounted) { setActive(poi.id); setInteracted(true); } })
           .addTo(map);
         markersRef.current[poi.id] = marker;
       });
 
       // Load tiles reliably even if the container is sized after init (e.g. the
       // stacked mobile layout): invalidate next frame, after short delays, and
-      // whenever the container's box actually changes.
-      const refresh = () => { if (mounted) map.invalidateSize(); };
+      // whenever the container's box actually changes — re-framing the island
+      // each time so it stays whole and centred at any container size.
+      const fit = () => { if (mounted) map.fitBounds(islandBounds, { padding: [18, 18], animate: false }); };
+      const refresh = () => { if (mounted) { map.invalidateSize(); fit(); } };
       requestAnimationFrame(refresh);
       timers.push(setTimeout(refresh, 300), setTimeout(refresh, 900));
       if (typeof ResizeObserver !== 'undefined' && mapEl.current) {
@@ -173,16 +178,20 @@ export function MapSection() {
         .lr-map .leaflet-control-attribution { display: none !important; }
       `}</style>
 
-      <section id="location" className="lr-split lr-location" style={{
+      <section id="location" className="lr-location" style={{
         background: 'transparent',
         borderTop: '1px solid rgba(201,169,110,0.06)',
-        display: 'grid', gridTemplateColumns: '0.92fr 1.08fr', minHeight: '100vh',
+        display: 'grid',
+        gridTemplateColumns: '0.92fr 1.08fr',
+        gridTemplateRows: 'auto 1fr',
+        gridTemplateAreas: '"head map" "card map"',
+        minHeight: '100vh',
       }}>
 
-        {/* LEFT — heading (level with the map top) + the selected place (large photo + text) */}
+        {/* HEADING — level with the map top */}
         <div style={{
-          display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
-          padding: 'clamp(20px,2.4vw,44px) clamp(24px,5vw,72px) clamp(48px,6vw,80px)',
+          gridArea: 'head',
+          padding: 'clamp(20px,2.4vw,44px) clamp(24px,5vw,72px) 0',
           borderRight: '1px solid rgba(201,169,110,0.06)',
         }}>
           <h2 style={{
@@ -199,13 +208,29 @@ export function MapSection() {
             On the peaceful northeast cape of Koh Samui, minutes from the shore,
             the airport, and the island&rsquo;s most beautiful corners.
           </p>
+          {/* Nudge to interact with the map */}
+          <span className="lr-map-cue" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 9,
+            marginTop: 'clamp(16px,2vw,24px)',
+            fontFamily: ffs, fontSize: 'clamp(9px,0.95vw,11px)', fontWeight: 400,
+            letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gold)',
+          }}>
+            <span style={{ display: 'inline-flex', width: 9, height: 9, borderRadius: '50%', background: 'var(--gold)', animation: 'scPulse 2s ease-in-out infinite' }} />
+            Tap the points to explore the island
+          </span>
+        </div>
 
-          {/* Selected place — updates when a marker is tapped */}
+        {/* SELECTED PLACE — large photo + text, updates when a marker is tapped */}
+        <div style={{
+          gridArea: 'card',
+          padding: 'clamp(22px,2.6vw,40px) clamp(24px,5vw,72px) clamp(48px,6vw,80px)',
+          borderRight: '1px solid rgba(201,169,110,0.06)',
+        }}>
           {poi && (
-            <div key={poi.id} style={{ marginTop: 'clamp(28px,3.5vw,48px)', animation: 'fadeIn 0.4s ease both' }}>
+            <div key={poi.id} style={{ animation: 'fadeIn 0.4s ease both' }}>
               <div className="elev-img" style={{ position: 'relative', borderRadius: 'clamp(12px,1.4vw,18px)', overflow: 'hidden', border: '1px solid rgba(201,169,110,0.18)' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={poi.img} alt={poi.name} decoding="async"
+                <img className="lr-loc-photo" src={poi.img} alt={poi.name} decoding="async"
                   style={{ width: '100%', height: 'clamp(300px,46vh,560px)', objectFit: 'cover', display: 'block', filter: 'brightness(0.92)' }} />
                 {poi.primary && (
                   <span style={{
@@ -215,7 +240,7 @@ export function MapSection() {
                   }}>The Estate</span>
                 )}
               </div>
-              <h3 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(22px,2.3vw,32px)', color: 'var(--cream)', lineHeight: 1.2, margin: 'clamp(18px,2.2vw,26px) 0 10px' }}>
+              <h3 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(22px,2.3vw,32px)', color: 'var(--cream)', lineHeight: 1.2, margin: 'clamp(16px,2.2vw,26px) 0 10px' }}>
                 {poi.name}
               </h3>
               <p style={{ fontFamily: ffs, fontSize: 'clamp(13px,1.2vw,16px)', fontWeight: 300, lineHeight: 1.75, color: 'var(--cr70)', margin: 0 }}>
@@ -225,9 +250,29 @@ export function MapSection() {
           )}
         </div>
 
-        {/* RIGHT — the map */}
-        <div ref={wrapRef} style={{ position: 'relative', minHeight: 'clamp(440px,60vh,720px)' }}>
+        {/* MAP */}
+        <div ref={wrapRef} className="lr-loc-map" style={{ gridArea: 'map', position: 'relative', minHeight: 'clamp(440px,60vh,720px)' }}>
           <div ref={mapEl} className="lr-map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+
+          {/* Tap hint — fades out after the first marker tap */}
+          <div aria-hidden="true" style={{
+            position: 'absolute', zIndex: 500, left: '50%', top: 'clamp(14px,2.5vw,24px)',
+            transform: 'translateX(-50%)',
+            display: 'inline-flex', alignItems: 'center', gap: 9,
+            padding: '10px 18px', borderRadius: 100, whiteSpace: 'nowrap',
+            background: 'rgba(6,14,8,0.82)', border: '1px solid rgba(201,169,110,0.45)',
+            backdropFilter: 'blur(8px)',
+            fontFamily: ffs, fontSize: 'clamp(9px,0.95vw,11px)', fontWeight: 400,
+            letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--gold)',
+            opacity: interacted ? 0 : 1,
+            pointerEvents: 'none',
+            transition: 'opacity 0.5s cubic-bezier(0.16,1,0.3,1)',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 11.5V5.5a1.5 1.5 0 0 1 3 0v5M12 10.5V4.5a1.5 1.5 0 0 1 3 0v6M15 10.5V6a1.5 1.5 0 0 1 3 0v6.5a6 6 0 0 1-6 6h-1.2a4 4 0 0 1-3-1.4l-2.4-2.8a1.6 1.6 0 0 1 2.3-2.2L9 13.5" />
+            </svg>
+            Tap a point
+          </div>
 
           {/* Zoom controls */}
           <div className="lr-map-zoom" style={{

@@ -17,6 +17,11 @@ interface VillaData {
   desc: string;
   highlights: string[];
   img: string;
+  /* Optional 3:4 portrait render shown on phones (the landscape `img` is 16:9 and
+     reads short on a tall screen). Paste the portrait path here and the mobile
+     frame automatically switches to a tall 3:4 photo. Until then, mobile shows
+     the whole landscape villa in a 16:9 frame (no crop). */
+  imgPortrait?: string;
   gallery: { src: string; caption: string }[];
   alt: string;
   /* 3D twin walkthrough URL (Matterport / Kuula / etc.).
@@ -41,6 +46,7 @@ const villas: VillaData[] = [
       { src: '/images/villa/int-bathroom-1.webp',caption: 'Bathroom' },
     ],
     alt: 'Villa M exterior',
+    imgPortrait: '',   // ← paste Villa M's 3:4 mobile render here
     tourUrl: '',   // ← paste Villa M's 3D twin link here
   },
   {
@@ -59,6 +65,7 @@ const villas: VillaData[] = [
       { src: '/images/villa/int-bathroom-2.webp',caption: 'Bathroom' },
     ],
     alt: 'Villa L exterior',
+    imgPortrait: '',   // ← paste Villa L's 3:4 mobile render here
     tourUrl: '',   // ← paste Villa L's 3D twin link here
   },
   {
@@ -79,6 +86,7 @@ const villas: VillaData[] = [
       { src: '/images/villa/int-bathroom-3.webp',   caption: 'Bathroom' },
     ],
     alt: 'Villa XL exterior',
+    imgPortrait: '',   // ← paste Villa XL's 3:4 mobile render here
     tourUrl: '',   // ← paste Villa XL's 3D twin link here
   },
 ];
@@ -101,6 +109,19 @@ function VillaImageCarousel({
   const prevActiveRef = useRef(active);
   const isDragging   = useRef(false);
   const startX       = useRef(0);
+
+  // On phones the frame matches the photo so the WHOLE villa is visible:
+  // 9:16 when a portrait render is supplied, otherwise the native 16:9 landscape
+  // (no crop). Desktop keeps its tall cinematic height.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+  const hasPortrait = !!vs[active].imgPortrait;
 
   // Animate slot transition when active changes
   useLayoutEffect(() => {
@@ -211,7 +232,9 @@ function VillaImageCarousel({
       className="villa-carousel elev-img"
       style={{
         position: 'relative', overflow: 'hidden',
-        height: 'clamp(440px,70vh,800px)',
+        ...(isMobile
+          ? { aspectRatio: hasPortrait ? '3 / 4' : '16 / 9', maxHeight: '82vh' }
+          : { height: 'clamp(440px,70vh,800px)' }),
         borderRadius: 'clamp(14px,1.4vw,22px)',
         touchAction: 'pan-y',
         userSelect: 'none',
@@ -238,7 +261,7 @@ function VillaImageCarousel({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={img.img}
+              src={isMobile && img.imgPortrait ? img.imgPortrait : img.img}
               alt={img.alt}
               draggable={false}
               loading="eager"
@@ -318,17 +341,37 @@ function VillaImageCarousel({
 /* ─── Modal ─── */
 function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void }) {
   const [img, setImg] = useState(0);
+  const len = villa.gallery.length;
+  const next = useCallback(() => setImg(i => (i + 1) % len), [len]);
+  const prev = useCallback(() => setImg(i => (i - 1 + len) % len), [len]);
+
+  // Drag / swipe the gallery (in addition to the arrows + arrow keys).
+  const dragStart   = useRef(0);
+  const draggingImg = useRef(false);
+  function onImgDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (len < 2 || (e.target as HTMLElement).closest('button')) return;
+    draggingImg.current = true;
+    dragStart.current = e.clientX;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onImgUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (!draggingImg.current) return;
+    draggingImg.current = false;
+    const dx = e.clientX - dragStart.current;
+    if (dx < -50) next();
+    else if (dx > 50) prev();
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape')     onClose();
-      if (e.key === 'ArrowRight') setImg(i => (i + 1) % villa.gallery.length);
-      if (e.key === 'ArrowLeft')  setImg(i => (i - 1 + villa.gallery.length) % villa.gallery.length);
+      if (e.key === 'ArrowRight') next();
+      if (e.key === 'ArrowLeft')  prev();
     };
     window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
-  }, [onClose, villa.gallery.length]);
+  }, [onClose, next, prev]);
 
   return (
     <div
@@ -357,7 +400,12 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
       >
         {/* Gallery */}
         <div style={{ position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, position: 'relative', minHeight: 280, overflow: 'hidden', isolation: 'isolate' }}>
+          <div
+            onPointerDown={onImgDown}
+            onPointerUp={onImgUp}
+            onPointerCancel={() => { draggingImg.current = false; }}
+            style={{ flex: 1, position: 'relative', minHeight: 280, overflow: 'hidden', isolation: 'isolate', touchAction: 'pan-y', cursor: len > 1 ? 'grab' : 'default', userSelect: 'none' }}
+          >
             {villa.gallery.map((g, i) => (
               <img key={i} src={g.src} alt={g.caption} decoding="async" style={{
                 position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
@@ -453,6 +501,35 @@ export function VillasSection() {
     setActive(((idx % n) + n) % n);
   }, [n]);
 
+  // Slide the heading + body text in the SAME direction as the photo on every
+  // swipe, so the whole card (name, specs, copy, buttons) travels with the image
+  // instead of just popping in.
+  const headRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const textPrevRef = useRef(active);
+  useLayoutEffect(() => {
+    const from = textPrevRef.current;
+    if (from === active) return;
+    const isNext = active === ((from + 1) % n);
+    const dx = isNext ? 46 : -46;   // enters from the same side as the new photo
+    const els = [headRef.current, bodyRef.current];
+    els.forEach(el => {
+      if (!el) return;
+      el.style.transition = 'none';
+      el.style.transform  = `translateX(${dx}px)`;
+      el.style.opacity     = '0';
+    });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      els.forEach(el => {
+        if (!el) return;
+        el.style.transition = 'transform 0.55s cubic-bezier(0.16,1,0.3,1), opacity 0.55s cubic-bezier(0.16,1,0.3,1)';
+        el.style.transform  = 'translateX(0)';
+        el.style.opacity     = '1';
+      });
+    }));
+    textPrevRef.current = active;
+  }, [active, n]);
+
   // Open the 3D twin walkthrough — real link in a new tab if set, otherwise
   // an elegant "coming soon" dialog so the button always does something.
   const open3D = useCallback((v: VillaData) => {
@@ -534,9 +611,8 @@ export function VillasSection() {
           width: '100%',
         }}>
 
-          {/* HEAD: name + tagline + specs — keyed on `active` so it re-animates
-              on every swipe, making the villa change obvious. */}
-          <div key={`head-${active}`} style={{ gridArea: 'head', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease both' }}>
+          {/* HEAD: name + tagline + specs — slides with the photo (see headRef). */}
+          <div ref={headRef} style={{ gridArea: 'head', display: 'flex', flexDirection: 'column' }}>
             <h3 style={{ margin: '0 0 clamp(8px,1.2vw,14px)', lineHeight: 1 }}>
               <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(48px,6vw,88px)', letterSpacing: '-0.01em', lineHeight: 1.0 }}>{villa.name}</span>
               <span style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(17px,2vw,28px)', letterSpacing: '0.01em', color: 'var(--gold)', lineHeight: 1.4 }}>{villa.tagline}</span>
@@ -559,9 +635,9 @@ export function VillasSection() {
             />
           </div>
 
-          {/* BODY: description + actions */}
-          <div style={{ gridArea: 'body', display: 'flex', flexDirection: 'column' }}>
-            <p key={`desc-${active}`} style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr40)', margin: '0 0 clamp(24px,3.5vw,36px)', animation: 'fadeIn 0.5s ease both' }}>{villa.desc}</p>
+          {/* BODY: description + actions — slides with the photo (see bodyRef). */}
+          <div ref={bodyRef} style={{ gridArea: 'body', display: 'flex', flexDirection: 'column' }}>
+            <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr40)', margin: '0 0 clamp(24px,3.5vw,36px)' }}>{villa.desc}</p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px 14px' }}>
               {/* View it in 3D — primary, opens the photoreal twin walkthrough.

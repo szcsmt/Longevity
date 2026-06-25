@@ -75,6 +75,19 @@ export function ParkLifeSection() {
       }, { threshold: 0.06 });
       obs.observe(el);
     });
+
+    // On touch devices there's no hover, so reveal each lane's street render as
+    // it scrolls into view (desktop keeps the hover-to-reveal). See the
+    // `@media (hover: none)` rules below for the actual reveal.
+    const cards = ref.current?.querySelectorAll<HTMLElement>('.street-card') ?? [];
+    cards.forEach((el) => {
+      const obs = new IntersectionObserver(([e]) => {
+        if (!e.isIntersecting) return;
+        el.classList.add('lane-seen');
+        obs.disconnect();
+      }, { threshold: 0.45 });
+      obs.observe(el);
+    });
   }, []);
 
   const stepLightbox = (dir: number) => {
@@ -122,6 +135,13 @@ export function ParkLifeSection() {
         .street-card:hover .street-card-img { opacity: 0.9; transform: scale(1); }
         .street-card .street-zoom { opacity: 0; transition: opacity 0.4s ease; }
         .street-card:hover .street-zoom { opacity: 1; }
+
+        /* Touch devices (no hover): each lane's street render fades in as the card
+           scrolls into view, so phone visitors see the imagery without tapping. */
+        @media (hover: none) {
+          .street-card.lane-seen .street-card-img { opacity: 0.82; transform: scale(1); }
+          .street-card.lane-seen .street-zoom { opacity: 1; }
+        }
       `}</style>
 
       {/* Ambient glow behind headline */}

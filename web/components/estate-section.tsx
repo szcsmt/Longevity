@@ -40,11 +40,6 @@ export function EstateSection() {
     const el = scrollRef.current;
     if (!el) return;
 
-    // On phones/tablets the 8 outer images are hidden (CSS) and only the
-    // full-bleed centre image gently zooms — one composited layer, so it stays
-    // perfectly smooth instead of compositing 9 large layers per frame.
-    const isMobile = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
-
     let ticking = false;
     let active  = true;
     let secTop  = 0;   // section's document-relative top (cached)
@@ -63,23 +58,24 @@ export function EstateSection() {
       if (maxScroll <= 0) return;
       const raw = Math.min(1, Math.max(0, (window.scrollY - secTop) / maxScroll));
 
-      // Smoothstep — feels natural, not mechanical
-      const p = raw * raw * (3 - 2 * raw);
+      // easeOut — the zoom responds the instant you start scrolling (the old
+      // smoothstep barely moved for the first third, which read as "slow").
+      const p = raw * (2 - raw);
 
       if (centerRef.current) {
         // translateZ(0) keeps this on its own GPU layer so the zoom stays smooth
         // on phones (iOS Safari otherwise repaints the sticky layer each frame → jank).
-        centerRef.current.style.transform = `translateZ(0) scale(${1 + p * (isMobile ? 0.30 : 0.84)})`;
+        centerRef.current.style.transform = `translateZ(0) scale(${1 + p * 0.84})`;
       }
-      if (!isMobile) {
-        const outerOp = Math.max(0, 1 - p * 1.65).toFixed(3);
-        outerRefs.current.forEach((div, i) => {
-          if (!div) return;
-          const { dx, dy } = OUTER[i];
-          div.style.transform = `translate3d(${dx * p * 34}vw, ${dy * p * 34}vh, 0)`;
-          div.style.opacity   = outerOp;
-        });
-      }
+      // All 8 outer tiles fly outward + fade on every device (phones included):
+      // you see the full collage first, then it opens into the centre as you scroll.
+      const outerOp = Math.max(0, 1 - p * 1.65).toFixed(3);
+      outerRefs.current.forEach((div, i) => {
+        if (!div) return;
+        const { dx, dy } = OUTER[i];
+        div.style.transform = `translate3d(${dx * p * 34}vw, ${dy * p * 34}vh, 0)`;
+        div.style.opacity   = outerOp;
+      });
       if (textRef.current) {
         textRef.current.style.opacity = Math.max(0, (p - 0.70) * 3.33).toFixed(3);
       }
