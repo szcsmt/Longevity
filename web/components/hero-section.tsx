@@ -307,39 +307,73 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* CTA */}
+        {/* CTA — Explore + Enter the Estate + a WhatsApp shortcut to sales */}
         <div className="hero-cta" style={{
           position:'absolute', left:'50%',
           transform:'translateX(-50%)',
           zIndex:10,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          gap:'clamp(10px,1.4vw,16px)', flexWrap:'wrap',
+          width:'max-content', maxWidth:'92vw',
           opacity: ctaVisible ? 1 : 0,
           transition:'opacity 1.2s cubic-bezier(0.22,1,0.36,1)',
         }}>
+          {/* Explore — secondary */}
           <a href="#villas" style={{
-            display:'inline-flex', alignItems:'center', justifyContent:'center', gap:14,
-            padding:'18px 52px', borderRadius:100,
-            border:'1px solid rgba(201,169,110,0.6)',
+            display:'inline-flex', alignItems:'center', justifyContent:'center', gap:11,
+            padding:'15px clamp(22px,3vw,34px)', borderRadius:100,
+            border:'1px solid rgba(228,217,195,0.5)',
+            background:'rgba(6,14,8,0.34)',
+            textDecoration:'none', cursor:'pointer', whiteSpace:'nowrap',
+            color:'var(--w90)',
+            transition:'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
+          }}
+            onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--w90)'; b.style.borderColor = 'var(--w90)'; b.style.color = 'var(--bg)'; }}
+            onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.34)'; b.style.borderColor = 'rgba(228,217,195,0.5)'; b.style.color = 'var(--w90)'; }}
+          >
+            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:300, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>Explore</span>
+          </a>
+
+          {/* Enter the Estate — primary */}
+          <a href="#discover" style={{
+            display:'inline-flex', alignItems:'center', justifyContent:'center', gap:12,
+            padding:'15px clamp(24px,3.4vw,38px)', borderRadius:100,
+            border:'1px solid rgba(201,169,110,0.65)',
             background:'rgba(6,14,8,0.42)',
-            backdropFilter:'blur(8px)',
             textDecoration:'none', cursor:'pointer', whiteSpace:'nowrap',
             color:'var(--w90)',
             boxShadow:'0 0 30px -6px var(--gold-glow)',
             transition:'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
           }}
             onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.borderColor = 'var(--gold)'; b.style.color = 'var(--bg)'; }}
-            onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.22)'; b.style.borderColor = 'rgba(201,169,110,0.6)'; b.style.color = 'var(--w90)'; }}
+            onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.42)'; b.style.borderColor = 'rgba(201,169,110,0.65)'; b.style.color = 'var(--w90)'; }}
           >
-            <span style={{
-              fontFamily:'var(--font-raleway), sans-serif',
-              fontSize:10, fontWeight:300,
-              letterSpacing:'0.20em', textTransform:'uppercase',
-              color:'inherit',
-            }}>Step Inside</span>
+            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:300, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>Enter the Estate</span>
             <span aria-hidden="true" style={{ display:'flex', alignItems:'center' }}>
               <svg width="18" height="10" viewBox="0 0 18 10" fill="none">
                 <path d="M1 5h16M11 1l6 4-6 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </span>
+          </a>
+
+          {/* WhatsApp — straight to sales chat */}
+          <a
+            href="https://wa.me/66948258673?text=Hello%2C%20I%27d%20like%20to%20learn%20more%20about%20Longevity%20Resort."
+            target="_blank" rel="noopener noreferrer"
+            aria-label="Chat with sales on WhatsApp"
+            style={{
+              display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+              width:'clamp(48px,5vw,54px)', height:'clamp(48px,5vw,54px)', borderRadius:'50%',
+              background:'#000', border:'1.5px solid #fff', color:'#fff',
+              textDecoration:'none', cursor:'pointer',
+              transition:'background 0.35s, border-color 0.35s, transform 0.35s',
+            }}
+            onMouseEnter={e => { const b = e.currentTarget; b.style.background = '#25D366'; b.style.borderColor = '#25D366'; b.style.transform = 'scale(1.06)'; }}
+            onMouseLeave={e => { const b = e.currentTarget; b.style.background = '#000'; b.style.borderColor = '#fff'; b.style.transform = 'scale(1)'; }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 1.67c2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.42 5.82c0 4.54-3.7 8.24-8.25 8.24-1.5 0-2.97-.4-4.25-1.16l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.37c0-4.54 3.7-8.24 8.25-8.24zm-3.6 4.43c-.17 0-.45.06-.68.31-.23.25-.9.88-.9 2.15 0 1.27.92 2.49 1.05 2.66.13.17 1.8 2.74 4.37 3.84.61.26 1.09.42 1.46.54.61.2 1.17.17 1.61.1.49-.07 1.5-.61 1.71-1.2.21-.59.21-1.1.15-1.2-.06-.11-.23-.17-.48-.3-.25-.12-1.5-.74-1.73-.82-.23-.08-.4-.12-.57.13-.17.25-.65.82-.8.99-.15.17-.29.19-.54.06-.25-.12-1.06-.39-2.02-1.25-.75-.66-1.25-1.48-1.4-1.73-.15-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.15.16-.25.25-.42.08-.17.04-.31-.02-.43-.06-.12-.55-1.37-.77-1.87-.2-.49-.4-.42-.55-.43-.14-.01-.3-.01-.46-.01z"/>
+            </svg>
           </a>
         </div>
 

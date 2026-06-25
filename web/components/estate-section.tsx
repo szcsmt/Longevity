@@ -73,7 +73,7 @@ export function EstateSection() {
   }, []);
 
   return (
-    <div ref={scrollRef} className="lr-tall-350" style={{ position: 'relative', height: '350vh' }}>
+    <div ref={scrollRef} id="discover" className="lr-tall-350" style={{ position: 'relative', height: '350vh' }}>
       <div style={{
         position: 'sticky', top: 0, height: '100vh',
         overflow: 'hidden',
