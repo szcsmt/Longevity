@@ -121,7 +121,6 @@ function VillaImageCarousel({
     mq.addEventListener('change', sync);
     return () => mq.removeEventListener('change', sync);
   }, []);
-  const hasPortrait = !!vs[active].imgPortrait;
 
   // Animate slot transition when active changes
   useLayoutEffect(() => {
@@ -233,7 +232,7 @@ function VillaImageCarousel({
       style={{
         position: 'relative', overflow: 'hidden',
         ...(isMobile
-          ? { aspectRatio: hasPortrait ? '3 / 4' : '16 / 9', maxHeight: '82vh' }
+          ? { aspectRatio: '3 / 4', maxHeight: '82vh' }   // tall, prominent on phones (3:4 renders fill it; the landscape fallback is centre-cropped)
           : { height: 'clamp(440px,70vh,800px)' }),
         borderRadius: 'clamp(14px,1.4vw,22px)',
         touchAction: 'pan-y',
@@ -614,7 +613,7 @@ export function VillasSection() {
           {/* HEAD: name + tagline + specs — slides with the photo (see headRef). */}
           <div ref={headRef} style={{ gridArea: 'head', display: 'flex', flexDirection: 'column' }}>
             <h3 style={{ margin: '0 0 clamp(8px,1.2vw,14px)', lineHeight: 1 }}>
-              <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(48px,6vw,88px)', letterSpacing: '-0.01em', lineHeight: 1.0 }}>{villa.name}</span>
+              <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(46px,6vw,88px)', letterSpacing: '-0.01em', lineHeight: 1.0, whiteSpace: 'nowrap' }}>{villa.name}</span>
               <span style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(17px,2vw,28px)', letterSpacing: '0.01em', color: 'var(--gold)', lineHeight: 1.4 }}>{villa.tagline}</span>
             </h3>
 

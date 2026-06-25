@@ -5,36 +5,15 @@ import { useEffect, useRef } from 'react';
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
-/* ─── Layout grid ───────────────────────────────────────────────────────
-   3×3 grid around a center image.
-   All positions/sizes are % of the sticky container (100vw × 100vh).
-   2px gap between cells (0.2% ≈ 2px at 1000px wide).
-
-   [ TL  ][ TC────────── ][ TR  ]
-   [ ML  ][ CENTER       ][ MR  ]
-   [ BL  ][ BC────────── ][ BR  ]
-──────────────────────────────── */
-interface Cell { src: string; l: string; t: string; w: string; h: string; dx: number; dy: number; }
-
-const OUTER: Cell[] = [
-  { src:'/images/villa-I.jpg',    l:'0%',    t:'0%',    w:'20%',   h:'21%',  dx:-1, dy:-1 }, // TL
-  { src:'/images/xy.webp',        l:'20.2%', t:'0%',    w:'59.6%', h:'21%',  dx: 0, dy:-1 }, // TC
-  { src:'/images/villa-II.jpg',   l:'80%',   t:'0%',    w:'20%',   h:'21%',  dx: 1, dy:-1 }, // TR
-  { src:'/images/proof-2.jpg',    l:'0%',    t:'21.2%', w:'20%',   h:'57.6%',dx:-1, dy: 0 }, // ML
-  { src:'/images/proof-3.jpg',    l:'80%',   t:'21.2%', w:'20%',   h:'57.6%',dx: 1, dy: 0 }, // MR
-  { src:'/images/villa-III.jpg',  l:'0%',    t:'79%',   w:'20%',   h:'21%',  dx:-1, dy: 1 }, // BL
-  { src:'/images/features-bg.jpg',l:'20.2%', t:'79%',   w:'59.6%', h:'21%',  dx: 0, dy: 1 }, // BC
-  { src:'/images/proof-4.jpg',    l:'80%',   t:'79%',   w:'20%',   h:'21%',  dx: 1, dy: 1 }, // BR
-];
-
-const CENTER = '/images/sanaila.jpg';
+/* The Estate — a single full-bleed jungle image. As you scroll it zooms in
+   (you step closer) and the headline fades up. No collage, no clutter. */
+const IMAGE = '/images/sanaila.jpg';
 
 export function EstateSection() {
-  const scrollRef  = useRef<HTMLDivElement>(null);
-  const centerRef  = useRef<HTMLDivElement>(null);
-  const outerRefs  = useRef<(HTMLDivElement | null)[]>([]);
-  const textRef    = useRef<HTMLDivElement>(null);
-  const labelRef   = useRef<HTMLSpanElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const imgRef    = useRef<HTMLDivElement>(null);
+  const textRef   = useRef<HTMLDivElement>(null);
+  const labelRef  = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -42,42 +21,29 @@ export function EstateSection() {
 
     let ticking = false;
     let active  = true;
-    let secTop  = 0;   // section's document-relative top (cached)
-    let maxScroll = 0; // cached — never read layout on the scroll path
+    let secTop  = 0;     // section's document-relative top (cached)
+    let maxScroll = 0;   // cached — never read layout on the scroll path
 
-    // Measure layout ONCE per change (mount / resize / re-entry), never per frame.
     function measure() {
       const rect = el!.getBoundingClientRect();
       secTop = rect.top + window.scrollY;
       maxScroll = el!.offsetHeight - window.innerHeight;
     }
 
-    // Per frame: only reads window.scrollY (cheap) + GPU-composited writes.
     function update() {
       ticking = false;
       if (maxScroll <= 0) return;
       const raw = Math.min(1, Math.max(0, (window.scrollY - secTop) / maxScroll));
-
-      // easeOut — the zoom responds the instant you start scrolling (the old
-      // smoothstep barely moved for the first third, which read as "slow").
+      // easeOut — the zoom responds the moment you start scrolling.
       const p = raw * (2 - raw);
 
-      if (centerRef.current) {
-        // translateZ(0) keeps this on its own GPU layer so the zoom stays smooth
-        // on phones (iOS Safari otherwise repaints the sticky layer each frame → jank).
-        centerRef.current.style.transform = `translateZ(0) scale(${1 + p * 0.84})`;
+      if (imgRef.current) {
+        // translateZ(0) keeps it on its own GPU layer so the zoom stays smooth on
+        // phones (iOS Safari otherwise repaints the sticky layer each frame → jank).
+        imgRef.current.style.transform = `translateZ(0) scale(${1 + p * 0.55})`;
       }
-      // All 8 outer tiles fly outward + fade on every device (phones included):
-      // you see the full collage first, then it opens into the centre as you scroll.
-      const outerOp = Math.max(0, 1 - p * 1.65).toFixed(3);
-      outerRefs.current.forEach((div, i) => {
-        if (!div) return;
-        const { dx, dy } = OUTER[i];
-        div.style.transform = `translate3d(${dx * p * 34}vw, ${dy * p * 34}vh, 0)`;
-        div.style.opacity   = outerOp;
-      });
       if (textRef.current) {
-        textRef.current.style.opacity = Math.max(0, (p - 0.70) * 3.33).toFixed(3);
+        textRef.current.style.opacity = Math.max(0, (p - 0.55) * 2.8).toFixed(3);
       }
       if (labelRef.current) {
         labelRef.current.style.opacity = Math.max(0, 1 - p * 4).toFixed(3);
@@ -114,52 +80,21 @@ export function EstateSection() {
         background: 'transparent',
       }}>
 
-        {/* ── Outer images (hidden on phones — see CSS — for a light, smooth zoom) ── */}
-        {OUTER.map((cell, i) => (
-          <div
-            key={i}
-            className="lr-estate-outer"
-            ref={el => { outerRefs.current[i] = el; }}
-            style={{
-              position: 'absolute',
-              left: cell.l, top: cell.t,
-              width: cell.w, height: cell.h,
-              overflow: 'hidden',
-              willChange: 'transform, opacity',
-            }}
-          >
-            <img
-              src={cell.src}
-              alt=""
-              aria-hidden="true"
-              loading="lazy"
-              decoding="async"
-              style={{
-                width: '100%', height: '100%',
-                objectFit: 'cover', display: 'block',
-                filter: 'brightness(0.68) saturate(0.88)',
-              }}
-            />
-          </div>
-        ))}
-
-        {/* ── Center image (zooms to fill; goes full-bleed on phones) ── */}
+        {/* ── Full-bleed jungle image (zooms in on scroll) ── */}
         <div
-          ref={centerRef}
-          className="lr-estate-center"
+          ref={imgRef}
           style={{
-            position: 'absolute',
-            left: '20.2%', top: '21.2%',
-            width: '59.6%', height: '57.6%',
+            position: 'absolute', inset: 0,
             overflow: 'hidden',
             transformOrigin: 'center center',
             willChange: 'transform',
             backfaceVisibility: 'hidden',
-            zIndex: 2,
+            zIndex: 1,
           }}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={CENTER}
+            src={IMAGE}
             alt="The Estate"
             loading="eager"
             decoding="async"
@@ -172,9 +107,9 @@ export function EstateSection() {
           />
         </div>
 
-        {/* ── Atmospheric vignette over the filling image ── */}
+        {/* ── Atmospheric vignette ── */}
         <div aria-hidden="true" style={{
-          position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
+          position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
           background: 'radial-gradient(ellipse 80% 70% at 50% 48%, transparent 40%, rgba(6,14,8,0.55) 100%)',
         }} />
 
@@ -194,7 +129,7 @@ export function EstateSection() {
           }}
         >The Estate</span>
 
-        {/* ── Text overlay (reveals as center fills screen) ── */}
+        {/* ── Text overlay (reveals as you zoom in) ── */}
         <div
           ref={textRef}
           style={{
@@ -204,6 +139,7 @@ export function EstateSection() {
             opacity: 0, willChange: 'opacity',
             pointerEvents: 'none',
             textAlign: 'center',
+            padding: '0 clamp(24px,6vw,40px)',
           }}
         >
           <span style={{

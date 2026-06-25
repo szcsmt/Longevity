@@ -1,24 +1,39 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { Heart, MapPin, Gem } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
-const chapters = [
+interface Chapter {
+  index: string;
+  title: string;
+  tagline: string;
+  body: string;
+  bg: string;
+  icon: LucideIcon;
+  tint: string;
+}
+
+const chapters: Chapter[] = [
   {
-    title: 'The Feeling',
+    index: '01', title: 'The Feeling', icon: Heart, tint: 'rgba(206,138,120,0.32)',
+    tagline: 'Built to be felt.',
     body: 'It started with a feeling, not a blueprint. The sense that a home should give something back: calm in the morning, clarity through the day, deep rest at night. Most places are built to be seen. This one was built to be felt.',
     bg: '/images/story/feeling.webp',
   },
   {
-    title: 'The Place',
+    index: '02', title: 'The Place', icon: MapPin, tint: 'rgba(120,178,150,0.30)',
+    tagline: 'Northeast Koh Samui.',
     body: 'Plai Leam, northeast Koh Samui. Untouched jungle, a private shore five minutes on foot, the first development of its kind on the island. 330 days of sunshine. Ancient trees. The Gulf of Thailand at your doorstep. The moment he stood here, the search was over.',
     bg: '/images/story/place.webp',
   },
   {
-    title: 'The Standard',
-    body: 'Thai warmth, Dubai precision. Thermally glazed windows, central climate control engineered for the tropics, full soundproofing, private pools. Not a compromise anywhere. Built around a single belief: that where you live should make you healthier, sharper, and more alive, every single day.',
+    index: '03', title: 'The Standard', icon: Gem, tint: 'rgba(201,169,110,0.34)',
+    tagline: 'Thai warmth, Dubai precision.',
+    body: 'Thermally glazed windows, central climate control engineered for the tropics, full soundproofing, private pools. Not a compromise anywhere. Built around a single belief: that where you live should make you healthier, sharper, and more alive, every single day.',
     bg: '/images/story/standard.webp',
   },
 ];
@@ -36,6 +51,14 @@ export function StorySection() {
       }, { threshold: 0.08 });
       obs.observe(el);
     });
+
+    // Touch devices (no hover): reveal only the card crossing the screen centre.
+    const cards = ref.current?.querySelectorAll<HTMLElement>('.story-card') ?? [];
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => e.target.classList.toggle('lane-active', e.isIntersecting));
+    }, { rootMargin: '-42% 0px -42% 0px', threshold: 0 });
+    cards.forEach(c => obs.observe(c));
+    return () => obs.disconnect();
   }, []);
 
   return (
@@ -46,10 +69,22 @@ export function StorySection() {
     }}>
 
       <style>{`
-        .story-card:hover .story-card-img  { opacity: 0.5 !important; transform: scale(1) !important; }
-        .story-card:hover .story-card-veil { opacity: 1 !important; }
-        .story-card:hover p { color: rgba(255,252,248,0.9) !important; }
-        .story-card:hover h3 { color: #fff !important; }
+        .story-card {
+          transition: transform 0.55s cubic-bezier(0.16,1,0.3,1),
+                      border-color 0.55s cubic-bezier(0.16,1,0.3,1),
+                      box-shadow 0.55s cubic-bezier(0.16,1,0.3,1);
+        }
+        .story-card:hover {
+          transform: translateY(-6px);
+          border-color: rgba(201,169,110,0.45);
+          box-shadow: 0 40px 80px -28px rgba(0,0,0,0.8), 0 0 50px -12px var(--gold-glow);
+        }
+        .story-card:hover .story-glow { opacity: 1; }
+        .story-card-img { opacity: 0; transform: scale(1.08); transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 1.2s cubic-bezier(0.16,1,0.3,1); }
+        .story-card:hover .story-card-img { opacity: 0.9; transform: scale(1); }
+        @media (hover: none) {
+          .story-card.lane-active .story-card-img { opacity: 0.85; transform: scale(1); }
+        }
       `}</style>
 
       {/* Ambient glow behind headline */}
@@ -80,59 +115,81 @@ export function StorySection() {
         <em className="gold-text" style={{ fontStyle: 'italic' }}>So we built this.</em>
       </h2>
 
-      {/* Chapters — 3 glass cards */}
+      {/* Chapters — cards styled like the themed lanes */}
       <div className="reveal lr-cols-3" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
         gap: 'clamp(14px,1.6vw,24px)',
         marginBottom: 'clamp(64px,9vw,120px)',
       }}>
-        {chapters.map((ch, i) => (
-          <div key={i} className="glass-card story-card" style={{
-            padding: 'clamp(32px,4vw,56px) clamp(24px,3vw,44px)',
-            position: 'relative', overflow: 'hidden',
-            minHeight: 'clamp(300px,26vw,360px)',
-            display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
-            textAlign: 'center',
-          }}>
-            {/* Material image — revealed on hover */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className="story-card-img" src={ch.bg} alt="" aria-hidden="true"
-              loading="lazy" decoding="async"
-              style={{
-                position: 'absolute', inset: 0, width: '100%', height: '100%',
-                objectFit: 'cover', zIndex: 0, opacity: 0, transform: 'scale(1.06)',
-                transition: 'opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 1.1s cubic-bezier(0.16,1,0.3,1)',
-              }}
-            />
-            <div className="story-card-veil" aria-hidden="true" style={{
-              position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
-              background: 'linear-gradient(to top, rgba(6,14,8,0.92) 18%, rgba(6,14,8,0.55) 60%, rgba(6,14,8,0.35) 100%)',
-              opacity: 0, transition: 'opacity 0.7s cubic-bezier(0.16,1,0.3,1)',
-            }} />
+        {chapters.map((ch) => {
+          const Icon = ch.icon;
+          return (
+            <article key={ch.index} className="story-card" style={{
+              position: 'relative', overflow: 'hidden',
+              minHeight: 'clamp(320px,28vw,400px)',
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
+              gap: 'clamp(16px,2vw,26px)', textAlign: 'center',
+              padding: 'clamp(26px,2.6vw,40px)',
+              borderRadius: 'clamp(12px,1.2vw,18px)',
+              border: '1px solid var(--glass-border)',
+              background: 'linear-gradient(165deg, rgba(228,217,195,0.045), rgba(228,217,195,0.01))',
+              boxShadow: 'var(--glass-shadow)',
+            }}>
+              {/* Material image — revealed on hover (desktop) / when centred (touch) */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="story-card-img" src={ch.bg} alt="" aria-hidden="true"
+                loading="lazy" decoding="async"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} />
+              <div aria-hidden="true" style={{
+                position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+                background: 'linear-gradient(to top, rgba(6,14,8,0.80) 26%, rgba(6,14,8,0.40) 100%)',
+              }} />
 
-            <h3 style={{
-              position: 'relative', zIndex: 2,
-              fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
-              fontSize: 'clamp(18px,2vw,28px)',
-              lineHeight: 1.2,
-              color: 'var(--cream)',
-              margin: '0 0 18px',
-              letterSpacing: '0.01em',
-              textShadow: '0 2px 18px rgba(6,14,8,0.92)',
-            }}>{ch.title}</h3>
+              {/* Themed radial glow */}
+              <div className="story-glow" aria-hidden="true" style={{
+                position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
+                background: `radial-gradient(120% 90% at 80% 0%, ${ch.tint} 0%, transparent 58%)`,
+                opacity: 0.72, transition: 'opacity 0.55s cubic-bezier(0.16,1,0.3,1)',
+              }} />
 
-            <p style={{
-              position: 'relative', zIndex: 2,
-              fontFamily: ff, fontWeight: 400,
-              fontSize: 'clamp(13px,1.15vw,15px)',
-              lineHeight: 1.9, color: 'var(--cr40)',
-              margin: 0, transition: 'color 0.5s',
-              textShadow: '0 1px 14px rgba(6,14,8,0.92)',
-            }}>{ch.body}</p>
-          </div>
-        ))}
+              {/* Top: index + icon */}
+              <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: 10, letterSpacing: '0.12em', color: 'rgba(201,169,110,0.55)' }}>
+                  {ch.index} / 0{chapters.length}
+                </span>
+                <span style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 46, height: 46, borderRadius: '50%',
+                  border: '1px solid rgba(201,169,110,0.30)', color: 'var(--gold)',
+                }}>
+                  <Icon size={20} strokeWidth={1.4} />
+                </span>
+              </div>
+
+              {/* Text */}
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <h3 style={{
+                  fontFamily: ff, fontWeight: 400,
+                  fontSize: 'clamp(24px,2.4vw,34px)', lineHeight: 1.06,
+                  color: 'var(--cream)', margin: '0 0 6px',
+                  textShadow: '0 2px 18px rgba(6,14,8,0.92)',
+                }}>{ch.title}</h3>
+                <p style={{
+                  fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
+                  fontSize: 'clamp(14px,1.4vw,18px)', color: 'var(--gold)',
+                  margin: '0 0 16px', textShadow: '0 1px 14px rgba(6,14,8,0.92)',
+                }}>{ch.tagline}</p>
+                <p style={{
+                  fontFamily: ffs, fontWeight: 300,
+                  fontSize: 'clamp(12px,0.95vw,13.5px)', lineHeight: 1.85,
+                  color: 'var(--cr70)', margin: 0, letterSpacing: '0.01em',
+                  textShadow: '0 1px 12px rgba(6,14,8,0.92)',
+                }}>{ch.body}</p>
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       {/* Pull quote — centered */}

@@ -292,19 +292,22 @@ body {
 
 /* ── Hero scroll-scrub height (shorter scroll range on phones/tablets) ── */
 .hero-scroll { height: 350vh; }
-/* The pinned hero fills the *visible* viewport — dvh accounts for the mobile
-   URL bar so the title, button and scroll cue are never pushed off-screen. */
-.hero-sticky { height: 100vh; height: 100dvh; }
-/* The canvas, however, is sized to the LARGE viewport (lvh) and anchored to the
-   top — so it does NOT resize when the mobile URL bar hides on first scroll.
-   That's what used to stretch the frame; a stable canvas can't distort. The
-   sticky clips the few extra px at the bottom (overflow: hidden). */
+/* The pinned hero is sized to the LARGE viewport (lvh) — a STABLE height that does
+   NOT change when the mobile URL bar shows/hides. Using dvh here was the bug: the
+   container grew on first scroll, which stretched the frame and floated the text.
+   A stable height means nothing reflows while you scroll. */
+.hero-sticky { height: 100vh; height: 100lvh; }
 .hero-canvas {
   position: absolute; top: 0; left: 0;
   width: 100%;
   height: 100vh; height: 100lvh;
   z-index: 0; background: var(--bg);
 }
+/* The button + scroll cue are anchored inside the SMALL-viewport zone (svh), so
+   they stay on screen whether the URL bar is shown or hidden — and never move
+   when it toggles. (On desktop lvh == svh, so these reduce to the plain values.) */
+.hero-cta { bottom: 52px; bottom: calc(100lvh - 100svh + 52px); }
+.hero-cue { bottom: 34px; bottom: calc(100lvh - 100svh + 34px); }
 /* Reduced-motion users get a single static screen (no scrub) */
 @media (prefers-reduced-motion: reduce) { .hero-scroll { height: 100vh !important; } }
 
@@ -473,7 +476,7 @@ body {
 @media (max-width: 900px) {
   .lr-interior {
     grid-template-columns: 1fr !important;
-    grid-template-areas: "image" "details" "selector" !important;
+    grid-template-areas: "image" "selector" "details" !important;
     row-gap: clamp(20px,4vw,32px) !important;
   }
 }

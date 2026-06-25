@@ -76,18 +76,15 @@ export function ParkLifeSection() {
       obs.observe(el);
     });
 
-    // On touch devices there's no hover, so reveal each lane's street render as
-    // it scrolls into view (desktop keeps the hover-to-reveal). See the
-    // `@media (hover: none)` rules below for the actual reveal.
+    // On touch devices there's no hover, so reveal ONLY the lane currently crossing
+    // the centre of the screen (others go dark again as they leave) — so you see one
+    // street render at a time while scrolling. Desktop keeps hover-to-reveal.
     const cards = ref.current?.querySelectorAll<HTMLElement>('.street-card') ?? [];
-    cards.forEach((el) => {
-      const obs = new IntersectionObserver(([e]) => {
-        if (!e.isIntersecting) return;
-        el.classList.add('lane-seen');
-        obs.disconnect();
-      }, { threshold: 0.45 });
-      obs.observe(el);
-    });
+    const laneObs = new IntersectionObserver((entries) => {
+      entries.forEach(e => e.target.classList.toggle('lane-active', e.isIntersecting));
+    }, { rootMargin: '-42% 0px -42% 0px', threshold: 0 });
+    cards.forEach(c => laneObs.observe(c));
+    return () => laneObs.disconnect();
   }, []);
 
   const stepLightbox = (dir: number) => {
@@ -136,11 +133,11 @@ export function ParkLifeSection() {
         .street-card .street-zoom { opacity: 0; transition: opacity 0.4s ease; }
         .street-card:hover .street-zoom { opacity: 1; }
 
-        /* Touch devices (no hover): each lane's street render fades in as the card
-           scrolls into view, so phone visitors see the imagery without tapping. */
+        /* Touch devices (no hover): only the lane crossing the screen centre shows
+           its street render — one at a time as you scroll. */
         @media (hover: none) {
-          .street-card.lane-seen .street-card-img { opacity: 0.82; transform: scale(1); }
-          .street-card.lane-seen .street-zoom { opacity: 1; }
+          .street-card.lane-active .street-card-img { opacity: 0.85; transform: scale(1); }
+          .street-card.lane-active .street-zoom { opacity: 1; }
         }
       `}</style>
 

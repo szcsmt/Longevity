@@ -14,6 +14,11 @@ export function HeroSection() {
   const [cueHidden,    setCueHidden]    = useState(false);
 
   useEffect(() => {
+    // Start at the top so the title/button/cue reveal *with* the scroll instead of
+    // appearing pre-revealed when the browser restores a previous scroll position.
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    if (!window.location.hash) window.scrollTo(0, 0);
+
     const canvas  = canvasRef.current;
     const scroller = scrollEl.current;
     if (!canvas || !scroller) return;
@@ -262,8 +267,8 @@ export function HeroSection() {
         </div>
 
         {/* CTA */}
-        <div style={{
-          position:'absolute', bottom:52, left:'50%',
+        <div className="hero-cta" style={{
+          position:'absolute', left:'50%',
           transform:'translateX(-50%)',
           zIndex:10,
           opacity: ctaVisible ? 1 : 0,
@@ -298,8 +303,8 @@ export function HeroSection() {
         </div>
 
         {/* Scroll cue */}
-        <div aria-hidden="true" style={{
-          position:'absolute', bottom:'clamp(26px,4vh,44px)', left:'50%',
+        <div aria-hidden="true" className="hero-cue" style={{
+          position:'absolute', left:'50%',
           transform:'translateX(-50%)',
           zIndex:10,
           display:'flex', flexDirection:'column', alignItems:'center', gap:14,
