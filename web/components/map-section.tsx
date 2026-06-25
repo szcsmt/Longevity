@@ -48,7 +48,6 @@ export function MapSection() {
   const markersRef = useRef<Record<string, any>>({});
   const [active, setActive] = useState('resort');
   const [ready, setReady] = useState(false);
-  const [interacted, setInteracted] = useState(false);   // hides the "tap a point" hint
 
   const HIT = 44;   // generous touch target so markers are easy to tap
   // The resort gets a pushpin (head on a needle whose tip marks the spot);
@@ -129,7 +128,7 @@ export function MapSection() {
 
       POIS.forEach(poi => {
         const marker = L.marker([poi.lat, poi.lng], { icon: makeIcon(L, poi, poi.id === 'resort'), riseOnHover: true })
-          .on('click', () => { if (mounted) { setActive(poi.id); setInteracted(true); } })
+          .on('click', () => { if (mounted) setActive(poi.id); })
           .addTo(map);
         markersRef.current[poi.id] = marker;
       });
@@ -253,26 +252,6 @@ export function MapSection() {
         {/* MAP */}
         <div ref={wrapRef} className="lr-loc-map" style={{ gridArea: 'map', position: 'relative', minHeight: 'clamp(440px,60vh,720px)' }}>
           <div ref={mapEl} className="lr-map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
-
-          {/* Tap hint — fades out after the first marker tap */}
-          <div aria-hidden="true" style={{
-            position: 'absolute', zIndex: 500, left: '50%', top: 'clamp(14px,2.5vw,24px)',
-            transform: 'translateX(-50%)',
-            display: 'inline-flex', alignItems: 'center', gap: 9,
-            padding: '10px 18px', borderRadius: 100, whiteSpace: 'nowrap',
-            background: 'rgba(6,14,8,0.82)', border: '1px solid rgba(201,169,110,0.45)',
-            backdropFilter: 'blur(8px)',
-            fontFamily: ffs, fontSize: 'clamp(9px,0.95vw,11px)', fontWeight: 400,
-            letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--gold)',
-            opacity: interacted ? 0 : 1,
-            pointerEvents: 'none',
-            transition: 'opacity 0.5s cubic-bezier(0.16,1,0.3,1)',
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 11.5V5.5a1.5 1.5 0 0 1 3 0v5M12 10.5V4.5a1.5 1.5 0 0 1 3 0v6M15 10.5V6a1.5 1.5 0 0 1 3 0v6.5a6 6 0 0 1-6 6h-1.2a4 4 0 0 1-3-1.4l-2.4-2.8a1.6 1.6 0 0 1 2.3-2.2L9 13.5" />
-            </svg>
-            Tap a point
-          </div>
 
           {/* Zoom controls */}
           <div className="lr-map-zoom" style={{
