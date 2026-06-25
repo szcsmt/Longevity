@@ -7,7 +7,6 @@ const ffs = 'var(--font-raleway), sans-serif';
 
 interface Chapter {
   title: string;
-  tagline: string;
   body: string;
   bg: string;
   tint: string;
@@ -16,19 +15,16 @@ interface Chapter {
 const chapters: Chapter[] = [
   {
     title: 'The Feeling', tint: 'rgba(206,138,120,0.32)',
-    tagline: 'Built to be felt.',
     body: 'It started with a feeling, not a blueprint. The sense that a home should give something back: calm in the morning, clarity through the day, deep rest at night. Most places are built to be seen. This one was built to be felt.',
     bg: '/images/story/feeling.webp',
   },
   {
     title: 'The Place', tint: 'rgba(120,178,150,0.30)',
-    tagline: 'Northeast Koh Samui.',
     body: 'Plai Leam, northeast Koh Samui. Untouched jungle, a private shore five minutes on foot, the first development of its kind on the island. 330 days of sunshine. Ancient trees. The Gulf of Thailand at your doorstep. The moment he stood here, the search was over.',
     bg: '/images/story/place.webp',
   },
   {
     title: 'The Standard', tint: 'rgba(201,169,110,0.34)',
-    tagline: 'Thai warmth, Dubai precision.',
     body: 'Thermally glazed windows, central climate control engineered for the tropics, full soundproofing, private pools. Not a compromise anywhere. Built around a single belief: that where you live should make you healthier, sharper, and more alive, every single day.',
     bg: '/images/story/standard.webp',
   },
@@ -48,12 +44,12 @@ export function StorySection() {
       obs.observe(el);
     });
 
-    // Touch devices (no hover): a 0-height band at the screen centre means only the
-    // single card spanning the centre line is ever active — never two at once.
+    // Touch devices (no hover): reveal a card's image while it's in the central band
+    // of the screen (so it's already showing as you reach it).
     const cards = ref.current?.querySelectorAll<HTMLElement>('.story-card') ?? [];
     const obs = new IntersectionObserver((entries) => {
       entries.forEach(e => e.target.classList.toggle('lane-active', e.isIntersecting));
-    }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
+    }, { rootMargin: '-40% 0px -40% 0px', threshold: 0 });
     cards.forEach(c => obs.observe(c));
     return () => obs.disconnect();
   }, []);
@@ -79,11 +75,11 @@ export function StorySection() {
         .story-card:hover .story-glow { opacity: 1; }
         .story-card-img { opacity: 0; transform: scale(1.08); transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 1.2s cubic-bezier(0.16,1,0.3,1); }
         .story-card:hover .story-card-img { opacity: 0.9; transform: scale(1); }
-        /* Touch: only the centred card shows its image; the incoming one waits for
-           the outgoing one to fade out first (delayed fade-in), so they never overlap. */
+        /* Touch: reveal the card's image immediately as it nears the centre — a quick
+           crossfade, no waiting, so it's already there by the time you read it. */
         @media (hover: none) {
-          .story-card .story-card-img { transition: opacity 0.45s ease; }
-          .story-card.lane-active .story-card-img { opacity: 0.85; transform: scale(1); transition: opacity 0.45s ease 0.45s; }
+          .story-card .story-card-img { transition: opacity 0.35s ease; }
+          .story-card.lane-active .story-card-img { opacity: 0.85; transform: scale(1); }
         }
       `}</style>
 
@@ -159,11 +155,6 @@ export function StorySection() {
                   color: 'var(--cream)', margin: '0 0 8px',
                   textShadow: '0 2px 18px rgba(6,14,8,0.92)',
                 }}>{ch.title}</h3>
-                <p style={{
-                  fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
-                  fontSize: 'clamp(14px,1.4vw,18px)', color: 'var(--gold)',
-                  margin: '0 0 16px', textShadow: '0 1px 14px rgba(6,14,8,0.92)',
-                }}>{ch.tagline}</p>
                 <p style={{
                   fontFamily: ffs, fontWeight: 300,
                   fontSize: 'clamp(12px,0.95vw,13.5px)', lineHeight: 1.85,

@@ -167,17 +167,6 @@ export function CtaSection() {
               marginBottom: 'clamp(28px,3.5vw,44px)',
             }}>Reserve</span>
 
-            <h2 className="reveal" style={{
-              fontFamily: ff, fontWeight: 400,
-              fontSize: 'clamp(40px,5.5vw,78px)',
-              lineHeight: 1.08, letterSpacing: '-0.01em',
-              color: 'var(--cream)',
-              margin: '0 0 clamp(24px,3.5vw,40px)',
-            }}>
-              Your place<br />
-              <em className="gold-text" style={{ fontStyle: 'italic', filter: 'drop-shadow(0 0 28px var(--gold-glow))' }}>is waiting.</em>
-            </h2>
-
             <p className="reveal" style={{
               fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
               fontSize: 'clamp(15px,1.5vw,19px)',
@@ -208,6 +197,18 @@ export function CtaSection() {
             display: 'flex', flexDirection: 'column', justifyContent: 'center',
             padding: 'clamp(100px,12vw,160px) clamp(24px,8vw,120px) clamp(80px,10vw,120px) clamp(24px,6vw,80px)',
           }}>
+
+            {/* Headline sits directly above the form so the title + fields read as one unit */}
+            <h2 className="reveal" style={{
+              fontFamily: ff, fontWeight: 400,
+              fontSize: 'clamp(34px,4.4vw,58px)',
+              lineHeight: 1.08, letterSpacing: '-0.01em',
+              color: 'var(--cream)',
+              margin: '0 0 clamp(24px,3.5vw,40px)',
+            }}>
+              Your place<br />
+              <em className="gold-text" style={{ fontStyle: 'italic', filter: 'drop-shadow(0 0 28px var(--gold-glow))' }}>is waiting.</em>
+            </h2>
 
             {sent ? (
               <div className="reveal" style={{ textAlign: 'center', padding: 'clamp(40px,5vw,60px)', border: '1px solid rgba(201,169,110,0.14)' }}>

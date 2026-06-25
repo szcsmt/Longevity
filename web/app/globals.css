@@ -429,15 +429,23 @@ body {
 @media (max-width: 1000px) {
   .lr-location {
     grid-template-columns: 1fr !important;
-    grid-template-rows: auto auto auto !important;
-    grid-template-areas: "head" "map" "card" !important;
+    grid-template-rows: auto auto !important;
+    grid-template-areas: "head" "map" !important;
     min-height: 0 !important;
-    gap: clamp(20px,5vw,30px) !important;
+    gap: clamp(18px,4vw,28px) !important;
     padding-bottom: clamp(40px,7vw,64px);
   }
   .lr-location > * { border-right: none !important; }
-  .lr-loc-map   { min-height: 54vh !important; }
-  .lr-loc-photo { height: clamp(200px,30vh,300px) !important; }
+  /* The big selected-place column is replaced by an overlay card on the map, so the
+     photo + text are visible the instant you tap a marker — no scrolling. */
+  .lr-loc-card { display: none !important; }
+  .lr-loc-map  { min-height: 64vh !important; }
+  .lr-map-info { display: flex !important; }
+}
+/* Overlay info card lives only on the map at phone widths */
+.lr-map-info { display: none; }
+.lr-map-info-desc {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
 
 /* ══════════ Villas: stack on tablets & phones — full-width photo, no side arrows

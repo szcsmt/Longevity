@@ -219,8 +219,9 @@ export function MapSection() {
           </span>
         </div>
 
-        {/* SELECTED PLACE — large photo + text, updates when a marker is tapped */}
-        <div style={{
+        {/* SELECTED PLACE — large photo + text (desktop). On phones this is hidden and
+            replaced by a compact card overlaid on the map (see .lr-map-info below). */}
+        <div className="lr-loc-card" style={{
           gridArea: 'card',
           padding: 'clamp(22px,2.6vw,40px) clamp(24px,5vw,72px) clamp(48px,6vw,80px)',
           borderRight: '1px solid rgba(201,169,110,0.06)',
@@ -276,6 +277,26 @@ export function MapSection() {
               >{sign}</button>
             ))}
           </div>
+
+          {/* Compact info card — phones only (CSS). Tapping a marker updates it right
+              here, over the map, so you never scroll to see the photo + text. */}
+          {poi && (
+            <div className="lr-map-info" style={{
+              position: 'absolute', left: 12, right: 12, bottom: 12, zIndex: 500,
+              gap: 12, padding: 10, borderRadius: 14,
+              background: 'rgba(6,14,8,0.93)', border: '1px solid rgba(201,169,110,0.32)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 20px 50px -20px rgba(0,0,0,0.85)',
+            }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={poi.img} alt={poi.name} decoding="async"
+                style={{ width: 78, height: 78, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontFamily: ff, fontSize: 16, color: 'var(--cream)', lineHeight: 1.2, marginBottom: 5 }}>{poi.name}</span>
+                <p className="lr-map-info-desc" style={{ fontFamily: ffs, fontSize: 11.5, fontWeight: 300, lineHeight: 1.5, color: 'var(--cr70)', margin: 0 }}>{poi.desc}</p>
+              </div>
+            </div>
+          )}
         </div>
 
       </section>
