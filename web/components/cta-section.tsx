@@ -167,29 +167,10 @@ export function CtaSection() {
               marginBottom: 'clamp(28px,3.5vw,44px)',
             }}>Reserve</span>
 
-            <p className="reveal" style={{
-              fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
-              fontSize: 'clamp(15px,1.5vw,19px)',
-              lineHeight: 1.85, color: 'var(--cr40)',
-              margin: '0 0 clamp(48px,6vw,72px)',
-              maxWidth: 400,
-            }}>
-              Longevity Resort welcomes a limited number of enquiries from those
-              ready to commit to a better life. Begin here.
-            </p>
-
             {/* Details strip */}
             <div className="reveal">
               <span style={{ fontFamily: ffs, fontSize: 'clamp(11px,1.1vw,13px)', fontWeight: 400, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gold)' }}>Enquiry within 24 h</span>
             </div>
-
-            {/* Bottom brand */}
-            <span style={{
-              display: 'block', marginTop: 'auto', paddingTop: 'clamp(48px,7vw,80px)',
-              fontFamily: ffs, fontSize: 7, fontWeight: 300,
-              letterSpacing: '0.28em', textTransform: 'uppercase',
-              color: 'rgba(228,217,195,0.15)',
-            }}>Longevity Resort · Est. 2026</span>
           </div>
 
           {/* RIGHT — Form */}

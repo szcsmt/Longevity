@@ -651,6 +651,7 @@ export function VillasSection() {
                   background: 'rgba(201,169,110,0.12)', border: '1px solid rgba(201,169,110,0.6)',
                   borderRadius: 100, padding: '16px 30px', cursor: 'pointer',
                   boxShadow: '0 0 24px -12px var(--gold-glow)',
+                  animation: 'goldGlow 3s ease-in-out infinite',   // gentle pulse so it draws the eye
                   transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
                 }}
                 onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}

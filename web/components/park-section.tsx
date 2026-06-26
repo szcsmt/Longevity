@@ -37,7 +37,7 @@ export function ParkSection() {
   ];
 
   return (
-    <section ref={ref} className="lr-split" style={{
+    <section id="returns" ref={ref} className="lr-split" style={{
       background: 'transparent',
       display: 'grid',
       gridTemplateColumns: '52fr 48fr',

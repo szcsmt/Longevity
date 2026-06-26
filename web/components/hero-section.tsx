@@ -14,6 +14,13 @@ export function HeroSection() {
   const [ctaVisible,   setCtaVisible]   = useState(false);
   const [cueHidden,    setCueHidden]    = useState(false);
 
+  const goTo = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  };
+
   useEffect(() => {
     // Start at the top so the title/button/cue reveal *with* the scroll instead of
     // appearing pre-revealed when the browser restores a previous scroll position.
@@ -318,8 +325,8 @@ export function HeroSection() {
           opacity: ctaVisible ? 1 : 0,
           transition:'opacity 1.2s cubic-bezier(0.22,1,0.36,1)',
         }}>
-          {/* Explore — secondary */}
-          <a href="#villas" style={{
+          {/* Explore — secondary → "A home that pays you back" */}
+          <a href="#returns" onClick={e => goTo(e, 'returns')} style={{
             display:'inline-flex', alignItems:'center', justifyContent:'center', gap:11,
             padding:'15px clamp(22px,3vw,34px)', borderRadius:100,
             border:'1px solid rgba(228,217,195,0.5)',
@@ -334,21 +341,21 @@ export function HeroSection() {
             <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:300, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>Explore</span>
           </a>
 
-          {/* Enter the Estate — primary */}
-          <a href="#discover" style={{
+          {/* Enter the Estate — primary, solid gold → The Villas */}
+          <a href="#villas" onClick={e => goTo(e, 'villas')} style={{
             display:'inline-flex', alignItems:'center', justifyContent:'center', gap:12,
             padding:'15px clamp(24px,3.4vw,38px)', borderRadius:100,
-            border:'1px solid rgba(201,169,110,0.65)',
-            background:'rgba(6,14,8,0.42)',
+            border:'1px solid rgba(244,228,194,0.6)',
+            background:'linear-gradient(135deg, var(--gold-bright) 0%, var(--gold) 58%, #B8975D 100%)',
             textDecoration:'none', cursor:'pointer', whiteSpace:'nowrap',
-            color:'var(--w90)',
-            boxShadow:'0 0 30px -6px var(--gold-glow)',
-            transition:'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
+            color:'#0A1A0D',
+            boxShadow:'0 10px 34px -12px rgba(0,0,0,0.6), 0 0 30px -6px var(--gold-glow)',
+            transition:'filter 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1)',
           }}
-            onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.borderColor = 'var(--gold)'; b.style.color = 'var(--bg)'; }}
-            onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.42)'; b.style.borderColor = 'rgba(201,169,110,0.65)'; b.style.color = 'var(--w90)'; }}
+            onMouseEnter={e => { const b = e.currentTarget; b.style.filter = 'brightness(1.08)'; b.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { const b = e.currentTarget; b.style.filter = 'none'; b.style.transform = 'translateY(0)'; }}
           >
-            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:300, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>Enter the Estate</span>
+            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:500, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>Enter the Estate</span>
             <span aria-hidden="true" style={{ display:'flex', alignItems:'center' }}>
               <svg width="18" height="10" viewBox="0 0 18 10" fill="none">
                 <path d="M1 5h16M11 1l6 4-6 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>

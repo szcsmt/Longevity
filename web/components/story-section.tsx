@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useRef } from 'react';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
@@ -33,27 +32,6 @@ const chapters: Chapter[] = [
 
 export function StorySection() {
   const ref = useRef<HTMLElement>(null);
-  const [lightbox, setLightbox] = useState<Chapter | null>(null);
-
-  const stepLightbox = (dir: number) => {
-    setLightbox(cur => {
-      if (!cur) return cur;
-      const i = chapters.findIndex(c => c.title === cur.title);
-      return chapters[(i + dir + chapters.length) % chapters.length];
-    });
-  };
-
-  useEffect(() => {
-    if (!lightbox) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape')     setLightbox(null);
-      if (e.key === 'ArrowRight') stepLightbox(1);
-      if (e.key === 'ArrowLeft')  stepLightbox(-1);
-    };
-    window.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
-  }, [lightbox]);
 
   useEffect(() => {
     const items = ref.current?.querySelectorAll<HTMLElement>('.reveal') ?? [];
@@ -77,7 +55,6 @@ export function StorySection() {
   }, []);
 
   return (
-    <>
     <section ref={ref} style={{
       background: 'transparent',
       padding: 'clamp(120px,14vw,180px) clamp(24px,8vw,120px) clamp(80px,10vw,140px)',
@@ -98,14 +75,10 @@ export function StorySection() {
         .story-card:hover .story-glow { opacity: 1; }
         .story-card-img { opacity: 0; transform: scale(1.08); transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 1.2s cubic-bezier(0.16,1,0.3,1); }
         .story-card:hover .story-card-img { opacity: 0.9; transform: scale(1); }
-        .story-card .story-zoom { opacity: 0; transition: opacity 0.4s ease; }
-        .story-card:hover .story-zoom { opacity: 1; }
-        /* Touch: reveal the card's image immediately as it nears the centre — a quick
-           crossfade, no waiting, so it's already there by the time you read it. */
+        /* Touch: reveal the card's image as it nears the centre — a quick crossfade. */
         @media (hover: none) {
           .story-card .story-card-img { transition: opacity 0.35s ease; }
           .story-card.lane-active .story-card-img { opacity: 0.85; transform: scale(1); }
-          .story-card.lane-active .story-zoom { opacity: 1; }
         }
       `}</style>
 
@@ -145,8 +118,8 @@ export function StorySection() {
         marginBottom: 'clamp(64px,9vw,120px)',
       }}>
         {chapters.map((ch) => (
-            <article key={ch.title} className="story-card" onClick={() => setLightbox(ch)} style={{
-              position: 'relative', overflow: 'hidden', cursor: 'pointer',
+            <article key={ch.title} className="story-card" style={{
+              position: 'relative', overflow: 'hidden',
               minHeight: 'clamp(320px,28vw,400px)',
               display: 'flex', flexDirection: 'column', justifyContent: 'center',
               textAlign: 'center',
@@ -172,17 +145,6 @@ export function StorySection() {
                 background: `radial-gradient(120% 90% at 80% 0%, ${ch.tint} 0%, transparent 58%)`,
                 opacity: 0.72, transition: 'opacity 0.55s cubic-bezier(0.16,1,0.3,1)',
               }} />
-
-              {/* Zoom hint (appears on hover / when active) */}
-              <span className="story-zoom" aria-hidden="true" style={{
-                position: 'absolute', top: 14, right: 14, zIndex: 2,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 34, height: 34, borderRadius: '50%',
-                background: 'rgba(6,14,8,0.6)', border: '1px solid rgba(201,169,110,0.5)',
-                color: 'var(--gold)',
-              }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M3 6V3h3M11 8v3H8"/></svg>
-              </span>
 
               {/* Text */}
               <div style={{ position: 'relative', zIndex: 1 }}>
@@ -227,73 +189,5 @@ export function StorySection() {
       </div>
 
     </section>
-
-    {/* Lightbox — chapter image shown large (portal → escapes section stacking) */}
-    {lightbox && createPortal(
-      <div
-        onClick={() => setLightbox(null)}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 3000,
-          background: 'rgba(6,14,8,0.93)', backdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 'clamp(16px,4vw,56px)', animation: 'fadeIn 0.3s ease both',
-        }}
-      >
-        <div key={lightbox.title} onClick={e => e.stopPropagation()} style={{
-          position: 'relative', width: '100%', maxWidth: 1100,
-          borderRadius: 16, overflow: 'hidden',
-          border: '1px solid rgba(201,169,110,0.25)',
-          boxShadow: '0 50px 120px -30px rgba(0,0,0,0.9), 0 0 60px -10px var(--gold-glow)',
-          animation: 'fadeIn 0.4s ease both',
-        }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={lightbox.bg} alt={lightbox.title} style={{ width: '100%', maxHeight: '80vh', objectFit: 'cover', display: 'block' }} />
-          <div style={{
-            position: 'absolute', left: 0, right: 0, bottom: 0,
-            padding: 'clamp(24px,3.2vw,48px)',
-            background: 'linear-gradient(to top, rgba(6,14,8,0.94) 12%, transparent)',
-          }}>
-            <span style={{ display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.85, marginBottom: 10 }}>
-              The Story
-            </span>
-            <h3 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(28px,4vw,56px)', lineHeight: 1, color: 'var(--cream)', margin: 0 }}>{lightbox.title}</h3>
-          </div>
-        </div>
-
-        {/* Prev / Next */}
-        {[
-          { lbl: 'Previous', side: 'left'  as const, dir: -1, d: 'M15 4L7 10l8 6' },
-          { lbl: 'Next',     side: 'right' as const, dir:  1, d: 'M7 4l8 6-8 6' },
-        ].map(({ lbl, side, dir, d }) => (
-          <button key={side} aria-label={lbl}
-            onClick={(e) => { e.stopPropagation(); stepLightbox(dir); }}
-            style={{
-              position: 'fixed', top: '50%', transform: 'translateY(-50%)', [side]: 'clamp(12px,3vw,40px)', zIndex: 3001,
-              width: 52, height: 52, borderRadius: '50%',
-              border: '1px solid rgba(201,169,110,0.45)', background: 'rgba(6,14,8,0.6)',
-              backdropFilter: 'blur(8px)', cursor: 'pointer', color: 'var(--gold)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 22 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>
-          </button>
-        ))}
-
-        {/* Close */}
-        <button onClick={(e) => { e.stopPropagation(); setLightbox(null); }} aria-label="Close"
-          style={{
-            position: 'fixed', top: 'clamp(16px,3vw,28px)', right: 'clamp(16px,3vw,28px)', zIndex: 3001,
-            width: 48, height: 48, borderRadius: '50%',
-            border: '1px solid rgba(228,217,195,0.3)', background: 'rgba(6,14,8,0.85)',
-            backdropFilter: 'blur(8px)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <svg width="13" height="13" viewBox="0 0 10 10" fill="none" stroke="var(--cream)" strokeWidth="1.3" strokeLinecap="round"><path d="M1 1l8 8M9 1L1 9"/></svg>
-        </button>
-      </div>,
-      document.body
-    )}
-    </>
   );
 }

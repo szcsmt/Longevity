@@ -33,14 +33,14 @@ const configs: Config[] = [
     tagline: 'Focus, framed by the jungle.',
     desc: 'A quiet workspace with no glare, a built in desk, soundproofing and fibre. Productivity with a view.',
     features: ['Soundproofed walls', 'Built in desk & storage', 'Fast fibre'],
-    img: '/images/villa/int-living-4.webp', tint: 'rgba(150,170,190,0.28)',
+    img: '/images/villa/office.webp', tint: 'rgba(150,170,190,0.28)',
   },
   {
     id: 'podcast', name: 'Podcast Studio', icon: Mic,
     tagline: 'Acoustically treated, ready to record.',
     desc: 'A soundproofed room with warm lighting and a layout ready to record in. Press record and create.',
     features: ['Sound isolation', 'Recording ready wiring', 'Warm key lighting'],
-    img: '/images/villa/int-bedroom-living.webp', tint: 'rgba(206,138,120,0.30)',
+    img: '/images/villa/podcast.webp', tint: 'rgba(206,138,120,0.30)',
   },
 ];
 
