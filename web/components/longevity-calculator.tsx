@@ -82,7 +82,17 @@ export function LongevityCalculator() {
         .lc-range::-webkit-slider-thumb:active { transform: scale(1.15); cursor: grabbing; }
         .lc-range::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--gold); border: 2px solid var(--gold-bright); box-shadow: 0 0 16px -2px var(--gold-glow); cursor: grab; }
         .lc-ring-fill { transition: stroke-dashoffset 0.7s cubic-bezier(0.16,1,0.3,1); }
-        @media (max-width: 900px) { .lc-grid { grid-template-columns: 1fr !important; } .lc-result { order: -1; } }
+        @media (max-width: 900px) {
+          .lc-grid { grid-template-columns: 1fr !important; gap: clamp(20px,5vw,30px) !important; }
+          /* Result sticks to the top so the number stays in view while you drag the
+             sliders below it. Opaque bg so the sliders don't show through. */
+          .lc-result {
+            order: -1; position: sticky; top: 70px; z-index: 5;
+            background: #0A1A0D !important; padding: clamp(20px,5vw,28px) !important;
+          }
+          .lc-ring { width: min(140px,40vw) !important; }
+          .lc-result p:first-of-type { margin: clamp(14px,2vw,18px) 0 clamp(14px,2vw,18px) !important; }
+        }
       `}</style>
 
       <div className="section-glow" aria-hidden="true" style={{ top: '6%', left: '-6%', width: 'min(520px,55vw)', height: 'min(520px,55vw)' }} />
@@ -123,7 +133,7 @@ export function LongevityCalculator() {
 
         {/* Result */}
         <div className="lc-result glass-card" style={{ padding: 'clamp(32px,4vw,48px)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ position: 'relative', width: 'min(240px,64vw)', aspectRatio: '1 / 1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="lc-ring" style={{ position: 'relative', width: 'min(240px,64vw)', aspectRatio: '1 / 1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg viewBox="0 0 220 220" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
               <circle cx="110" cy="110" r={R} fill="none" stroke="rgba(201,169,110,0.14)" strokeWidth="6" />
               <circle className="lc-ring-fill" cx="110" cy="110" r={R} fill="none" stroke="var(--gold)" strokeWidth="6" strokeLinecap="round"
