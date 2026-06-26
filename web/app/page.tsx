@@ -8,6 +8,7 @@ import { EstateSection }     from '@/components/estate-section';
 import { ParkSection }       from '@/components/park-section';
 import { ParkLifeSection }   from '@/components/park-life-section';
 import { AmenitiesSection }  from '@/components/amenities-section';
+import { LongevityCalculator } from '@/components/longevity-calculator';
 import { VillasSection }     from '@/components/villas-section';
 import { InteriorSection }   from '@/components/interior-section';
 import { MapSection }        from '@/components/map-section';
@@ -28,6 +29,7 @@ export default function Home() {
       <ParkSection />
       <ParkLifeSection />
       <AmenitiesSection />
+      <LongevityCalculator />
       <VillasSection />
       <InteriorSection />
       <MapSection />
