@@ -538,6 +538,11 @@ body {
   }
 }
 
+/* ══════════ Investment block: stack the big figure above the terms on phones ══════════ */
+@media (max-width: 900px) {
+  .lr-invest { grid-template-columns: 1fr !important; gap: clamp(34px,6vw,48px) !important; }
+}
+
 /* ══════════ Estate ("jungle meets the sea") ══════════
    The full 3×3 collage opens into the centre image on every device — phones
    included (visitors preferred seeing all the tiles zoom in, not just the

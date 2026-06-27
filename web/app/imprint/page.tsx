@@ -19,17 +19,17 @@ export default function ImprintPage() {
 
       <h2>Company information</h2>
       <ul>
-        <li><strong>[Legal entity name]</strong></li>
+        <li><strong>Longevity Property Group LLC</strong></li>
+        <li>Hong Kong</li>
         <li>[Registered address]</li>
-        <li>[Country of registration]</li>
         <li>[Company / registration number]</li>
-        <li>[VAT / tax number, if applicable]</li>
         <li>[Managing director / authorised representative]</li>
       </ul>
 
       <h2>Contact</h2>
       <ul>
-        <li>Email: <a href="mailto:info@longevityresort.com">info@longevityresort.com</a></li>
+        <li>Email: <a href="mailto:sales@longevitysamui.com">sales@longevitysamui.com</a></li>
+        <li>Web: <a href="https://longevitysamui.com">longevitysamui.com</a></li>
         <li>Location: Plai Leam, Koh Samui, Thailand</li>
       </ul>
 

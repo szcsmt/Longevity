@@ -5,15 +5,16 @@ import { BrochureDownload } from '@/components/brochure-download';
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
-const CONTACT_EMAIL = 'info@longevityresort.com';
+const CONTACT_EMAIL = 'sales@longevitysamui.com';
+const WEBSITE = 'longevitysamui.com';
 
 // Leading "/" so the anchors also work from the legal pages (jump home, then scroll).
 const explore = [
   { label: 'The Park',     href: '/#park'        },
   { label: 'The Villas',   href: '/#villas'      },
-  { label: 'Personalise',  href: '/#personalise' },
+  { label: 'Investment',   href: '/#investment'  },
   { label: 'Location',     href: '/#location'    },
-  { label: 'Partners',     href: '/#'            },
+  { label: 'Behind the Resort', href: '/#team'   },
   { label: 'Reserve',      href: '/#reserve'     },
 ];
 
@@ -93,6 +94,10 @@ export function FooterSection() {
               borderBottom: '1px solid rgba(201,169,110,0.35)',
               paddingBottom: 2, transition: 'color 0.3s, border-color 0.3s',
             }}>{CONTACT_EMAIL}</a>
+            <a href={`https://${WEBSITE}`} target="_blank" rel="noopener noreferrer" className="ft-link" style={{
+              display: 'block', fontFamily: ff, fontSize: 'clamp(13px,1.2vw,15px)',
+              color: 'var(--cr70)', textDecoration: 'none', marginTop: 14, width: 'fit-content',
+            }}>{WEBSITE}</a>
             <p style={{
               fontFamily: ffs, fontSize: 8, fontWeight: 300,
               letterSpacing: '0.16em', textTransform: 'uppercase',

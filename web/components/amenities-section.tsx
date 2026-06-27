@@ -94,8 +94,8 @@ export function AmenitiesSection() {
         margin: '0 0 clamp(20px,2.5vw,32px)', maxWidth: '14em',
         textWrap: 'balance',
       }}>
-        <span style={{ whiteSpace: 'nowrap' }}>Your home heals you</span>{' '}
-        <em className="gold-text" style={{ fontStyle: 'italic' }}>while you live in it.</em>
+        Longevity built into{' '}
+        <em className="gold-text" style={{ fontStyle: 'italic' }}>daily life.</em>
       </h2>
 
       <p className="reveal" style={{

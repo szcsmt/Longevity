@@ -46,7 +46,7 @@ const streets: Street[] = [
     tint: 'rgba(206,138,120,0.32)', img: '/images/streets/carnival.webp',
   },
   {
-    index: '04', name: 'Garden Street', icon: Trees,
+    index: '04', name: 'Tropical Street', icon: Trees,
     tagline: 'Lush green, softly lit.',
     desc: 'A leafy residential lane wrapped in tropical planting, with warm light tracing every villa at dusk.',
     keywords: ['Tropical planting', 'Evening glow', 'Family friendly'],
@@ -175,10 +175,10 @@ export function ParkLifeSection() {
           fontSize: 'clamp(15px,1.5vw,20px)',
           lineHeight: 1.9, color: 'var(--cr70)', margin: 0,
         }}>
-          A private, gated park of 60+ residences, laid out as four
-          themed lanes, each with its own atmosphere. One guarded entrance, no through
-          traffic, utilities buried underground. You don&rsquo;t arrive at a building.
-          You come home to a neighbourhood.
+          Longevity Resort is planned as a private residential sanctuary, not a conventional
+          holiday development. Its streets, gardens and villas are designed to work together
+          as one calm, secure and carefully planned environment. Every detail supports the
+          same idea: living well should feel effortless.
         </p>
       </div>
 
