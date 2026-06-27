@@ -38,7 +38,7 @@ export function SolutionSection() {
     <section ref={ref} style={{ background: 'transparent', position: 'relative', overflow: 'hidden' }}>
 
       {/* ── Full-bleed image reveal ── */}
-      <div style={{ position: 'relative', height: 'clamp(420px,68vh,720px)', overflow: 'hidden' }}>
+      <div className="lr-koh-hero" style={{ position: 'relative', height: 'clamp(420px,68vh,720px)', overflow: 'hidden' }}>
         <img
           src="/images/another-way.webp"
           alt="Koh Samui"
@@ -98,13 +98,13 @@ export function SolutionSection() {
       </div>
 
       {/* ── Stats + prose ── */}
-      <div style={{
+      <div className="lr-koh-body" style={{
         padding: 'clamp(60px,7vw,96px) clamp(24px,8vw,120px) clamp(80px,10vw,140px)',
         position: 'relative', zIndex: 2,
       }}>
 
         {/* Stats grid — 4 cells */}
-        <div className="reveal lr-cols-4" style={{
+        <div className="reveal lr-cols-4 lr-koh-stats" style={{
           display: 'grid', gridTemplateColumns: 'repeat(4,1fr)',
           gap: 'clamp(10px,1.2vw,18px)',
           maxWidth: 900, margin: '0 auto clamp(72px,9vw,112px)',

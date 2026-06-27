@@ -34,16 +34,17 @@ export function EstateSection() {
       ticking = false;
       if (maxScroll <= 0) return;
       const raw = Math.min(1, Math.max(0, (window.scrollY - secTop) / maxScroll));
-      // easeOut — the zoom responds the moment you start scrolling.
-      const p = raw * (2 - raw);
+      // easeIn — start wide and linger there, then zoom in gently (no sudden close-up).
+      const p = raw * raw;
 
       if (imgRef.current) {
-        // translateZ(0) keeps it on its own GPU layer so the zoom stays smooth on
-        // phones (iOS Safari otherwise repaints the sticky layer each frame → jank).
-        imgRef.current.style.transform = `translateZ(0) scale(${1 + p * 0.55})`;
+        // Gentle zoom: starts at the full wide frame and only grows to 1.18 (the old
+        // 1.55 felt like it started too close and zoomed in too far).
+        // translateZ(0) keeps it on its own GPU layer so the zoom stays smooth.
+        imgRef.current.style.transform = `translateZ(0) scale(${1 + p * 0.18})`;
       }
       if (textRef.current) {
-        textRef.current.style.opacity = Math.max(0, (p - 0.55) * 2.8).toFixed(3);
+        textRef.current.style.opacity = Math.max(0, (p - 0.45) * 2.6).toFixed(3);
       }
       if (labelRef.current) {
         labelRef.current.style.opacity = Math.max(0, 1 - p * 4).toFixed(3);

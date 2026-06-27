@@ -530,6 +530,14 @@ body {
   .lr-amenities-canvas { aspect-ratio: 16 / 10 !important; }
 }
 
+/* ══════════ Solution ("Koh Samui"): fit the title + intro + the 4 cards on one
+   phone screen — a shorter hero image and a tighter gap down to the stats ══════════ */
+@media (max-width: 768px) {
+  .lr-koh-hero  { height: 46vh !important; min-height: 318px !important; }
+  .lr-koh-body  { padding-top: clamp(20px,5vw,32px) !important; }
+  .lr-koh-stats { margin-bottom: clamp(40px,8vw,60px) !important; }
+}
+
 /* ══════════ Park-life: symmetric 2×2 stats + a more compact entrance banner on phones ══════════ */
 @media (max-width: 768px) {
   .lr-park-stats { grid-template-columns: 1fr 1fr !important; gap: clamp(18px,4vw,28px) clamp(20px,5vw,40px) !important; }

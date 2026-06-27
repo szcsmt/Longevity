@@ -17,10 +17,15 @@ export function ReserveFab() {
   useEffect(() => {
     let inView = false;
     let ticking = false;
+    const heroEl = document.getElementById('hero');
 
     const compute = () => {
       ticking = false;
-      setPastHero(window.scrollY > window.innerHeight * 0.85);
+      // Only once the whole hero has scrolled past (its bottom above the viewport).
+      const afterHero = heroEl
+        ? heroEl.getBoundingClientRect().bottom <= 0
+        : window.scrollY > window.innerHeight;
+      setPastHero(afterHero);
       setReserveInView(inView);
     };
     const onScroll = () => {
