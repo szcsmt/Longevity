@@ -19,18 +19,22 @@ export function ReserveFab() {
     let ticking = false;
     const heroEl = document.getElementById('hero');
 
+    // Appear about halfway through scrolling out of the hero (not only once it's
+    // fully gone). Cached so the scroll path never reads layout.
+    let threshold = window.innerHeight;
+    const measure = () => {
+      threshold = heroEl ? heroEl.offsetTop + heroEl.offsetHeight * 0.5 : window.innerHeight;
+    };
+
     const compute = () => {
       ticking = false;
-      // Only once the whole hero has scrolled past (its bottom above the viewport).
-      const afterHero = heroEl
-        ? heroEl.getBoundingClientRect().bottom <= 0
-        : window.scrollY > window.innerHeight;
-      setPastHero(afterHero);
+      setPastHero(window.scrollY > threshold);
       setReserveInView(inView);
     };
     const onScroll = () => {
       if (!ticking) { ticking = true; requestAnimationFrame(compute); }
     };
+    const onResize = () => { measure(); onScroll(); };
 
     const reserveEl = document.getElementById('reserve');
     let io: IntersectionObserver | null = null;
@@ -40,12 +44,13 @@ export function ReserveFab() {
     }
 
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
+    measure();
     compute();
 
     return () => {
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('resize', onResize);
       io?.disconnect();
     };
   }, []);

@@ -10,10 +10,11 @@ const ffs = 'var(--font-raleway), sans-serif';
 const IMAGE = '/images/sanaila.jpg';
 
 export function EstateSection() {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const imgRef    = useRef<HTMLDivElement>(null);
-  const textRef   = useRef<HTMLDivElement>(null);
-  const labelRef  = useRef<HTMLSpanElement>(null);
+  const scrollRef   = useRef<HTMLDivElement>(null);
+  const imgRef      = useRef<HTMLDivElement>(null);
+  const textRef     = useRef<HTMLDivElement>(null);
+  const labelRef    = useRef<HTMLSpanElement>(null);
+  const vignetteRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -34,17 +35,20 @@ export function EstateSection() {
       ticking = false;
       if (maxScroll <= 0) return;
       const raw = Math.min(1, Math.max(0, (window.scrollY - secTop) / maxScroll));
-      // easeIn — start wide and linger there, then zoom in gently (no sudden close-up).
-      const p = raw * raw;
+      // easeOut — responds immediately as you scroll (no slow lingering start).
+      const p = raw * (2 - raw);
 
       if (imgRef.current) {
-        // Gentle zoom: starts at the full wide frame and only grows to 1.18 (the old
-        // 1.55 felt like it started too close and zoomed in too far).
-        // translateZ(0) keeps it on its own GPU layer so the zoom stays smooth.
-        imgRef.current.style.transform = `translateZ(0) scale(${1 + p * 0.18})`;
+        // Strong "step into the jungle" push: zoom deep (to 2.0×) so it feels like
+        // you walk into the scene. translateZ(0) keeps it on its own GPU layer.
+        imgRef.current.style.transform = `translateZ(0) scale(${1 + p * 1.0})`;
+      }
+      if (vignetteRef.current) {
+        // Edges darken as you go deeper → the jungle closes in around you.
+        vignetteRef.current.style.opacity = (0.4 + p * 0.6).toFixed(3);
       }
       if (textRef.current) {
-        textRef.current.style.opacity = Math.max(0, (p - 0.45) * 2.6).toFixed(3);
+        textRef.current.style.opacity = Math.max(0, (p - 0.5) * 2.6).toFixed(3);
       }
       if (labelRef.current) {
         labelRef.current.style.opacity = Math.max(0, 1 - p * 4).toFixed(3);
@@ -108,10 +112,11 @@ export function EstateSection() {
           />
         </div>
 
-        {/* ── Atmospheric vignette ── */}
-        <div aria-hidden="true" style={{
+        {/* ── Atmospheric vignette — darkens as you push deeper (jungle closes in) ── */}
+        <div ref={vignetteRef} aria-hidden="true" style={{
           position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse 80% 70% at 50% 48%, transparent 40%, rgba(6,14,8,0.55) 100%)',
+          opacity: 0.4, willChange: 'opacity',
+          background: 'radial-gradient(ellipse 78% 66% at 50% 46%, transparent 26%, rgba(6,14,8,0.92) 100%)',
         }} />
 
         {/* ── Section label (top-left, fades on scroll) ── */}
