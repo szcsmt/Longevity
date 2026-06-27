@@ -68,7 +68,7 @@ export function FooterSection() {
               fontSize: 'clamp(14px,1.3vw,16px)', lineHeight: 1.7,
               color: 'var(--cr70)', margin: 0, maxWidth: 280,
             }}>
-              A private sanctuary for renewal.<br />Plai Laem, Koh Samui.
+              A private sanctuary for renewal.<br />Plai Leam, Koh Samui.
             </p>
           </div>
 
@@ -97,7 +97,7 @@ export function FooterSection() {
               fontFamily: ffs, fontSize: 8, fontWeight: 300,
               letterSpacing: '0.16em', textTransform: 'uppercase',
               color: 'var(--cr40)', margin: '18px 0 0', lineHeight: 1.8,
-            }}>Plai Laem · Koh Samui · Thailand</p>
+            }}>Plai Leam · Koh Samui · Thailand</p>
             <BrochureDownload variant="footer" />
           </div>
 

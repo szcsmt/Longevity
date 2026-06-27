@@ -16,7 +16,7 @@ const lifestyle = [
   { label: 'Crystal clear coastline', sub: 'Gulf of Thailand, northeast shore' },
   { label: 'Ancient jungle canopy',   sub: 'Native rainforest surrounding the estate' },
   { label: 'Warmth all year',         sub: '29°C average, minimal rain season' },
-  { label: 'Quiet residential setting', sub: 'A calm, low-density environment' },
+  { label: 'Absolute silence',        sub: 'No traffic, no concrete, no noise' },
 ];
 
 export function SolutionSection() {

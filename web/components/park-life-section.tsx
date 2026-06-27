@@ -27,8 +27,8 @@ const streets: Street[] = [
   {
     index: '01', name: 'Zen Street', icon: Leaf,
     tagline: 'Stillness by design.',
-    desc: 'Stone gardens, shaded meditation decks, and the soft sound of moving water. The calmest lane in the resort.',
-    keywords: ['Meditation gardens', 'Water features', 'Deep calm'],
+    desc: 'Stone gardens, shaded meditation decks, and the soft sound of moving water. The quietest lane on the estate.',
+    keywords: ['Meditation gardens', 'Water features', 'Absolute silence'],
     tint: 'rgba(120,178,150,0.30)', img: '/images/streets/zen.webp',
   },
   {
@@ -46,7 +46,7 @@ const streets: Street[] = [
     tint: 'rgba(206,138,120,0.32)', img: '/images/streets/carnival.webp',
   },
   {
-    index: '04', name: 'Tropical Garden Lane', icon: Trees,
+    index: '04', name: 'Garden Street', icon: Trees,
     tagline: 'Lush green, softly lit.',
     desc: 'A leafy residential lane wrapped in tropical planting, with warm light tracing every villa at dusk.',
     keywords: ['Tropical planting', 'Evening glow', 'Family friendly'],
@@ -153,7 +153,7 @@ export function ParkLifeSection() {
         letterSpacing: '0.30em', textTransform: 'uppercase',
         color: 'var(--gold)', opacity: 0.65,
         marginBottom: 'clamp(28px,3.5vw,44px)',
-      }}>The Park · Plai Laem Longevity Park</span>
+      }}>The Park · Plai Leam Longevity Park</span>
 
       {/* Two-column header */}
       <div className="reveal" style={{
@@ -168,17 +168,17 @@ export function ParkLifeSection() {
           color: 'var(--cream)', margin: 0,
         }}>
           Not a complex.<br />
-          <em className="gold-text" style={{ fontStyle: 'italic' }}>A private residential sanctuary.</em>
+          <em className="gold-text" style={{ fontStyle: 'italic' }}>A village.</em>
         </h2>
         <p style={{
           fontFamily: ff, fontWeight: 400,
           fontSize: 'clamp(15px,1.5vw,20px)',
           lineHeight: 1.9, color: 'var(--cr70)', margin: 0,
         }}>
-          Longevity Resort is planned as a private residential sanctuary, not a conventional
-          holiday development. Its streets, gardens and villas are designed to work together
-          as one calm, secure and carefully planned environment. Every detail supports the
-          same idea: living well should feel effortless.
+          A private, gated park of 60+ residences, laid out as four
+          themed lanes, each with its own atmosphere. One guarded entrance, no through
+          traffic, utilities buried underground. You don&rsquo;t arrive at a building.
+          You come home to a neighbourhood.
         </p>
       </div>
 
@@ -204,7 +204,7 @@ export function ParkLifeSection() {
           fontFamily: ffs, fontSize: 'clamp(8.5px,0.95vw,11px)', fontWeight: 300, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cr70)',
         }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)' }} />
-          Gated Entrance
+          Guarded Entrance
         </span>
       </div>
 

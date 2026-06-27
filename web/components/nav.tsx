@@ -11,7 +11,6 @@ const links = [
   { label: 'Villas',     href: '#villas'   },
   { label: 'Personalise', href: '#personalise' },
   { label: 'Location',   href: '#location' },
-  { label: 'Behind the Resort', href: '#team' },
   { label: 'Reserve',    href: '#reserve'  },
 ];
 

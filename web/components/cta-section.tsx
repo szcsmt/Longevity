@@ -165,7 +165,7 @@ export function CtaSection() {
               letterSpacing: '0.30em', textTransform: 'uppercase',
               color: 'var(--gold)', opacity: 0.60,
               marginBottom: 'clamp(28px,3.5vw,44px)',
-            }}>Investment</span>
+            }}>Reserve</span>
 
             {/* Details strip */}
             <div className="reveal">
@@ -182,20 +182,14 @@ export function CtaSection() {
             {/* Headline sits directly above the form so the title + fields read as one unit */}
             <h2 className="reveal" style={{
               fontFamily: ff, fontWeight: 400,
-              fontSize: 'clamp(30px,3.8vw,52px)',
-              lineHeight: 1.1, letterSpacing: '-0.01em',
+              fontSize: 'clamp(34px,4.4vw,58px)',
+              lineHeight: 1.08, letterSpacing: '-0.01em',
               color: 'var(--cream)',
-              margin: '0 0 clamp(16px,2vw,22px)',
+              margin: '0 0 clamp(24px,3.5vw,40px)',
             }}>
-              Request the full<br />
-              <em className="gold-text" style={{ fontStyle: 'italic', filter: 'drop-shadow(0 0 28px var(--gold-glow))' }}>investment breakdown.</em>
+              Your place<br />
+              <em className="gold-text" style={{ fontStyle: 'italic', filter: 'drop-shadow(0 0 28px var(--gold-glow))' }}>is waiting.</em>
             </h2>
-            <p className="reveal" style={{
-              fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,17px)',
-              lineHeight: 1.7, color: 'var(--cr70)', margin: '0 0 clamp(24px,3vw,36px)', maxWidth: 440,
-            }}>
-              Receive villa pricing, availability, ownership structure and return details.
-            </p>
 
             {sent ? (
               <div className="reveal" style={{ textAlign: 'center', padding: 'clamp(40px,5vw,60px)', border: '1px solid rgba(201,169,110,0.14)' }}>
@@ -258,7 +252,7 @@ export function CtaSection() {
                 </div>
 
                 <button type="submit" className="cta-submit">
-                  Request Full Investment Breakdown
+                  Begin Your Enquiry
                   <svg width="16" height="10" viewBox="0 0 16 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M1 5h14M10 1l5 4-5 4" />
                   </svg>
@@ -269,7 +263,7 @@ export function CtaSection() {
                   letterSpacing: '0.08em', color: 'var(--cr40)',
                   lineHeight: 1.8, margin: 0,
                 }}>
-                  Your details are used only to respond to your enquiry and provide the information you request.
+                  Your information is kept strictly private. No marketing. No third parties.
                 </p>
 
               </form>

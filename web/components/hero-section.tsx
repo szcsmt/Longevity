@@ -338,20 +338,9 @@ export function HeroSection() {
               transition: titleVisible ? 'opacity 2.8s cubic-bezier(0.06,1,0.18,1) 0.28s, transform 2.8s cubic-bezier(0.06,1,0.18,1) 0.28s' : 'none',
             }}>Resort</span>
           </div>
-
-          {/* Subtitle — short + elegant */}
-          <span style={{
-            display:'block', whiteSpace:'normal', maxWidth:'min(460px,82vw)', margin:'clamp(16px,2vw,22px) auto 0',
-            fontFamily:'var(--font-raleway), sans-serif',
-            fontSize:'clamp(10.5px,1.4vw,14px)', fontWeight:300,
-            letterSpacing:'0.16em', textTransform:'uppercase', lineHeight:1.8,
-            color:'var(--w90)', opacity: titleVisible ? 0.9 : 0,
-            textShadow:'0 1px 14px rgba(6,14,8,0.85)',
-            transition: titleVisible ? 'opacity 2s ease 0.7s' : 'none',
-          }}>Private pool villas. Longevity living. Managed ownership.</span>
         </div>
 
-        {/* CTA — Explore the Resort + Request Full Investment Breakdown */}
+        {/* CTA — Explore + Enter the Estate + a WhatsApp shortcut to sales */}
         <div className="hero-cta" style={{
           position:'absolute', left:'50%',
           transform:'translateX(-50%)',
@@ -362,8 +351,8 @@ export function HeroSection() {
           opacity: ctaVisible ? 1 : 0,
           transition:'opacity 1.2s cubic-bezier(0.22,1,0.36,1)',
         }}>
-          {/* Explore the Resort — secondary */}
-          <a href="#discover" onClick={e => goTo(e, 'discover')} style={{
+          {/* Explore — secondary → "A home that pays you back" */}
+          <a href="#returns" onClick={e => goTo(e, 'returns')} style={{
             display:'inline-flex', alignItems:'center', justifyContent:'center', gap:11,
             padding:'15px clamp(22px,3vw,34px)', borderRadius:100,
             border:'1px solid rgba(228,217,195,0.5)',
@@ -375,13 +364,13 @@ export function HeroSection() {
             onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--w90)'; b.style.borderColor = 'var(--w90)'; b.style.color = 'var(--bg)'; }}
             onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.34)'; b.style.borderColor = 'rgba(228,217,195,0.5)'; b.style.color = 'var(--w90)'; }}
           >
-            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:300, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>Explore the Resort</span>
+            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:300, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>Explore</span>
           </a>
 
-          {/* Request Full Investment Breakdown — primary, solid gold → the form */}
-          <a href="#reserve" onClick={e => goTo(e, 'reserve')} style={{
+          {/* Enter the Estate — primary, solid gold → The Villas */}
+          <a href="#villas" onClick={e => goTo(e, 'villas')} style={{
             display:'inline-flex', alignItems:'center', justifyContent:'center', gap:12,
-            padding:'15px clamp(22px,3.2vw,34px)', borderRadius:100,
+            padding:'15px clamp(24px,3.4vw,38px)', borderRadius:100,
             border:'1px solid rgba(244,228,194,0.6)',
             background:'linear-gradient(135deg, var(--gold-bright) 0%, var(--gold) 58%, #B8975D 100%)',
             textDecoration:'none', cursor:'pointer', whiteSpace:'nowrap',
@@ -392,7 +381,7 @@ export function HeroSection() {
             onMouseEnter={e => { const b = e.currentTarget; b.style.filter = 'brightness(1.08)'; b.style.transform = 'translateY(-2px)'; }}
             onMouseLeave={e => { const b = e.currentTarget; b.style.filter = 'none'; b.style.transform = 'translateY(0)'; }}
           >
-            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:500, letterSpacing:'0.18em', textTransform:'uppercase', color:'inherit' }}>Request Full Investment Breakdown</span>
+            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:500, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>Enter the Estate</span>
             <span aria-hidden="true" style={{ display:'flex', alignItems:'center' }}>
               <svg width="18" height="10" viewBox="0 0 18 10" fill="none">
                 <path d="M1 5h16M11 1l6 4-6 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>

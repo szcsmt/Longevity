@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ComponentType } from 'react';
-import { Lightbulb, Droplets, Flame, Waves, Leaf, Activity, Apple, Dumbbell } from 'lucide-react';
+import { Lightbulb, Droplets, Moon, Wind, Flame, Waves, Leaf, Activity } from 'lucide-react';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
@@ -27,15 +27,15 @@ interface Hotspot {
 
 /* Positions tuned to the heals-you render (open villa, pool, interior). */
 const hotspots: Hotspot[] = [
-  { x: 38, y: 15, icon: Lightbulb,  title: 'Circadian Lighting',  body: 'Light that follows the sun, warm white by morning, soft amber by night, designed around your natural rhythm.' },
-  { x: 20, y: 44, icon: Activity,   title: 'Smart Health Tracking', body: 'Connected sensors and a simple dashboard help you understand your sleep, activity and recovery over time.' },
-  { x: 63, y: 28, icon: Waves,      title: 'Ice Bath',            body: 'Cold immersion that supports recovery, rest and resilience, on your schedule.' },
-  { x: 49, y: 58, icon: Flame,      title: 'Mobile Infrared Sauna', body: 'A portable infrared sauna on request. Deep, gentle heat that supports recovery wherever you want it.' },
-  { x: 85, y: 20, icon: Apple,      title: 'Personalized Nutrition', body: 'Guidance and meal planning built around your goals, supporting better routines day to day.' },
-  { x: 90, y: 54, icon: Leaf,       title: 'Natural Materials',   body: 'Stone, timber and linen throughout. Honest, breathable materials chosen to calm the senses and last for decades.' },
-  { x: 18, y: 80, icon: Dumbbell,   title: 'Workout Kit',         body: 'A compact set of equipment in every villa, so movement stays easy, private and part of the daily routine.' },
-  { x: 40, y: 78, icon: Droplets,   title: 'Filtered Water',      body: 'Pure water at every point of use. Kitchen, bathroom, shower.' },
-  { x: 77, y: 80, icon: Meditation, title: 'Soundproof Walls',    body: 'Walls engineered for quiet, so rest and focus come easily in a calm residential setting.' },
+  { x: 38, y: 15, icon: Lightbulb,  title: 'Circadian Lighting',  body: 'Light that follows the sun, warm white by morning, soft amber by night. Your body clock, supported by the architecture itself.' },
+  { x: 20, y: 44, icon: Droplets,   title: 'Filtered Water Everywhere', body: 'Pure water at every point of use. Kitchen, bathroom, shower. No exceptions.' },
+  { x: 63, y: 28, icon: Moon,       title: 'Full Blackout Bedrooms', body: 'Not curtains, but architecture. Every bedroom sealed from light for complete sleep quality.' },
+  { x: 49, y: 58, icon: Meditation, title: 'Soundproof',          body: 'Walls engineered for silence. No traffic, no neighbours, nothing between you and deep, undisturbed calm.' },
+  { x: 85, y: 20, icon: Wind,       title: 'Central Cooling',     body: 'Climate control for the whole villa, tuned for the tropics. Even, quiet, fresh air in every room, day and night.' },
+  { x: 90, y: 54, icon: Flame,      title: 'Mobile Infrared Sauna', body: 'A portable infrared sauna, yours on request. Deep heat that eases the body and speeds recovery, wherever you want it.' },
+  { x: 18, y: 80, icon: Waves,      title: 'Ice Bath',            body: 'Cold immersion for recovery, immune function, and mental resilience, on your schedule.' },
+  { x: 40, y: 78, icon: Leaf,       title: 'Natural Materials',   body: 'Stone, timber and linen throughout. Honest, breathable materials chosen to calm the senses and last for decades.' },
+  { x: 77, y: 80, icon: Activity,   title: 'Vitality Lab',        body: 'VO₂ max testing, body composition analysis and a personal dietitian. Your biology, measured and coached.' },
 ];
 
 export function AmenitiesSection() {
@@ -85,7 +85,7 @@ export function AmenitiesSection() {
         display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300,
         letterSpacing: '0.30em', textTransform: 'uppercase',
         color: 'var(--gold)', opacity: 0.65, marginBottom: 'clamp(28px,3.5vw,44px)',
-      }}>Longevity Living</span>
+      }}>Built Into Every Villa</span>
 
       {/* Headline */}
       <h2 className="reveal" style={{
@@ -94,25 +94,15 @@ export function AmenitiesSection() {
         margin: '0 0 clamp(20px,2.5vw,32px)', maxWidth: '14em',
         textWrap: 'balance',
       }}>
-        Longevity built into{' '}
-        <em className="gold-text" style={{ fontStyle: 'italic' }}>daily life.</em>
+        <span style={{ whiteSpace: 'nowrap' }}>Your home heals you</span>{' '}
+        <em className="gold-text" style={{ fontStyle: 'italic' }}>while you live in it.</em>
       </h2>
 
       <p className="reveal" style={{
         fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,18px)',
-        lineHeight: 1.8, color: 'var(--cr70)', margin: '0 0 clamp(20px,2.5vw,28px)', maxWidth: 640,
+        lineHeight: 1.8, color: 'var(--cr40)', margin: '0 0 clamp(44px,5vw,64px)', maxWidth: 520,
       }}>
-        Wellbeing at Longevity Resort is practical, private and close to home. The Longevity Centre
-        brings diagnostics, recovery, nutrition and performance support into the resort environment,
-        giving owners a clear way to understand their body, restore faster and build better routines
-        over time.
-      </p>
-      <p className="reveal" style={{
-        fontFamily: ffs, fontSize: 'clamp(10px,1vw,12px)', fontWeight: 300,
-        letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.75,
-        margin: '0 0 clamp(40px,5vw,60px)',
-      }}>
-        Tap each point to see the wellbeing features built into the villa
+        Explore the residence. Tap each point to see the longevity technology built into it.
       </p>
 
       {/* Interactive image */}
