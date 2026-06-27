@@ -20,7 +20,7 @@ const chapters: Chapter[] = [
   },
   {
     title: 'The Place', tint: 'rgba(120,178,150,0.30)',
-    body: 'Plai Leam, northeast Koh Samui. Untouched jungle, a private shore five minutes on foot, the first development of its kind on the island. 330 days of sunshine. Ancient trees. The Gulf of Thailand at your doorstep. The moment he stood here, the search was over.',
+    body: 'Plai Laem, northeast Koh Samui. Lush jungle, close to nearby beaches, a quiet residential setting. 330 days of sunshine. Ancient trees. The Gulf of Thailand at your doorstep. The moment he stood here, the search was over.',
     bg: '/images/story/place.webp',
   },
   {
