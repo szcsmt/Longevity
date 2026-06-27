@@ -19,11 +19,14 @@ export function ReserveFab() {
     let ticking = false;
     const heroEl = document.getElementById('hero');
 
-    // Appear about halfway through scrolling out of the hero (not only once it's
-    // fully gone). Cached so the scroll path never reads layout.
+    // Appear exactly when the hero's own buttons fade out (the hero fades them at
+    // ~78% of its scrub; same formula here so the hand-off lines up). Cached so the
+    // scroll path never reads layout.
     let threshold = window.innerHeight;
     const measure = () => {
-      threshold = heroEl ? heroEl.offsetTop + heroEl.offsetHeight * 0.5 : window.innerHeight;
+      threshold = heroEl
+        ? heroEl.offsetTop + Math.max(0, heroEl.offsetHeight - window.innerHeight) * 0.78
+        : window.innerHeight;
     };
 
     const compute = () => {

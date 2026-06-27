@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 
 const FRAME_COUNT = 73;
 const POSTER = '/hero/poster.webp';
+const SCRUB_VIDEO = '/hero/hero-scrub.mp4';
 const framePath = (i: number) => `/hero/f-${String(i + 1).padStart(3, '0')}.webp`;
 
 export function HeroSection() {
   const scrollEl  = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imgRef    = useRef<HTMLImageElement>(null);   // phones: sharp static hero image
+  const videoRef  = useRef<HTMLVideoElement>(null);   // phones: scroll-scrubbed video
   const [titleVisible, setTitleVisible] = useState(false);
   const [ctaVisible,   setCtaVisible]   = useState(false);
   const [cueHidden,    setCueHidden]    = useState(false);
@@ -33,21 +34,46 @@ export function HeroSection() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const coarse = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
 
-    // ── PHONES / touch: a sharp STATIC image that gently zooms as you scroll.
-    //    The frame-by-frame canvas scrub is too heavy on phones (it lags the
-    //    scroll); a single <img> + one GPU transform is buttery smooth and renders
-    //    at full device resolution (sharp). The full video scrub stays on desktop. ──
+    // ── PHONES / touch: scroll-scrub a real <video>. It's hardware-decoded (no
+    //    per-frame canvas redraw → smooth, lag-free) and renders at the device's
+    //    native resolution (sharp). currentTime is *eased* toward the scroll target
+    //    so it stays smooth both directions. Poster shows if the device can't scrub. ──
     if (coarse) {
+      const video = videoRef.current;
+      if (!video) return;
       let mMax = scroller.offsetHeight - window.innerHeight;
+      let target = 0;
+      let easing = false;
       let mTick = false;
+
+      video.muted = true;
+      // Prime decode/seek (muted inline videos won't seek-render on iOS until "played").
+      const prime = () => { video.play().then(() => video.pause()).catch(() => {}); };
+      if (video.readyState >= 2) prime();
+      else video.addEventListener('loadeddata', prime, { once: true });
+
+      const ease = () => {
+        const ct = video.currentTime;
+        const d = target - ct;
+        if (Math.abs(d) < 0.012) { easing = false; return; }
+        try { video.currentTime = ct + d * 0.28; } catch { /* seeking not ready yet */ }
+        requestAnimationFrame(ease);
+      };
+
       const mUpdate = () => {
         mTick = false;
         const sc = window.scrollY;
         const prog = mMax > 0 ? Math.min(1, Math.max(0, sc / mMax)) : 0;
-        if (imgRef.current) imgRef.current.style.transform = `translateZ(0) scale(${1 + prog * 0.14})`;
+        const dur = video.duration || 0;
+        if (dur) {
+          target = prog * (dur - 0.05);
+          if (!easing) { easing = true; requestAnimationFrame(ease); }
+        }
         if (sc > 30) setCueHidden(true);
         if (prog >= 0.03) setTitleVisible(true);
-        if (prog >= 0.06) setCtaVisible(true);
+        // Buttons show through the hero, then fade out near the end → that's the
+        // hand-off to the floating "Get in Contact" (which appears at the same point).
+        setCtaVisible(prog >= 0.06 && prog < 0.78);
       };
       const mScroll = () => { if (!mTick) { mTick = true; requestAnimationFrame(mUpdate); } };
       const mResize = () => { mMax = scroller.offsetHeight - window.innerHeight; mUpdate(); };
@@ -119,8 +145,8 @@ export function HeroSection() {
       targetFrame = Math.round(prog * (FRAME_COUNT - 1));
       render(targetFrame);
       if (window.scrollY > 30) setCueHidden(true);
-      if (prog >= (coarse ? 0.03 : 0.12)) setTitleVisible(true);
-      if (prog >= (coarse ? 0.06 : 0.25)) setCtaVisible(true);
+      if (prog >= 0.12) setTitleVisible(true);
+      setCtaVisible(prog >= 0.25 && prog < 0.78);   // fade out near the end → FAB takes over
     }
 
     function resize() {
@@ -230,16 +256,17 @@ export function HeroSection() {
           className="hero-canvas"
         />
 
-        {/* Phones: sharp static hero image (replaces the canvas — see CSS + effect) */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          ref={imgRef}
-          className="hero-img-mobile"
-          src={POSTER}
-          alt=""
+        {/* Phones: scroll-scrubbed video (replaces the canvas — see CSS + effect).
+            poster = the sharp static fallback if the device can't scrub. */}
+        <video
+          ref={videoRef}
+          className="hero-video"
+          src={SCRUB_VIDEO}
+          poster={POSTER}
+          muted
+          playsInline
+          preload="auto"
           aria-hidden="true"
-          decoding="async"
-          fetchPriority="high"
         />
 
         <div aria-hidden="true" style={{
