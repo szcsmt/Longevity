@@ -313,21 +313,6 @@ body {
   height: 100vh; height: 100lvh;
   z-index: 0; background: var(--bg);
 }
-/* Phones scroll-scrub a real <video> instead of the canvas (hardware-decoded →
-   smooth + lag-free, native-resolution → sharp). The canvas scrub stays on desktop. */
-.hero-video {
-  display: none;
-  position: absolute; top: 0; left: 0;
-  width: 100%;
-  height: 100vh; height: 100lvh;
-  object-fit: cover;
-  z-index: 0; background: var(--bg);
-  pointer-events: none;
-}
-@media (max-width: 768px), (pointer: coarse) {
-  .hero-canvas { display: none !important; }
-  .hero-video { display: block; }
-}
 /* The button + scroll cue are anchored inside the SMALL-viewport zone (svh), so
    they stay on screen whether the URL bar is shown or hidden — and never move
    when it toggles. (On desktop lvh == svh, so these reduce to the plain values.) */
