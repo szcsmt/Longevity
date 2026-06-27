@@ -9,6 +9,7 @@ const framePath = (i: number) => `/hero/f-${String(i + 1).padStart(3, '0')}.webp
 export function HeroSection() {
   const scrollEl  = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef    = useRef<HTMLImageElement>(null);   // phones: sharp static hero image
   const [titleVisible, setTitleVisible] = useState(false);
   const [ctaVisible,   setCtaVisible]   = useState(false);
   const [cueHidden,    setCueHidden]    = useState(false);
@@ -32,9 +33,35 @@ export function HeroSection() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const coarse = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
 
-    // ── Canvas image-sequence scrub — runs on phones too (the scroll-triggered
-    //    video is part of the hero). Frames are now native 1916×1080 (sharp) and
-    //    the layout is stable lvh, so the old mobile jank/blur is much reduced. ──
+    // ── PHONES / touch: a sharp STATIC image that gently zooms as you scroll.
+    //    The frame-by-frame canvas scrub is too heavy on phones (it lags the
+    //    scroll); a single <img> + one GPU transform is buttery smooth and renders
+    //    at full device resolution (sharp). The full video scrub stays on desktop. ──
+    if (coarse) {
+      let mMax = scroller.offsetHeight - window.innerHeight;
+      let mTick = false;
+      const mUpdate = () => {
+        mTick = false;
+        const sc = window.scrollY;
+        const prog = mMax > 0 ? Math.min(1, Math.max(0, sc / mMax)) : 0;
+        if (imgRef.current) imgRef.current.style.transform = `translateZ(0) scale(${1 + prog * 0.14})`;
+        if (sc > 30) setCueHidden(true);
+        if (prog >= 0.03) setTitleVisible(true);
+        if (prog >= 0.06) setCtaVisible(true);
+      };
+      const mScroll = () => { if (!mTick) { mTick = true; requestAnimationFrame(mUpdate); } };
+      const mResize = () => { mMax = scroller.offsetHeight - window.innerHeight; mUpdate(); };
+      if (reduce) requestAnimationFrame(() => { setTitleVisible(true); setCtaVisible(true); });
+      window.addEventListener('scroll', mScroll, { passive: true });
+      window.addEventListener('resize', mResize, { passive: true });
+      mUpdate();
+      return () => {
+        window.removeEventListener('scroll', mScroll);
+        window.removeEventListener('resize', mResize);
+      };
+    }
+
+    // ── DESKTOP: full-quality canvas image-sequence scrub ──
     const canvas  = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: false });
@@ -201,6 +228,18 @@ export function HeroSection() {
           ref={canvasRef}
           aria-hidden="true"
           className="hero-canvas"
+        />
+
+        {/* Phones: sharp static hero image (replaces the canvas — see CSS + effect) */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          ref={imgRef}
+          className="hero-img-mobile"
+          src={POSTER}
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          fetchPriority="high"
         />
 
         <div aria-hidden="true" style={{

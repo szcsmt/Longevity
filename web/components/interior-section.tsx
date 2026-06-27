@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sofa, Briefcase, Mic, ArrowUpRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -46,7 +46,18 @@ const configs: Config[] = [
 
 export function InteriorSection() {
   const [active, setActive] = useState(0);
+  const [auto, setAuto]     = useState(true);    // cycles the cards on its own…
+  const [paused, setPaused] = useState(false);   // …pauses while hovering
   const cur = configs[active];
+
+  // Auto-advance through the interiors so you see them change without clicking.
+  // A click takes over and stops it; hovering just pauses it.
+  useEffect(() => {
+    if (!auto || paused) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = setInterval(() => setActive(a => (a + 1) % configs.length), 4000);
+    return () => clearInterval(id);
+  }, [auto, paused]);
 
   return (
     <section id="personalise" style={{
@@ -120,12 +131,14 @@ export function InteriorSection() {
         {/* SELECTOR */}
         <div style={{ gridArea: 'selector' }}>
           <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(10px,1vw,12.5px)', fontWeight: 400, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.8, marginBottom: 'clamp(16px,2vw,22px)' }}>Choose the interior</span>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} onMouseLeave={() => setPaused(false)}>
             {configs.map((c, i) => {
               const Icon = c.icon;
               const on = i === active;
               return (
-                <button key={c.id} className="ds-item" onMouseEnter={() => setActive(i)} onClick={() => setActive(i)}
+                <button key={c.id} className="ds-item"
+                  onMouseEnter={() => { setActive(i); setPaused(true); }}
+                  onClick={() => { setActive(i); setAuto(false); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 16, textAlign: 'left', cursor: 'pointer',
                     padding: 'clamp(14px,1.5vw,18px) clamp(14px,1.6vw,20px)', borderRadius: 12,

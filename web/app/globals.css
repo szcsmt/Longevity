@@ -313,6 +313,23 @@ body {
   height: 100vh; height: 100lvh;
   z-index: 0; background: var(--bg);
 }
+/* Phones use a sharp static <img> instead of the canvas scrub (buttery smooth —
+   the per-frame scrub lags the scroll on phones). Same box; one transform zooms it. */
+.hero-img-mobile {
+  display: none;
+  position: absolute; top: 0; left: 0;
+  width: 100%;
+  height: 100vh; height: 100lvh;
+  object-fit: cover;
+  z-index: 0; background: var(--bg);
+  transform-origin: center center;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+@media (max-width: 768px), (pointer: coarse) {
+  .hero-canvas { display: none !important; }
+  .hero-img-mobile { display: block; }
+}
 /* The button + scroll cue are anchored inside the SMALL-viewport zone (svh), so
    they stay on screen whether the URL bar is shown or hidden — and never move
    when it toggles. (On desktop lvh == svh, so these reduce to the plain values.) */

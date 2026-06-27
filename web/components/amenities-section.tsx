@@ -89,11 +89,12 @@ export function AmenitiesSection() {
 
       {/* Headline */}
       <h2 className="reveal" style={{
-        fontFamily: ff, fontWeight: 400, fontSize: 'clamp(38px,5.8vw,84px)',
-        lineHeight: 1.08, letterSpacing: '-0.01em', color: 'var(--cream)',
+        fontFamily: ff, fontWeight: 400, fontSize: 'clamp(34px,5.8vw,84px)',
+        lineHeight: 1.12, letterSpacing: '-0.01em', color: 'var(--cream)',
         margin: '0 0 clamp(20px,2.5vw,32px)', maxWidth: '14em',
+        textWrap: 'balance',
       }}>
-        Your home heals you<br />
+        <span style={{ whiteSpace: 'nowrap' }}>Your home heals you</span>{' '}
         <em className="gold-text" style={{ fontStyle: 'italic' }}>while you live in it.</em>
       </h2>
 
