@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useT } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
@@ -17,6 +18,7 @@ const DownloadIcon = () => (
 
 /** "Download brochure" button that first asks for a valid email, then downloads. */
 export function BrochureDownload({ variant }: { variant: 'cta' | 'footer' }) {
+  const t = useT();
   const [open, setOpen]   = useState(false);
   const [email, setEmail] = useState('');
   const [error, setError] = useState(false);
@@ -63,7 +65,7 @@ export function BrochureDownload({ variant }: { variant: 'cta' | 'footer' }) {
         transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
       }}
     >
-      Download the brochure
+      {t('br.download')}
       <DownloadIcon />
     </button>
   ) : (
@@ -79,7 +81,7 @@ export function BrochureDownload({ variant }: { variant: 'cta' | 'footer' }) {
         transition: 'color 0.3s, border-color 0.3s',
       }}
     >
-      Download brochure (PDF)
+      {t('br.downloadPdf')}
       <DownloadIcon />
     </button>
   );
@@ -121,12 +123,11 @@ export function BrochureDownload({ variant }: { variant: 'cta' | 'footer' }) {
 
             {done ? (
               <>
-                <h3 style={{ fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(24px,3vw,32px)', color: 'var(--cream)', margin: '0 0 12px' }}>
-                  Thank you.
+                <h3 style={{ fontFamily: ff, fontWeight: 400, fontStyle: 'normal', fontSize: 'clamp(24px,3vw,32px)', color: 'var(--cream)', margin: '0 0 12px' }}>
+                  {t('cta.thanks')}
                 </h3>
                 <p style={{ fontFamily: ff, fontSize: 'clamp(14px,1.4vw,16px)', lineHeight: 1.75, color: 'var(--cr70)', margin: '0 0 clamp(24px,3vw,32px)' }}>
-                  Your brochure is downloading. If it doesn&rsquo;t start automatically,
-                  use the button below.
+                  {t('br.downloading')}
                 </p>
                 <a
                   href={PDF}
@@ -134,21 +135,20 @@ export function BrochureDownload({ variant }: { variant: 'cta' | 'footer' }) {
                   onClick={() => setOpen(false)}
                   style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.26em', textTransform: 'uppercase', color: 'var(--bg)', background: 'var(--gold)', border: '1px solid var(--gold)', borderRadius: 100, padding: '15px 30px', textDecoration: 'none', cursor: 'pointer' }}
                 >
-                  Download again
+                  {t('br.again')}
                   <DownloadIcon />
                 </a>
               </>
             ) : (
               <>
                 <span style={{ display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.7, marginBottom: 12 }}>
-                  Longevity Resort · Brochure 2026
+                  {t('br.eyebrow')}
                 </span>
-                <h3 style={{ fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(23px,2.8vw,30px)', lineHeight: 1.18, color: 'var(--cream)', margin: '0 0 12px' }}>
-                  Where shall we send it?
+                <h3 style={{ fontFamily: ff, fontWeight: 400, fontStyle: 'normal', fontSize: 'clamp(23px,2.8vw,30px)', lineHeight: 1.18, color: 'var(--cream)', margin: '0 0 12px' }}>
+                  {t('br.where')}
                 </h3>
                 <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.7, color: 'var(--cr70)', margin: '0 0 clamp(22px,2.8vw,30px)' }}>
-                  Enter your email to receive the full brochure. We only accept valid
-                  addresses, and your details stay strictly private.
+                  {t('br.enterEmail')}
                 </p>
                 <form onSubmit={submit}>
                   <input
@@ -161,14 +161,14 @@ export function BrochureDownload({ variant }: { variant: 'cta' | 'footer' }) {
                   />
                   {error && (
                     <p style={{ fontFamily: ffs, fontSize: 10, fontWeight: 300, letterSpacing: '0.04em', color: 'rgba(206,138,120,0.95)', margin: '10px 0 0', textAlign: 'left' }}>
-                      Please enter a valid email address.
+                      {t('cta.err.email')}
                     </p>
                   )}
                   <button
                     type="submit"
                     style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', marginTop: 'clamp(18px,2.2vw,24px)', fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.26em', textTransform: 'uppercase', color: 'var(--bg)', background: 'var(--gold)', border: '1px solid var(--gold)', borderRadius: 100, padding: '16px 30px', cursor: 'pointer' }}
                   >
-                    Download the brochure
+                    {t('br.download')}
                     <DownloadIcon />
                   </button>
                 </form>

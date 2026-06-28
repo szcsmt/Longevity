@@ -30,7 +30,7 @@ export default function ImprintPage() {
       <ul>
         <li>Email: <a href="mailto:sales@longevitysamui.com">sales@longevitysamui.com</a></li>
         <li>Web: <a href="https://longevitysamui.com">longevitysamui.com</a></li>
-        <li>Location: Plai Leam, Koh Samui, Thailand</li>
+        <li>Location: Plai Laem, Koh Samui, Thailand</li>
       </ul>
 
       <h2>Responsible for content</h2>

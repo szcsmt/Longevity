@@ -1,20 +1,22 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
 const team = [
-  { category: 'Developer',                title: 'Longevity Property Group',  role: 'Concept, structure and delivery' },
-  { category: 'Architecture & Interiors', title: 'SVA Architects',            role: 'Tropical modern design' },
-  { category: 'Construction',             title: 'Panmas Construction',       role: 'Koh Samui build expertise' },
-  { category: 'Wellness Partner',         title: 'Legacy Fitness & Spa',      role: 'Fitness, spa and recovery' },
-  { category: 'Longevity Partner',        title: 'Specialist Partners',       role: 'Diagnostics and preventive health' },
+  { catKey: 'bh.t1.cat', title: 'Longevity Property Group', roleKey: 'bh.t1.role' },
+  { catKey: 'bh.t2.cat', title: 'SVA Architects',           roleKey: 'bh.t2.role' },
+  { catKey: 'bh.t3.cat', title: 'Panmas Construction',      roleKey: 'bh.t3.role' },
+  { catKey: 'bh.t4.cat', title: 'Legacy Fitness & Spa',     roleKey: 'bh.t4.role' },
+  { catKey: 'bh.t5.cat', title: 'Specialist Partners',      roleKey: 'bh.t5.role' },
 ];
 
 /* Deliberately compact + minimal — credibility without taking over a screen. */
 export function BehindSection() {
+  const t = useT();
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -47,19 +49,19 @@ export function BehindSection() {
         gap: '8px 24px', marginBottom: 'clamp(28px,3.2vw,44px)',
       }}>
         <h2 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(24px,3vw,40px)', letterSpacing: '-0.01em', color: 'var(--cream)', margin: 0 }}>
-          Behind the <em className="gold-text" style={{ fontStyle: 'italic' }}>Resort.</em>
+          {richText(t('bh.headline'), { fontStyle: 'normal' })}
         </h2>
         <p style={{ fontFamily: ffs, fontSize: 'clamp(11px,1.05vw,13px)', fontWeight: 300, letterSpacing: '0.06em', color: 'var(--cr40)', margin: 0, maxWidth: 420 }}>
-          A focused team of specialists across development, architecture, construction, wellness and operation.
+          {t('bh.sub')}
         </p>
       </div>
 
       <div className="bh-grid reveal">
-        {team.map(({ category, title, role }) => (
+        {team.map(({ catKey, title, roleKey }) => (
           <div key={title} className="bh-item">
-            <span style={{ display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 400, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.8, marginBottom: 9 }}>{category}</span>
+            <span style={{ display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 400, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.8, marginBottom: 9 }}>{t(catKey)}</span>
             <span style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(15px,1.4vw,18px)', color: 'var(--cream)', lineHeight: 1.25, marginBottom: 5 }}>{title}</span>
-            <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(10px,0.9vw,11.5px)', fontWeight: 300, letterSpacing: '0.04em', color: 'var(--cr40)', lineHeight: 1.5 }}>{role}</span>
+            <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(10px,0.9vw,11.5px)', fontWeight: 300, letterSpacing: '0.04em', color: 'var(--cr40)', lineHeight: 1.5 }}>{t(roleKey)}</span>
           </div>
         ))}
       </div>

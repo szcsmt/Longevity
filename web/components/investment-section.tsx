@@ -44,7 +44,7 @@ export function InvestmentSection() {
 
       <span className="reveal" style={{ display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.30em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.7, marginBottom: 'clamp(20px,2.5vw,30px)' }}>Investment</span>
       <h2 className="reveal" style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(34px,5vw,72px)', lineHeight: 1.06, letterSpacing: '-0.015em', color: 'var(--cream)', margin: '0 0 clamp(40px,5vw,64px)', maxWidth: '14em' }}>
-        Ownership, <em className="gold-text" style={{ fontStyle: 'italic' }}>structured.</em>
+        Ownership, <em className="gold-text" style={{ fontStyle: 'normal' }}>structured.</em>
       </h2>
 
       <div className="lr-invest" style={{
@@ -54,7 +54,7 @@ export function InvestmentSection() {
         {/* Hero number + CTA */}
         <div className="reveal">
           <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(88px,12vw,170px)', lineHeight: 0.9, letterSpacing: '-0.03em', filter: 'drop-shadow(0 0 30px var(--gold-glow))' }}>10%</span>
-          <span style={{ display: 'block', fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(18px,2vw,28px)', color: 'var(--cream)', margin: '12px 0 6px' }}>Fixed annual ROI</span>
+          <span style={{ display: 'block', fontFamily: ff, fontStyle: 'normal', fontSize: 'clamp(18px,2vw,28px)', color: 'var(--cream)', margin: '12px 0 6px' }}>Fixed annual ROI</span>
           <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(11px,1.1vw,13px)', fontWeight: 300, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.8 }}>Paid quarterly for the first three years</span>
 
           <a href="#reserve" onClick={scrollReserve}

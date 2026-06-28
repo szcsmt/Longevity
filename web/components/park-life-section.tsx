@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Leaf, Sun, Sparkles, Trees } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
@@ -14,54 +15,31 @@ const ffs = 'var(--font-raleway), sans-serif';
    `img` is a placeholder render — swap for real street imagery later. */
 interface Street {
   index: string;
-  name: string;
-  tagline: string;
-  desc: string;
-  keywords: string[];
+  nameKey: string;
+  tagKey: string;
+  descKey: string;
+  kwKey: string;
   icon: LucideIcon;
   tint: string;   // muted rgba used for the card's radial glow + accent line
   img: string;
 }
 
 const streets: Street[] = [
-  {
-    index: '01', name: 'Zen Street', icon: Leaf,
-    tagline: 'Stillness by design.',
-    desc: 'Stone gardens, shaded meditation decks, and the soft sound of moving water. The quietest lane on the estate.',
-    keywords: ['Meditation gardens', 'Water features', 'Absolute silence'],
-    tint: 'rgba(120,178,150,0.30)', img: '/images/streets/zen.webp',
-  },
-  {
-    index: '02', name: 'Desert Street', icon: Sun,
-    tagline: 'Warm, sculpted light.',
-    desc: 'Sandstone walls, cacti gardens, and architectural shade. Minimalism that glows at golden hour.',
-    keywords: ['Sandstone courtyards', 'Cacti gardens', 'Sculptural shade'],
-    tint: 'rgba(201,169,110,0.34)', img: '/images/streets/desert.webp',
-  },
-  {
-    index: '03', name: 'Carnival Street', icon: Sparkles,
-    tagline: 'Where the estate comes alive.',
-    desc: 'The social heart, with lanes lit by lanterns for strolling, gathering, and life after the sun goes down.',
-    keywords: ['Festive lighting', 'Social lanes', 'Evenings out'],
-    tint: 'rgba(206,138,120,0.32)', img: '/images/streets/carnival.webp',
-  },
-  {
-    index: '04', name: 'Tropical Street', icon: Trees,
-    tagline: 'Lush green, softly lit.',
-    desc: 'A leafy residential lane wrapped in tropical planting, with warm light tracing every villa at dusk.',
-    keywords: ['Tropical planting', 'Evening glow', 'Family friendly'],
-    tint: 'rgba(176,160,118,0.30)', img: '/images/streets/garden.webp',
-  },
+  { index: '01', nameKey: 'pl.s1.name', tagKey: 'pl.s1.tag', descKey: 'pl.s1.desc', kwKey: 'pl.s1.kw', icon: Leaf,     tint: 'rgba(120,178,150,0.30)', img: '/images/streets/zen.webp' },
+  { index: '02', nameKey: 'pl.s2.name', tagKey: 'pl.s2.tag', descKey: 'pl.s2.desc', kwKey: 'pl.s2.kw', icon: Sun,      tint: 'rgba(201,169,110,0.34)', img: '/images/streets/desert.webp' },
+  { index: '03', nameKey: 'pl.s3.name', tagKey: 'pl.s3.tag', descKey: 'pl.s3.desc', kwKey: 'pl.s3.kw', icon: Sparkles, tint: 'rgba(206,138,120,0.32)', img: '/images/streets/carnival.webp' },
+  { index: '04', nameKey: 'pl.s4.name', tagKey: 'pl.s4.tag', descKey: 'pl.s4.desc', kwKey: 'pl.s4.kw', icon: Trees,    tint: 'rgba(176,160,118,0.30)', img: '/images/streets/garden.webp' },
 ];
 
 const stats = [
-  { v: '+60',   l: 'Private villas' },
-  { v: '4',     l: 'Themed lanes' },
-  { v: '24/7',  l: 'Secured & gated' },
-  { v: '5 min', l: 'To the nearest beach' },
+  { v: '+60',   l: 'pl.stat1.l' },
+  { v: '4',     l: 'pl.stat2.l' },
+  { v: '24/7',  l: 'pl.stat3.l' },
+  { v: '5 min', l: 'pl.stat4.l' },
 ];
 
 export function ParkLifeSection() {
+  const t = useT();
   const ref = useRef<HTMLElement>(null);
   const [lightbox, setLightbox] = useState<Street | null>(null);
 
@@ -90,7 +68,7 @@ export function ParkLifeSection() {
   const stepLightbox = (dir: number) => {
     setLightbox(cur => {
       if (!cur) return cur;
-      const i = streets.findIndex(s => s.name === cur.name);
+      const i = streets.findIndex(s => s.nameKey === cur.nameKey);
       return streets[(i + dir + streets.length) % streets.length];
     });
   };
@@ -153,7 +131,7 @@ export function ParkLifeSection() {
         letterSpacing: '0.30em', textTransform: 'uppercase',
         color: 'var(--gold)', opacity: 0.65,
         marginBottom: 'clamp(28px,3.5vw,44px)',
-      }}>The Park · Plai Leam Longevity Park</span>
+      }}>{t('pl.label')}</span>
 
       {/* Two-column header */}
       <div className="reveal" style={{
@@ -167,18 +145,14 @@ export function ParkLifeSection() {
           lineHeight: 1.08, letterSpacing: '-0.01em',
           color: 'var(--cream)', margin: 0,
         }}>
-          Not a complex.<br />
-          <em className="gold-text" style={{ fontStyle: 'italic' }}>A village.</em>
+          {richText(t('pl.headline'), { fontStyle: 'normal' })}
         </h2>
         <p style={{
           fontFamily: ff, fontWeight: 400,
           fontSize: 'clamp(15px,1.5vw,20px)',
           lineHeight: 1.9, color: 'var(--cr70)', margin: 0,
         }}>
-          Longevity Resort is planned as a private residential sanctuary, not a conventional
-          holiday development. Its streets, gardens and villas are designed to work together
-          as one calm, secure and carefully planned environment. Every detail supports the
-          same idea: living well should feel effortless.
+          {t('pl.prose')}
         </p>
       </div>
 
@@ -204,7 +178,7 @@ export function ParkLifeSection() {
           fontFamily: ffs, fontSize: 'clamp(8.5px,0.95vw,11px)', fontWeight: 300, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cr70)',
         }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)' }} />
-          Guarded Entrance
+          {t('pl.guarded')}
         </span>
       </div>
 
@@ -226,7 +200,7 @@ export function ParkLifeSection() {
             <span style={{
               fontFamily: ffs, fontSize: 'clamp(10px,1.05vw,12px)', fontWeight: 300,
               letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--cr70)',
-            }}>{l}</span>
+            }}>{t(l)}</span>
           </div>
         ))}
       </div>
@@ -236,7 +210,7 @@ export function ParkLifeSection() {
         display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 300,
         letterSpacing: '0.26em', textTransform: 'uppercase',
         color: 'var(--gold)', opacity: 0.5, marginBottom: 'clamp(22px,3vw,32px)',
-      }}>Themed lanes</span>
+      }}>{t('pl.themed')}</span>
 
       <div className="reveal" style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
@@ -245,7 +219,7 @@ export function ParkLifeSection() {
         {streets.map((s) => {
           const Icon = s.icon;
           return (
-            <article key={s.name} className="street-card" onClick={() => setLightbox(s)} style={{
+            <article key={s.nameKey} className="street-card" onClick={() => setLightbox(s)} style={{
               position: 'relative', overflow: 'hidden', cursor: 'pointer',
               minHeight: 'clamp(292px,29vw,368px)',
               display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
@@ -307,20 +281,20 @@ export function ParkLifeSection() {
                   fontSize: 'clamp(26px,2.6vw,38px)', lineHeight: 1.05,
                   color: 'var(--cream)', margin: '0 0 6px',
                   textShadow: '0 2px 18px rgba(6,14,8,0.92)',
-                }}>{s.name}</h3>
+                }}>{t(s.nameKey)}</h3>
                 <p style={{
-                  fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
+                  fontFamily: ff, fontWeight: 400, fontStyle: 'normal',
                   fontSize: 'clamp(14px,1.4vw,18px)', color: 'var(--gold)',
                   margin: '0 0 16px', textShadow: '0 1px 14px rgba(6,14,8,0.92)',
-                }}>{s.tagline}</p>
+                }}>{t(s.tagKey)}</p>
                 <p style={{
                   fontFamily: ffs, fontWeight: 300,
                   fontSize: 'clamp(12px,0.95vw,13px)', lineHeight: 1.8,
                   color: 'var(--cr70)', margin: '0 0 20px', letterSpacing: '0.01em',
                   textShadow: '0 1px 12px rgba(6,14,8,0.92)',
-                }}>{s.desc}</p>
+                }}>{t(s.descKey)}</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px 8px' }}>
-                  {s.keywords.map((k) => (
+                  {t(s.kwKey).split('|').map((k) => (
                     <span key={k} style={{
                       fontFamily: ffs, fontSize: 7.5, fontWeight: 300,
                       letterSpacing: '0.14em', textTransform: 'uppercase',
@@ -350,7 +324,7 @@ export function ParkLifeSection() {
           padding: 'clamp(16px,4vw,56px)', animation: 'fadeIn 0.3s ease both',
         }}
       >
-        <div key={lightbox.name} onClick={e => e.stopPropagation()} style={{
+        <div key={lightbox.nameKey} onClick={e => e.stopPropagation()} style={{
           position: 'relative', width: '100%', maxWidth: 1100,
           borderRadius: 16, overflow: 'hidden',
           border: '1px solid rgba(201,169,110,0.25)',
@@ -358,17 +332,17 @@ export function ParkLifeSection() {
           animation: 'fadeIn 0.4s ease both',
         }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={lightbox.img} alt={lightbox.name} style={{ width: '100%', maxHeight: '80vh', objectFit: 'cover', display: 'block' }} />
+          <img src={lightbox.img} alt={t(lightbox.nameKey)} style={{ width: '100%', maxHeight: '80vh', objectFit: 'cover', display: 'block' }} />
           <div style={{
             position: 'absolute', left: 0, right: 0, bottom: 0,
             padding: 'clamp(24px,3.2vw,48px)',
             background: 'linear-gradient(to top, rgba(6,14,8,0.94) 12%, transparent)',
           }}>
             <span style={{ display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.85, marginBottom: 10 }}>
-              {lightbox.index} / 0{streets.length} · Themed lane
+              {lightbox.index} / 0{streets.length} · {t('pl.lane')}
             </span>
-            <h3 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(28px,4vw,56px)', lineHeight: 1, color: 'var(--cream)', margin: '0 0 8px' }}>{lightbox.name}</h3>
-            <p style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(15px,1.6vw,22px)', color: 'var(--gold)', margin: 0 }}>{lightbox.tagline}</p>
+            <h3 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(28px,4vw,56px)', lineHeight: 1, color: 'var(--cream)', margin: '0 0 8px' }}>{t(lightbox.nameKey)}</h3>
+            <p style={{ fontFamily: ff, fontStyle: 'normal', fontSize: 'clamp(15px,1.6vw,22px)', color: 'var(--gold)', margin: 0 }}>{t(lightbox.tagKey)}</p>
           </div>
         </div>
 

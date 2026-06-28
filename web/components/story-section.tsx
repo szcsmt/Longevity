@@ -1,36 +1,26 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
 interface Chapter {
-  title: string;
-  body: string;
+  titleKey: string;
+  bodyKey: string;
   bg: string;
   tint: string;
 }
 
 const chapters: Chapter[] = [
-  {
-    title: 'The Feeling', tint: 'rgba(206,138,120,0.32)',
-    body: 'It started with a feeling, not a blueprint. The sense that a home should give something back: calm in the morning, clarity through the day, deep rest at night. Most places are built to be seen. This one was built to be felt.',
-    bg: '/images/story/feeling.webp',
-  },
-  {
-    title: 'The Place', tint: 'rgba(120,178,150,0.30)',
-    body: 'Plai Leam, northeast Koh Samui. Untouched jungle, a private shore five minutes on foot, the first development of its kind on the island. 330 days of sunshine. Ancient trees. The Gulf of Thailand at your doorstep. The moment he stood here, the search was over.',
-    bg: '/images/story/place.webp',
-  },
-  {
-    title: 'The Standard', tint: 'rgba(201,169,110,0.34)',
-    body: 'Thermally glazed windows, central climate control engineered for the tropics, full soundproofing, private pools. Not a compromise anywhere. Built around a single belief: that where you live should make you healthier, sharper, and more alive, every single day.',
-    bg: '/images/story/standard.webp',
-  },
+  { titleKey: 'story.feeling.title',  bodyKey: 'story.feeling.body',  tint: 'rgba(206,138,120,0.32)', bg: '/images/story/feeling.webp' },
+  { titleKey: 'story.place.title',    bodyKey: 'story.place.body',    tint: 'rgba(120,178,150,0.30)', bg: '/images/story/place.webp' },
+  { titleKey: 'story.standard.title', bodyKey: 'story.standard.body', tint: 'rgba(201,169,110,0.34)', bg: '/images/story/standard.webp' },
 ];
 
 export function StorySection() {
+  const t = useT();
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -94,7 +84,7 @@ export function StorySection() {
         letterSpacing: '0.30em', textTransform: 'uppercase',
         color: 'var(--gold)', opacity: 0.65,
         marginBottom: 'clamp(28px,3.5vw,44px)',
-      }}>The Story</span>
+      }}>{t('story.eyebrow')}</span>
 
       {/* Headline */}
       <h2 className="reveal" style={{
@@ -105,9 +95,7 @@ export function StorySection() {
         margin: '0 0 clamp(52px,7vw,96px)',
         maxWidth: '14em',
       }}>
-        We wanted more<br />
-        than a place to stay.<br />
-        <em className="gold-text" style={{ fontStyle: 'italic' }}>So we built this.</em>
+        {richText(t('story.headline'), { fontStyle: 'normal' })}
       </h2>
 
       {/* Chapters — cards styled like the themed lanes */}
@@ -118,7 +106,7 @@ export function StorySection() {
         marginBottom: 'clamp(64px,9vw,120px)',
       }}>
         {chapters.map((ch) => (
-            <article key={ch.title} className="story-card" style={{
+            <article key={ch.titleKey} className="story-card" style={{
               position: 'relative', overflow: 'hidden',
               minHeight: 'clamp(320px,28vw,400px)',
               display: 'flex', flexDirection: 'column', justifyContent: 'center',
@@ -153,39 +141,16 @@ export function StorySection() {
                   fontSize: 'clamp(24px,2.4vw,34px)', lineHeight: 1.06,
                   color: 'var(--cream)', margin: '0 0 8px',
                   textShadow: '0 2px 18px rgba(6,14,8,0.92)',
-                }}>{ch.title}</h3>
+                }}>{t(ch.titleKey)}</h3>
                 <p style={{
                   fontFamily: ffs, fontWeight: 300,
                   fontSize: 'clamp(12px,0.95vw,13.5px)', lineHeight: 1.85,
                   color: 'var(--cr70)', margin: 0, letterSpacing: '0.01em',
                   textShadow: '0 1px 12px rgba(6,14,8,0.92)',
-                }}>{ch.body}</p>
+                }}>{t(ch.bodyKey)}</p>
               </div>
             </article>
         ))}
-      </div>
-
-      {/* Pull quote — centered */}
-      <div className="reveal" style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
-        <span style={{
-          display: 'block', width: 40, height: 1,
-          background: 'linear-gradient(to right, transparent, var(--gold-65), transparent)',
-          margin: '0 auto clamp(28px,3.5vw,40px)',
-        }} />
-        <blockquote style={{
-          margin: 0,
-          fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
-          fontSize: 'clamp(17px,2vw,26px)',
-          lineHeight: 1.72, color: 'var(--cr70)', letterSpacing: '0.01em',
-        }}>
-          &ldquo;Premium quality, a good life, a long life.<br />
-          That is what this place is built for.&rdquo;
-        </blockquote>
-        <p style={{
-          fontFamily: ffs, fontSize: 'clamp(10px,1vw,11px)', fontWeight: 300,
-          letterSpacing: '0.24em', textTransform: 'uppercase',
-          color: 'var(--gold)', opacity: 0.7, marginTop: 22,
-        }}>The Founder</p>
       </div>
 
     </section>

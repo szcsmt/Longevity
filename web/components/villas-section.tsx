@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
 import { ArrowUpRight } from 'lucide-react';
+import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
@@ -10,19 +11,19 @@ interface VillaData {
   index: string;
   name: string;
   size: string;
-  bedrooms: string;
-  guests: string;
-  pool: string;
-  tagline: string;
-  desc: string;
-  highlights: string[];
+  bedroomsKey: string;
+  guestsKey: string;
+  poolKey: string;
+  taglineKey: string;
+  descKey: string;
+  hlKey: string;
   img: string;
   /* Optional 3:4 portrait render shown on phones (the landscape `img` is 16:9 and
      reads short on a tall screen). Paste the portrait path here and the mobile
      frame automatically switches to a tall 3:4 photo. Until then, mobile shows
      the whole landscape villa in a 16:9 frame (no crop). */
   imgPortrait?: string;
-  gallery: { src: string; caption: string }[];
+  gallery: { src: string; captionKey: string }[];
   alt: string;
   /* 3D twin walkthrough URL (Matterport / Kuula / etc.).
      Leave empty until the tour is ready — the button then shows an
@@ -33,60 +34,71 @@ interface VillaData {
 const villas: VillaData[] = [
   {
     index: '01', name: 'Villa M', size: '76.46 m²',
-    bedrooms: '1 Bedroom', guests: 'Up to 2 Guests', pool: 'Private plunge pool',
-    tagline: 'Intimate seclusion. Full privacy.',
-    desc: 'One bedroom. Private plunge pool. Surrounded by ancient jungle, steps from the shoreline.',
-    highlights: ['Private garden terrace', 'Daily housekeeping', 'Spa access included'],
-    img: '/images/villa/ext-1.webp',
+    bedroomsKey: 'v.bed1', guestsKey: 'v.guests2', poolKey: 'vM.pool',
+    taglineKey: 'vM.tag', descKey: 'vM.desc', hlKey: 'vM.hl',
+    img: '/images/villa-m/m-1.webp',
     gallery: [
-      { src: '/images/villa/ext-1.webp',        caption: 'Exterior · golden hour' },
-      { src: '/images/villa/int-living-1.webp', caption: 'Living room' },
-      { src: '/images/villa/int-bedroom-1.webp',caption: 'Bedroom' },
-      { src: '/images/villa/int-kitchen-1.webp',caption: 'Kitchen' },
-      { src: '/images/villa/int-bathroom-1.webp',caption: 'Bathroom' },
+      { src: '/images/villa-m/m-1.webp', captionKey: 'cap.exterior' },
+      { src: '/images/villa-m/m-2.webp', captionKey: 'cap.exterior' },
+      { src: '/images/villa-m/m-3.webp', captionKey: 'cap.exterior' },
+      { src: '/images/villa-m/m-4.webp', captionKey: 'cap.exterior' },
+      { src: '/images/villa-m/m-5.webp', captionKey: 'cap.exterior' },
+      { src: '/images/villa-m/m-6.webp', captionKey: 'cap.interior' },
+      { src: '/images/villa-m/m-7.webp', captionKey: 'cap.interior' },
+      { src: '/images/villa-m/m-8.webp', captionKey: 'cap.interior' },
+      { src: '/images/villa-m/m-9.webp', captionKey: 'cap.interior' },
     ],
-    alt: 'Villa M exterior',
-    imgPortrait: '',   // ← paste Villa M's 3:4 mobile render here
+    alt: 'Villa M, one bedroom pool villa',
+    imgPortrait: '/images/villa-m/m-1.webp',
     tourUrl: '',   // ← paste Villa M's 3D twin link here
   },
   {
     index: '02', name: 'Villa L', size: '79.19 m²',
-    bedrooms: '1 Bedroom', guests: 'Up to 2 Guests', pool: '12 m private pool',
-    tagline: 'Elevated living. Pure calm.',
-    desc: 'One spacious bedroom. A 12 metre private pool wrapped in green. A calm that resets everything.',
-    highlights: ['Private pool deck', 'Daily housekeeping', 'Spa access included'],
-    img: '/images/villa/ext-2.webp',
+    bedroomsKey: 'v.bed1', guestsKey: 'v.guests2', poolKey: 'vL.pool',
+    taglineKey: 'vL.tag', descKey: 'vL.desc', hlKey: 'vL.hl',
+    img: '/images/villa-l/l-1.webp',
     gallery: [
-      { src: '/images/villa/ext-2.webp',         caption: 'Exterior · pool & terrace' },
-      { src: '/images/villa/ext-3.webp',         caption: 'Poolside' },
-      { src: '/images/villa/int-living-2.webp',  caption: 'Living room' },
-      { src: '/images/villa/int-bedroom-2.webp', caption: 'Bedroom' },
-      { src: '/images/villa/int-kitchen-2.webp', caption: 'Kitchen' },
-      { src: '/images/villa/int-bathroom-2.webp',caption: 'Bathroom' },
+      { src: '/images/villa-l/l-1.webp',  captionKey: 'cap.exterior' },
+      { src: '/images/villa-l/l-2.webp',  captionKey: 'cap.exterior' },
+      { src: '/images/villa-l/l-3.webp',  captionKey: 'cap.exterior' },
+      { src: '/images/villa-l/l-4.webp',  captionKey: 'cap.exterior' },
+      { src: '/images/villa-l/l-5.webp',  captionKey: 'cap.interior' },
+      { src: '/images/villa-l/l-6.webp',  captionKey: 'cap.interior' },
+      { src: '/images/villa-l/l-7.webp',  captionKey: 'cap.interior' },
+      { src: '/images/villa-l/l-8.webp',  captionKey: 'cap.interior' },
+      { src: '/images/villa-l/l-9.webp',  captionKey: 'cap.interior' },
+      { src: '/images/villa-l/l-10.webp', captionKey: 'cap.interior' },
+      { src: '/images/villa-l/l-11.webp', captionKey: 'cap.interior' },
+      { src: '/images/villa-l/l-12.webp', captionKey: 'cap.interior' },
     ],
-    alt: 'Villa L exterior',
-    imgPortrait: '',   // ← paste Villa L's 3:4 mobile render here
+    alt: 'Villa L, one bedroom pool villa',
+    imgPortrait: '/images/villa-l/l-1.webp',
     tourUrl: '',   // ← paste Villa L's 3D twin link here
   },
   {
     index: '03', name: 'Villa XL', size: '126.65 m²',
-    bedrooms: '2 Bedrooms', guests: 'Up to 4 Guests', pool: 'Large private pool',
-    tagline: 'The estate. The pinnacle.',
-    desc: 'Two bedrooms. A large private pool. The most secluded residence on the estate.',
-    highlights: ['Full kitchen', 'Private garden', 'Spa access included'],
-    img: '/images/villa/ext-4.webp',
+    bedroomsKey: 'v.bed2', guestsKey: 'v.guests4', poolKey: 'vXL.pool',
+    taglineKey: 'vXL.tag', descKey: 'vXL.desc', hlKey: 'vXL.hl',
+    img: '/images/villa-2br/x-1.webp',
     gallery: [
-      { src: '/images/villa/ext-4.webp',            caption: 'Exterior' },
-      { src: '/images/villa/ext-5.webp',            caption: 'Evening' },
-      { src: '/images/villa/ext-6.webp',            caption: 'Garden view' },
-      { src: '/images/villa/int-living-3.webp',     caption: 'Living room' },
-      { src: '/images/villa/int-living-4.webp',     caption: 'Lounge' },
-      { src: '/images/villa/int-bedroom-3.webp',    caption: 'Bedroom' },
-      { src: '/images/villa/int-bedroom-living.webp',caption: 'Bedroom & living' },
-      { src: '/images/villa/int-bathroom-3.webp',   caption: 'Bathroom' },
+      { src: '/images/villa-2br/x-1.webp',  captionKey: 'cap.exterior' },
+      { src: '/images/villa-2br/x-2.webp',  captionKey: 'cap.exterior' },
+      { src: '/images/villa-2br/x-3.webp',  captionKey: 'cap.exterior' },
+      { src: '/images/villa-2br/x-4.webp',  captionKey: 'cap.exterior' },
+      { src: '/images/villa-2br/x-5.webp',  captionKey: 'cap.exterior' },
+      { src: '/images/villa-2br/x-6.webp',  captionKey: 'cap.interior' },
+      { src: '/images/villa-2br/x-7.webp',  captionKey: 'cap.interior' },
+      { src: '/images/villa-2br/x-8.webp',  captionKey: 'cap.interior' },
+      { src: '/images/villa-2br/x-9.webp',  captionKey: 'cap.interior' },
+      { src: '/images/villa-2br/x-10.webp', captionKey: 'cap.interior' },
+      { src: '/images/villa-2br/x-11.webp', captionKey: 'cap.interior' },
+      { src: '/images/villa-2br/x-12.webp', captionKey: 'cap.interior' },
+      { src: '/images/villa-2br/x-13.webp', captionKey: 'cap.interior' },
+      { src: '/images/villa-2br/x-14.webp', captionKey: 'cap.interior' },
+      { src: '/images/villa-2br/x-15.webp', captionKey: 'cap.interior' },
     ],
-    alt: 'Villa XL exterior',
-    imgPortrait: '',   // ← paste Villa XL's 3:4 mobile render here
+    alt: 'Villa XL, two bedroom pool villa',
+    imgPortrait: '/images/villa-2br/x-1.webp',
     tourUrl: '',   // ← paste Villa XL's 3D twin link here
   },
 ];
@@ -100,6 +112,7 @@ function VillaImageCarousel({
   onNavigate: (idx: number) => void;
   onExplore: () => void;
 }) {
+  const t = useT();
   const n      = vs.length;
   const prevIdx = ((active - 1) % n + n) % n;
   const nextIdx = (active + 1) % n;
@@ -295,7 +308,7 @@ function VillaImageCarousel({
         <span style={{
           display: 'block', marginTop: 7, fontFamily: ffs, fontSize: 9, fontWeight: 300,
           letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)',
-        }}>{vs[active].index} / 0{n} &nbsp;·&nbsp; {vs[active].bedrooms}</span>
+        }}>{vs[active].index} / 0{n} &nbsp;·&nbsp; {t(vs[active].bedroomsKey)}</span>
       </div>
 
       {/* In-image edge arrows — phones/tablets only (see CSS) */}
@@ -319,7 +332,7 @@ function VillaImageCarousel({
         letterSpacing: '0.2em', textTransform: 'uppercase',
         pointerEvents: 'none',
       }}>
-        Tap to explore
+        {t('v.tap')}
         <ArrowUpRight size={14} />
       </span>
     </div>
@@ -339,10 +352,18 @@ function VillaImageCarousel({
 
 /* ─── Modal ─── */
 function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void }) {
-  const [img, setImg] = useState(0);
+  const t = useT();
+  // Open on the 2nd image — image 1 is the cover already shown in the section,
+  // so clicking reveals something new (and you can swipe back to image 1).
+  const [img, setImg] = useState(villa.gallery.length > 1 ? 1 : 0);
   const len = villa.gallery.length;
   const next = useCallback(() => setImg(i => (i + 1) % len), [len]);
   const prev = useCallback(() => setImg(i => (i - 1 + len) % len), [len]);
+
+  // Decode every gallery image up front so paging never hitches on a fresh decode.
+  useEffect(() => {
+    villa.gallery.forEach(g => { const im = new Image(); im.src = g.src; im.decode?.().catch(() => {}); });
+  }, [villa]);
 
   // Drag / swipe the gallery (in addition to the arrows + arrow keys).
   const dragStart   = useRef(0);
@@ -406,7 +427,7 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
             style={{ flex: 1, position: 'relative', minHeight: 280, overflow: 'hidden', isolation: 'isolate', touchAction: 'pan-y', cursor: len > 1 ? 'grab' : 'default', userSelect: 'none' }}
           >
             {villa.gallery.map((g, i) => (
-              <img key={i} src={g.src} alt={g.caption} decoding="async" style={{
+              <img key={i} src={g.src} alt={t(g.captionKey)} loading="eager" decoding="async" style={{
                 position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
                 opacity: i === img ? 1 : 0,
                 transition: 'opacity 0.4s ease',
@@ -416,7 +437,7 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
               }} />
             ))}
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(6,14,8,0.8), transparent)', padding: '20px 20px 14px' }}>
-              <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.16em', color: 'var(--cr70)' }}>{villa.gallery[img].caption}</span>
+              <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.16em', color: 'var(--cr70)' }}>{t(villa.gallery[img].captionKey)}</span>
             </div>
             {villa.gallery.length > 1 && <>
               <button onClick={() => setImg(i => (i - 1 + villa.gallery.length) % villa.gallery.length)}
@@ -433,7 +454,7 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
             {villa.gallery.map((g, i) => (
               <button key={i} onClick={() => setImg(i)}
                 style={{ flex: 1, height: 56, overflow: 'hidden', border: 'none', borderRadius: 8, padding: 0, cursor: 'pointer', opacity: img === i ? 1 : 0.40, transition: 'opacity 0.3s', outline: img === i ? '2px solid var(--gold)' : 'none', outlineOffset: -2 }}>
-                <img src={g.src} alt={g.caption} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                <img src={g.src} alt={t(g.captionKey)} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
               </button>
             ))}
           </div>
@@ -443,13 +464,13 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
         <div style={{ padding: 'clamp(28px,3.5vw,44px)', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', borderLeft: '1px solid rgba(228,217,195,0.06)' }}>
           <div>
             <span style={{ display:'block', fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 10 }}>{villa.name}</span>
-            <h3 style={{ fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(26px,3vw,40px)', lineHeight: 1.12, color: 'var(--cream)', margin: '0 0 6px' }}>{villa.name}</h3>
-            <p style={{ fontFamily: ffs, fontSize: 10, fontWeight: 300, letterSpacing: '0.10em', color: 'var(--gold)', margin: 0, opacity: 0.8 }}>{villa.tagline}</p>
+            <h3 style={{ fontFamily: ff, fontWeight: 400, fontStyle: 'normal', fontSize: 'clamp(26px,3vw,40px)', lineHeight: 1.12, color: 'var(--cream)', margin: '0 0 6px' }}>{villa.name}</h3>
+            <p style={{ fontFamily: ffs, fontSize: 10, fontWeight: 300, letterSpacing: '0.10em', color: 'var(--gold)', margin: 0, opacity: 0.8 }}>{t(villa.taglineKey)}</p>
           </div>
           <span style={{ display: 'block', width: 28, height: 1, background: 'var(--gold-40)' }} />
-          <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr70)', margin: 0 }}>{villa.desc}</p>
+          <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr70)', margin: 0 }}>{t(villa.descKey)}</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: 'rgba(201,169,110,0.08)', border: '1px solid rgba(201,169,110,0.08)', borderRadius: 12, overflow: 'hidden' }}>
-            {[{k:'Size',v:villa.size},{k:'Rooms',v:villa.bedrooms},{k:'Guests',v:villa.guests},{k:'Pool',v:villa.pool}].map(({k,v}) => (
+            {[{k:t('v.spec.size'),v:villa.size},{k:t('v.spec.rooms'),v:t(villa.bedroomsKey)},{k:t('v.spec.guests'),v:t(villa.guestsKey)},{k:t('v.spec.pool'),v:t(villa.poolKey)}].map(({k,v}) => (
               <div key={k} style={{ padding: '12px 14px', background: 'rgba(6,14,8,0.6)' }}>
                 <span style={{ display: 'block', fontFamily: ffs, fontSize: 7, fontWeight: 300, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.6, marginBottom: 3 }}>{k}</span>
                 <span style={{ fontFamily: ff, fontSize: 'clamp(12px,1.2vw,14px)', color: 'var(--cream)' }}>{v}</span>
@@ -457,12 +478,12 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
             ))}
           </div>
           <div>
-            <span style={{ display: 'block', fontFamily: ffs, fontSize: 7, fontWeight: 300, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.55, marginBottom: 12 }}>Highlights</span>
+            <span style={{ display: 'block', fontFamily: ffs, fontSize: 7, fontWeight: 300, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.55, marginBottom: 12 }}>{t('v.highlights')}</span>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {villa.highlights.map(h => (
+              {t(villa.hlKey).split('|').map(h => (
                 <li key={h} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ display: 'block', width: 14, height: 1, background: 'var(--gold-65)', flexShrink: 0 }} />
-                  <span style={{ fontFamily: ff, fontSize: 13, color: 'var(--cr70)', fontStyle: 'italic' }}>{h}</span>
+                  <span style={{ fontFamily: ff, fontSize: 13, color: 'var(--cr70)', fontStyle: 'normal' }}>{h}</span>
                 </li>
               ))}
             </ul>
@@ -478,7 +499,7 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
             }}
             onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
             onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.55)'; }}
-          >Reserve This Villa</a>
+          >{t('v.reserveThis')}</a>
         </div>
 
         <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close" style={{ position: 'fixed', top: 'clamp(16px,3vw,28px)', right: 'clamp(16px,3vw,28px)', zIndex: 1001, width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(228,217,195,0.30)', background: 'rgba(6,14,8,0.85)', backdropFilter: 'blur(8px)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -491,6 +512,7 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
 
 /* ─── Main Section ─── */
 export function VillasSection() {
+  const t = useT();
   const [active, setActive] = useState(0);
   const [modal,  setModal]  = useState<VillaData | null>(null);
   const [tour,   setTour]   = useState<VillaData | null>(null);   // 3D "coming soon" dialog
@@ -564,19 +586,19 @@ export function VillasSection() {
           .villa-edge-arrow { display: flex !important; }
         }
         .vdot { border:none; cursor:pointer; padding:0; transition: width 0.45s cubic-bezier(0.16,1,0.3,1), background 0.3s; }
-        .villa-stage { border-radius: clamp(16px,1.6vw,24px); transition: transform 0.6s cubic-bezier(0.16,1,0.3,1); }
-        /* Gold frame + soft glow halo that lifts the villa off the dark backdrop */
+        .villa-stage { border-radius: clamp(16px,1.6vw,24px); transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); will-change: transform; }
+        /* Gold frame + glow halo. Intensity is animated with OPACITY only (no box-shadow
+           value or scale transition) so hovering never triggers a repaint and stays smooth. */
         .villa-stage::before {
           content: ''; position: absolute; inset: -3px; border-radius: inherit;
-          border: 1.5px solid rgba(201,169,110,0.5);
-          box-shadow: 0 0 60px -6px var(--gold-glow), 0 34px 84px -34px rgba(0,0,0,0.85);
-          pointer-events: none; z-index: 6;
-          transition: border-color 0.6s cubic-bezier(0.16,1,0.3,1), box-shadow 0.6s cubic-bezier(0.16,1,0.3,1);
+          border: 1.5px solid rgba(232,201,138,0.7);
+          box-shadow: 0 0 90px -4px rgba(201,169,110,0.42), 0 44px 100px -34px rgba(0,0,0,0.9);
+          pointer-events: none; z-index: 6; opacity: 0.62;
+          transition: opacity 0.5s cubic-bezier(0.16,1,0.3,1);
+          will-change: opacity;
         }
-        .villa-carousel { transition: box-shadow 0.6s cubic-bezier(0.16,1,0.3,1); }
-        .villa-stage:hover { transform: translateY(-8px) scale(1.025); }
-        .villa-stage:hover::before { border-color: rgba(232,201,138,0.8); box-shadow: 0 0 92px -4px rgba(201,169,110,0.42), 0 44px 100px -34px rgba(0,0,0,0.9); }
-        .villa-stage:hover .villa-carousel { box-shadow: 0 55px 120px -30px rgba(0,0,0,0.9); }
+        .villa-stage:hover { transform: translateY(-6px); }
+        .villa-stage:hover::before { opacity: 1; }
       `}</style>
 
       <section id="villas" className="lr-villas" style={{
@@ -590,9 +612,9 @@ export function VillasSection() {
 
         {/* Section header — title only, arrows moved to image */}
         <div style={{ marginBottom: 'clamp(44px,6vw,72px)' }}>
-          <span style={{ display:'block', fontFamily:ffs, fontSize:9, fontWeight:300, letterSpacing:'0.28em', textTransform:'uppercase', color:'var(--gold)', opacity:0.65, marginBottom:14 }}>The Villas</span>
+          <span style={{ display:'block', fontFamily:ffs, fontSize:9, fontWeight:300, letterSpacing:'0.28em', textTransform:'uppercase', color:'var(--gold)', opacity:0.65, marginBottom:14 }}>{t('v.eyebrow')}</span>
           <h2 style={{ fontFamily:ff, fontWeight:400, fontSize:'clamp(28px,3.5vw,50px)', color:'var(--cream)', lineHeight:1.12, margin:0 }}>
-            Three sanctuaries.<br /><em style={{ color:'var(--gold)' }}>One island.</em>
+            {richText(t('v.headline'), { fontStyle: 'normal', color: 'var(--gold)' })}
           </h2>
         </div>
 
@@ -614,11 +636,11 @@ export function VillasSection() {
           <div ref={headRef} style={{ gridArea: 'head', display: 'flex', flexDirection: 'column' }}>
             <h3 style={{ margin: '0 0 clamp(8px,1.2vw,14px)', lineHeight: 1 }}>
               <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(46px,6vw,88px)', letterSpacing: '-0.01em', lineHeight: 1.0, whiteSpace: 'nowrap' }}>{villa.name}</span>
-              <span style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(17px,2vw,28px)', letterSpacing: '0.01em', color: 'var(--gold)', lineHeight: 1.4 }}>{villa.tagline}</span>
+              <span style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontStyle: 'normal', fontSize: 'clamp(17px,2vw,28px)', letterSpacing: '0.01em', color: 'var(--gold)', lineHeight: 1.4 }}>{t(villa.taglineKey)}</span>
             </h3>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 22px', margin: 'clamp(16px,2.5vw,28px) 0 0' }}>
-              {[villa.bedrooms, villa.size, villa.guests].map(s => (
+              {[t(villa.bedroomsKey), villa.size, t(villa.guestsKey)].map(s => (
                 <span key={s} style={{ fontFamily: ffs, fontSize: 'clamp(11px,1.05vw,13px)', fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--cream)', borderLeft: '2px solid var(--gold-40)', paddingLeft: 12 }}>{s}</span>
               ))}
             </div>
@@ -636,7 +658,7 @@ export function VillasSection() {
 
           {/* BODY: description + actions — slides with the photo (see bodyRef). */}
           <div ref={bodyRef} style={{ gridArea: 'body', display: 'flex', flexDirection: 'column' }}>
-            <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr40)', margin: '0 0 clamp(24px,3.5vw,36px)' }}>{villa.desc}</p>
+            <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr40)', margin: '0 0 clamp(24px,3.5vw,36px)' }}>{t(villa.descKey)}</p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px 14px' }}>
               {/* View it in 3D — primary, opens the photoreal twin walkthrough.
@@ -662,7 +684,7 @@ export function VillasSection() {
                   <path d="M2 5l6 3.4L14 5" />
                   <path d="M8 8.4v6" />
                 </svg>
-                View it in 3D
+                {t('v.view3d')}
               </button>
 
               {/* View Details — secondary, opens the photo + spec modal */}
@@ -680,7 +702,7 @@ export function VillasSection() {
                 onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
                 onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.4)'; }}
               >
-                View Details
+                {t('v.viewDetails')}
                 <ArrowUpRight size={14} />
               </button>
             </div>
@@ -747,15 +769,13 @@ export function VillasSection() {
               </svg>
             </span>
             <span style={{ display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.7, marginBottom: 12 }}>
-              {tour.name} · 3D Twin
+              {tour.name} · {t('v.3dTwin')}
             </span>
-            <h3 style={{ fontFamily: ff, fontWeight: 400, fontStyle: 'italic', fontSize: 'clamp(24px,3vw,34px)', lineHeight: 1.15, color: 'var(--cream)', margin: '0 0 14px' }}>
-              Step inside, virtually.
+            <h3 style={{ fontFamily: ff, fontWeight: 400, fontStyle: 'normal', fontSize: 'clamp(24px,3vw,34px)', lineHeight: 1.15, color: 'var(--cream)', margin: '0 0 14px' }}>
+              {t('v.3dTitle')}
             </h3>
             <p style={{ fontFamily: ff, fontSize: 'clamp(14px,1.4vw,16px)', lineHeight: 1.8, color: 'var(--cr70)', margin: '0 0 clamp(28px,3.5vw,36px)' }}>
-              We&rsquo;re finishing a photoreal 3D walkthrough of {tour.name}. Explore every
-              room and walk the grounds from anywhere. Leave your details and we&rsquo;ll
-              send you the private link the moment it&rsquo;s live.
+              {t('v.3dBody')}
             </p>
             <a
               href="#reserve"
@@ -773,7 +793,7 @@ export function VillasSection() {
                 borderRadius: 100, padding: '16px 32px', textDecoration: 'none', cursor: 'pointer',
               }}
             >
-              Request the 3D tour
+              {t('v.3dCta')}
               <ArrowUpRight size={14} />
             </a>
           </div>

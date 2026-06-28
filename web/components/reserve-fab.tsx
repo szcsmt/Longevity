@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useT } from '@/lib/i18n';
 
 /* Persistent "Reserve" call-to-action.
    Follows the visitor through every section: it fades in once they've scrolled
@@ -9,6 +10,7 @@ import { useEffect, useState } from 'react';
 const WHATSAPP = 'https://wa.me/66948258673?text=Hello%2C%20I%27d%20like%20to%20learn%20more%20about%20Longevity%20Resort.';
 
 export function ReserveFab() {
+  const t = useT();
   // pastHero: WhatsApp follows the visitor from here on.
   // reserveInView: hide only the contact pill while the enquiry form is on screen.
   const [pastHero, setPastHero] = useState(false);
@@ -89,7 +91,7 @@ export function ReserveFab() {
         className="reserve-fab"
         data-show={pastHero && !reserveInView ? 'true' : 'false'}
       >
-        <span>Get in Contact</span>
+        <span>{t('fab.contact')}</span>
         <svg width="16" height="10" viewBox="0 0 16 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
           <path d="M1 5h14M10 1l5 4-5 4" />
         </svg>

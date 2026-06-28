@@ -1,6 +1,7 @@
 'use client';
 
 import { BrochureDownload } from '@/components/brochure-download';
+import { useT } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
@@ -10,18 +11,18 @@ const WEBSITE = 'longevitysamui.com';
 
 // Leading "/" so the anchors also work from the legal pages (jump home, then scroll).
 const explore = [
-  { label: 'The Park',     href: '/#park'        },
-  { label: 'The Villas',   href: '/#villas'      },
-  { label: 'Investment',   href: '/#investment'  },
-  { label: 'Location',     href: '/#location'    },
-  { label: 'Behind the Resort', href: '/#team'   },
-  { label: 'Reserve',      href: '/#reserve'     },
+  { tk: 'nav.park',         href: '/#park'    },
+  { tk: 'v.eyebrow',        href: '/#villas'  },
+  { tk: 'nav.investment',   href: '/#returns' },
+  { tk: 'nav.location',     href: '/#location' },
+  { tk: 'footer.partners',  href: '/partners' },
+  { tk: 'nav.reserve',      href: '/#reserve' },
 ];
 
 const legal = [
-  { label: 'Privacy & GDPR', href: '/privacy' },
-  { label: 'Cookie Policy',  href: '/cookies' },
-  { label: 'Imprint',        href: '/imprint' },
+  { tk: 'footer.privacy', href: '/privacy' },
+  { tk: 'footer.cookies', href: '/cookies' },
+  { tk: 'footer.imprint', href: '/imprint' },
 ];
 
 const colLabel: React.CSSProperties = {
@@ -31,6 +32,7 @@ const colLabel: React.CSSProperties = {
 };
 
 export function FooterSection() {
+  const t = useT();
   return (
     <footer style={{ background: 'var(--bg-2)', position: 'relative' }}>
       {/* Gold hairline accent across the very top */}
@@ -65,29 +67,29 @@ export function FooterSection() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/LOGO.svg" alt="Longevity Resort" style={{ height: 'clamp(72px,9vw,104px)', width: 'auto', display: 'block', marginBottom: 22, marginLeft: -6 }} />
             <p style={{
-              fontFamily: ff, fontStyle: 'italic',
+              fontFamily: ff, fontStyle: 'normal',
               fontSize: 'clamp(14px,1.3vw,16px)', lineHeight: 1.7,
               color: 'var(--cr70)', margin: 0, maxWidth: 280,
             }}>
-              A private sanctuary for renewal.<br />Plai Leam, Koh Samui.
+              {t('footer.tagline')}<br />Plai Laem, Koh Samui.
             </p>
           </div>
 
           {/* Explore */}
           <div>
-            <span style={colLabel}>Explore</span>
+            <span style={colLabel}>{t('footer.colExplore')}</span>
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-              {explore.map(({ label, href }) => (
-                <a key={label} href={href} className="ft-link" style={{
+              {explore.map(({ tk, href }) => (
+                <a key={tk} href={href} className="ft-link" style={{
                   fontFamily: ff, fontSize: 'clamp(14px,1.3vw,16px)', width: 'fit-content',
-                }}>{label}</a>
+                }}>{t(tk)}</a>
               ))}
             </nav>
           </div>
 
           {/* Contact */}
           <div>
-            <span style={colLabel}>Enquiries</span>
+            <span style={colLabel}>{t('footer.colEnquiries')}</span>
             <a href={`mailto:${CONTACT_EMAIL}`} className="ft-email" style={{
               fontFamily: ff, fontSize: 'clamp(15px,1.4vw,18px)',
               color: 'var(--cream)', textDecoration: 'none',
@@ -102,19 +104,19 @@ export function FooterSection() {
               fontFamily: ffs, fontSize: 8, fontWeight: 300,
               letterSpacing: '0.16em', textTransform: 'uppercase',
               color: 'var(--cr40)', margin: '18px 0 0', lineHeight: 1.8,
-            }}>Plai Leam · Koh Samui · Thailand</p>
+            }}>{t('footer.locLine')}</p>
             <BrochureDownload variant="footer" />
           </div>
 
           {/* Legal */}
           <div>
-            <span style={colLabel}>Legal</span>
+            <span style={colLabel}>{t('footer.colLegal')}</span>
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
-              {legal.map(({ label, href }) => (
-                <a key={label} href={href} className="ft-link" style={{
+              {legal.map(({ tk, href }) => (
+                <a key={tk} href={href} className="ft-link" style={{
                   fontFamily: ffs, fontSize: 'clamp(11px,1vw,13px)', fontWeight: 300,
                   letterSpacing: '0.04em',
-                }}>{label}</a>
+                }}>{t(tk)}</a>
               ))}
             </nav>
           </div>
@@ -127,7 +129,7 @@ export function FooterSection() {
           paddingTop: 'clamp(26px,3.2vw,36px)',
         }}>
           <span style={{ fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.1em', color: 'var(--cr40)' }}>
-            © 2026 Longevity Resort. All rights reserved.
+            © 2026 Longevity Resort. {t('footer.rights')}
           </span>
           <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(228,217,195,0.22)' }}>
             Est. 2026 · Koh Samui

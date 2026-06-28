@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useT } from '@/lib/i18n';
 
 export const CONSENT_KEY = 'lr-cookie-consent';
 
@@ -12,6 +13,7 @@ export const CONSENT_KEY = 'lr-cookie-consent';
    The site sets no analytics/marketing storage today; when it does, gate it on
    `localStorage[CONSENT_KEY]` parsing to `{ level: 'all' }`. */
 export function CookieConsent() {
+  const t = useT();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -34,19 +36,18 @@ export function CookieConsent() {
   if (!show) return null;
 
   return (
-    <div className="cookie-banner" role="dialog" aria-label="Cookie consent" aria-live="polite">
-      <h2>A note on cookies</h2>
+    <div className="cookie-banner" role="dialog" aria-label={t('cookie.title')} aria-live="polite">
+      <h2>{t('cookie.title')}</h2>
       <p>
-        We use only strictly necessary storage to make this site work. We&rsquo;d also like your
-        consent for optional cookies (used only if we add analytics later). See our{' '}
-        <a href="/cookies">Cookie Policy</a>.
+        {t('cookie.body')}{' '}
+        <a href="/cookies">{t('cookie.policy')}</a>.
       </p>
       <div className="cookie-actions">
         <button type="button" className="cookie-btn cookie-btn-ghost" onClick={() => choose('necessary')}>
-          Only necessary
+          {t('cookie.necessary')}
         </button>
         <button type="button" className="cookie-btn cookie-btn-primary" onClick={() => choose('all')}>
-          Accept all
+          {t('cookie.acceptAll')}
         </button>
       </div>
     </div>

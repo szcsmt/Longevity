@@ -1,25 +1,27 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useT } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
 const stats = [
-  { value: '330',       label: 'days of sunshine per year' },
-  { value: '29°C',      label: 'average temperature all year' },
-  { value: '5 min',     label: 'walk to the shore' },
-  { value: '15 min',    label: 'from villa to the airport' },
+  { v: 'sol.stat.sun',   l: 'sol.stat.sun.l' },
+  { v: 'sol.stat.temp',  l: 'sol.stat.temp.l' },
+  { v: 'sol.stat.shore', l: 'sol.stat.shore.l' },
+  { v: 'sol.stat.air',   l: 'sol.stat.air.l' },
 ];
 
 const lifestyle = [
-  { label: 'Crystal clear coastline', sub: 'Gulf of Thailand, northeast shore' },
-  { label: 'Ancient jungle canopy',   sub: 'Native rainforest surrounding the estate' },
-  { label: 'Warmth all year',         sub: '29°C average, minimal rain season' },
-  { label: 'Absolute silence',        sub: 'No traffic, no concrete, no noise' },
+  { l: 'sol.life.coast',   s: 'sol.life.coast.s' },
+  { l: 'sol.life.jungle',  s: 'sol.life.jungle.s' },
+  { l: 'sol.life.warm',    s: 'sol.life.warm.s' },
+  { l: 'sol.life.silence', s: 'sol.life.silence.s' },
 ];
 
 export function SolutionSection() {
+  const t = useT();
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export function SolutionSection() {
             color: 'var(--gold)', opacity: 1,
             textShadow: '0 1px 16px rgba(6,14,8,0.9), 0 0 30px rgba(201,169,110,0.35)',
             marginBottom: 'clamp(16px,2.5vw,28px)',
-          }}>Where we built it</span>
+          }}>{t('sol.builtHere')}</span>
           <h2 style={{
             fontFamily: ff, fontWeight: 400,
             fontSize: 'clamp(60px,10vw,140px)',
@@ -82,17 +84,16 @@ export function SolutionSection() {
             color: 'var(--w90)', lineHeight: 1,
             margin: '0 0 20px',
             textShadow: '0 2px 40px rgba(6,14,8,0.60), 0 0 60px rgba(201,169,110,0.18)',
-          }}>Koh Samui.</h2>
+          }}>{t('sol.kohSamui')}</h2>
           <p style={{
-            fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
+            fontFamily: ff, fontWeight: 400, fontStyle: 'normal',
             fontSize: 'clamp(15px,1.6vw,21px)',
             color: 'rgba(255,252,248,0.78)',
             lineHeight: 1.7, letterSpacing: '0.01em',
             maxWidth: 500, margin: '0 auto',
             textShadow: '0 1px 16px rgba(6,14,8,0.85)',
           }}>
-            An island in the Gulf of Thailand where the sun shines 330 days a year,
-            the jungle meets the sea, and the air still heals.
+            {t('kohSamuiDesc')}
           </p>
         </div>
       </div>
@@ -109,7 +110,7 @@ export function SolutionSection() {
           gap: 'clamp(10px,1.2vw,18px)',
           maxWidth: 900, margin: '0 auto clamp(72px,9vw,112px)',
         }}>
-          {stats.map(({ value, label }, i) => (
+          {stats.map(({ v, l }, i) => (
             <div key={i} className="glass-card" style={{
               padding: 'clamp(18px,2.2vw,28px) clamp(10px,1.3vw,18px)',
               textAlign: 'center',
@@ -121,12 +122,12 @@ export function SolutionSection() {
                 letterSpacing: '-0.01em',
                 marginBottom: 'clamp(6px,0.8vw,10px)',
                 filter: 'drop-shadow(0 0 14px var(--gold-glow))',
-              }}>{value}</span>
+              }}>{t(v)}</span>
               <span style={{
                 fontFamily: ffs, fontSize: 'clamp(8.5px,0.8vw,10px)', fontWeight: 300,
                 letterSpacing: '0.13em', textTransform: 'uppercase', lineHeight: 1.45,
                 color: 'var(--cr70)',
-              }}>{label}</span>
+              }}>{t(l)}</span>
             </div>
           ))}
         </div>
@@ -146,14 +147,12 @@ export function SolutionSection() {
               lineHeight: 1.9, letterSpacing: '0.01em',
               color: 'var(--cr70)', margin: 0,
             }}>
-              Koh Samui sits in the Gulf of Thailand. 330 days of sun, ancient jungle,
-              crystal clear water. The northeast coast is one of the last untouched
-              stretches on the island. That is precisely where Longevity Resort is.
+              {t('sol.prose')}
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {lifestyle.map(({ label, sub }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+            {lifestyle.map(({ l, s }) => (
+              <div key={l} style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                 <span style={{
                   display: 'block', width: 1, height: 34,
                   background: 'linear-gradient(to bottom, var(--gold-65), transparent)',
@@ -163,11 +162,11 @@ export function SolutionSection() {
                   <span style={{
                     display: 'block', fontFamily: ff, fontWeight: 400,
                     fontSize: 'clamp(13px,1.3vw,16px)', color: 'var(--cream)', marginBottom: 2,
-                  }}>{label}</span>
+                  }}>{t(l)}</span>
                   <span style={{
                     display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 300,
                     letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--cr40)',
-                  }}>{sub}</span>
+                  }}>{t(s)}</span>
                 </div>
               </div>
             ))}

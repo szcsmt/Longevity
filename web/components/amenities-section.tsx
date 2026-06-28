@@ -1,44 +1,43 @@
 'use client';
 
 import { useEffect, useRef, useState, type ComponentType } from 'react';
-import { Lightbulb, Droplets, Moon, Wind, Flame, Waves, Leaf, Activity } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
+import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
 type IconProps = { size?: number; strokeWidth?: number };
 
-/* A seated, meditating figure (no lucide equivalent) used for "Soundproof". */
-const Meditation = ({ size = 16, strokeWidth = 1.6 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="5.5" r="2.6" />
-    <path d="M12 11c-3.6 0-6.6 2.6-7.4 6.1a1 1 0 0 0 1 1.4h12.8a1 1 0 0 0 1-1.4C18.6 13.6 15.6 11 12 11Z" />
-    <path d="M8.5 14.5 12 16.5l3.5-2" />
-  </svg>
-);
+/* Icons live in /public/amenity-icons as single-colour SVGs. We paint them with a
+   CSS mask so they inherit the dot's `currentColor` and flip dark on the active
+   (gold) state — exactly like the old inline icons did. Circadian Lighting has no
+   custom SVG yet, so it keeps a lucide component as a fallback. */
+const IC = '/amenity-icons';
 
 interface Hotspot {
   x: number;            // % from left
   y: number;            // % from top
-  icon: ComponentType<IconProps>;
-  title: string;
-  body: string;
+  icon: string | ComponentType<IconProps>;   // SVG url (masked) or a lucide component
+  titleKey: string;
+  bodyKey: string;
 }
 
 /* Positions tuned to the heals-you render (open villa, pool, interior). */
 const hotspots: Hotspot[] = [
-  { x: 38, y: 15, icon: Lightbulb,  title: 'Circadian Lighting',  body: 'Light that follows the sun, warm white by morning, soft amber by night. Your body clock, supported by the architecture itself.' },
-  { x: 20, y: 44, icon: Droplets,   title: 'Filtered Water Everywhere', body: 'Pure water at every point of use. Kitchen, bathroom, shower. No exceptions.' },
-  { x: 63, y: 28, icon: Moon,       title: 'Full Blackout Bedrooms', body: 'Not curtains, but architecture. Every bedroom sealed from light for complete sleep quality.' },
-  { x: 49, y: 58, icon: Meditation, title: 'Soundproof',          body: 'Walls engineered for silence. No traffic, no neighbours, nothing between you and deep, undisturbed calm.' },
-  { x: 85, y: 20, icon: Wind,       title: 'Central Cooling',     body: 'Climate control for the whole villa, tuned for the tropics. Even, quiet, fresh air in every room, day and night.' },
-  { x: 90, y: 54, icon: Flame,      title: 'Mobile Infrared Sauna', body: 'A portable infrared sauna, yours on request. Deep heat that eases the body and speeds recovery, wherever you want it.' },
-  { x: 18, y: 80, icon: Waves,      title: 'Ice Bath',            body: 'Cold immersion for recovery, immune function, and mental resilience, on your schedule.' },
-  { x: 40, y: 78, icon: Leaf,       title: 'Natural Materials',   body: 'Stone, timber and linen throughout. Honest, breathable materials chosen to calm the senses and last for decades.' },
-  { x: 77, y: 80, icon: Activity,   title: 'Vitality Lab',        body: 'VO₂ max testing, body composition analysis and a personal dietitian. Your biology, measured and coached.' },
+  { x: 38, y: 15, icon: Lightbulb,                          titleKey: 'am.h1.t', bodyKey: 'am.h1.b' },
+  { x: 20, y: 44, icon: `${IC}/filtered-water.svg`,        titleKey: 'am.h2.t', bodyKey: 'am.h2.b' },
+  { x: 63, y: 28, icon: `${IC}/full-blackout.svg`,         titleKey: 'am.h3.t', bodyKey: 'am.h3.b' },
+  { x: 49, y: 58, icon: `${IC}/soundproof.svg`,            titleKey: 'am.h4.t', bodyKey: 'am.h4.b' },
+  { x: 85, y: 20, icon: `${IC}/central-cooling.svg`,       titleKey: 'am.h5.t', bodyKey: 'am.h5.b' },
+  { x: 90, y: 54, icon: `${IC}/mobile-sauna.svg`,          titleKey: 'am.h6.t', bodyKey: 'am.h6.b' },
+  { x: 18, y: 80, icon: `${IC}/ice-bath.svg`,              titleKey: 'am.h7.t', bodyKey: 'am.h7.b' },
+  { x: 40, y: 78, icon: `${IC}/natural.svg`,               titleKey: 'am.h8.t', bodyKey: 'am.h8.b' },
+  { x: 77, y: 80, icon: `${IC}/smart-health-tracking.svg`, titleKey: 'am.h9.t', bodyKey: 'am.h9.b' },
 ];
 
 export function AmenitiesSection() {
+  const t = useT();
   const ref = useRef<HTMLElement>(null);
   const [active, setActive] = useState<number | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -85,7 +84,7 @@ export function AmenitiesSection() {
         display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300,
         letterSpacing: '0.30em', textTransform: 'uppercase',
         color: 'var(--gold)', opacity: 0.65, marginBottom: 'clamp(28px,3.5vw,44px)',
-      }}>Built Into Every Villa</span>
+      }}>{t('am.label')}</span>
 
       {/* Headline */}
       <h2 className="reveal" style={{
@@ -94,15 +93,14 @@ export function AmenitiesSection() {
         margin: '0 0 clamp(20px,2.5vw,32px)', maxWidth: '14em',
         textWrap: 'balance',
       }}>
-        Longevity built into{' '}
-        <em className="gold-text" style={{ fontStyle: 'italic' }}>daily life.</em>
+        {richText(t('am.headline'), { fontStyle: 'normal' })}
       </h2>
 
       <p className="reveal" style={{
-        fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,18px)',
+        fontFamily: ff, fontStyle: 'normal', fontSize: 'clamp(14px,1.4vw,18px)',
         lineHeight: 1.8, color: 'var(--cr40)', margin: '0 0 clamp(44px,5vw,64px)', maxWidth: 520,
       }}>
-        Explore the residence. Tap each point to see the longevity technology built into it.
+        {t('am.sub')}
       </p>
 
       {/* Interactive image */}
@@ -126,13 +124,13 @@ export function AmenitiesSection() {
 
         {/* Hotspot dots */}
         {hotspots.map((h, i) => {
-          const Icon = h.icon;
+          const Ic = h.icon;
           const on = i === active;
           return (
             <button
-              key={h.title}
+              key={h.titleKey}
               className="hs-dot"
-              aria-label={h.title}
+              aria-label={t(h.titleKey)}
               onMouseEnter={() => show(i)}
               onMouseLeave={scheduleHide}
               onClick={() => show(i)}
@@ -150,7 +148,17 @@ export function AmenitiesSection() {
                 animationDelay: `${i * 0.35}s`,
               }}
             >
-              <Icon size={16} strokeWidth={1.6} />
+              {typeof Ic === 'string' ? (
+                <span aria-hidden="true" style={{
+                  width: 18, height: 18, display: 'block', backgroundColor: 'currentColor',
+                  WebkitMaskImage: `url(${Ic})`, maskImage: `url(${Ic})`,
+                  WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
+                  WebkitMaskPosition: 'center', maskPosition: 'center',
+                  WebkitMaskSize: 'contain', maskSize: 'contain',
+                }} />
+              ) : (
+                <Ic size={16} strokeWidth={1.6} />
+              )}
             </button>
           );
         })}
@@ -180,14 +188,14 @@ export function AmenitiesSection() {
             color: 'var(--gold)', opacity: 0.75, marginBottom: 8,
           }}>0{active + 1} / 0{hotspots.length}</span>
           <h3 style={{
-            fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
+            fontFamily: ff, fontWeight: 400, fontStyle: 'normal',
             fontSize: 'clamp(17px,1.8vw,24px)', lineHeight: 1.2,
             color: 'var(--cream)', margin: '0 0 8px',
-          }}>{cur.title}</h3>
+          }}>{t(cur.titleKey)}</h3>
           <p style={{
             fontFamily: ffs, fontWeight: 300, fontSize: 'clamp(11px,0.95vw,13px)',
             lineHeight: 1.75, color: 'var(--cr70)', margin: 0,
-          }}>{cur.body}</p>
+          }}>{t(cur.bodyKey)}</p>
         </div>
         )}
       </div>

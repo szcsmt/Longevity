@@ -2,6 +2,7 @@
 
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
@@ -17,27 +18,28 @@ interface Poi {
   lat:     number;
   lng:     number;
   name:    string;
-  desc:    string;
+  descKey: string;
   primary: boolean;
   img:     string;
 }
 
 const POIS: Poi[] = [
-  { id:'resort',     lat:9.568083, lng:100.076056, primary:true,  img:'/images/streets/entrance.webp',  name:'Longevity Resort',                desc:'Your private gated estate. 60+ villas across four themed lanes, five minutes from the shore.' },
-  { id:'bigbuddha',  lat:9.570853, lng:100.059840, primary:false, img:'/images/poi/temple.webp',    name:'Wat Phra Yai · Big Buddha',       desc:"Koh Samui's iconic 12-metre golden Buddha, watching over the north coast." },
-  { id:'legacyspa',  lat:9.565938, lng:100.083438, primary:false, img:'/images/poi/spa.webp',       name:'Legacy Spa Bophut',               desc:'Award winning spa & wellness sanctuary near the northeast cape.' },
-  { id:'khunsi',     lat:9.522938, lng:100.013188, primary:false, img:'/images/poi/waterfall.webp', name:'Khun Si Waterfall',               desc:'A hidden jungle waterfall and natural pools in the island’s green interior.' },
-  { id:'elephant',   lat:9.548065, lng:100.038457, primary:false, img:'/images/poi/elephant.webp',  name:'Samui Elephant Sanctuary',        desc:'Ethical sanctuary in the Bophut hills, home to retired elephants, with no riding.' },
-  { id:'tarnim',     lat:9.482938, lng: 99.994438, primary:false, img:'/images/poi/temple.webp',    name:'Tarnim Magic Garden',             desc:'Mystical stone statues hidden high on Pom Mountain.' },
-  { id:'theroof',    lat:9.517000, lng:100.050500, primary:false, img:'/images/poi/rooftop.webp',   name:'The Roof Samui',                  desc:"Panoramic hilltop rooftop bar above Chaweng, with the island's best sunset." },
-  { id:'bophut',     lat:9.561102, lng:100.028013, primary:false, img:'/images/poi/beach.webp',     name:'Bo Phut Beach',                   desc:'A calm, palm lined beach on the north shore beside Fisherman’s Village.' },
-  { id:'airport',    lat:9.547790, lng:100.061997, primary:false, img:'/images/poi/airport.webp',   name:'Samui Airport',                   desc:'A tropical garden airport, just 12 minutes from the estate.' },
-  { id:'choengmon',  lat:9.573770, lng:100.080686, primary:false, img:'/images/poi/beach.webp',     name:'Choeng Mon Beach',                desc:'A sheltered white sand bay on the peaceful northeast cape.' },
-  { id:'chaweng',    lat:9.529000, lng:100.062000, primary:false, img:'/images/poi/beach.webp',     name:'Chaweng Beach',                   desc:"The island's most famous beach, with 6 km of sand, dining and nightlife." },
-  { id:'fishermans', lat:9.558438, lng:100.031438, primary:false, img:'/images/poi/market.webp',    name:"Fisherman's Village Night Market",desc:'Bophut’s historic walking street, with boutiques, seafood and the Friday market.' },
+  { id:'resort',     lat:9.568083, lng:100.076056, primary:true,  img:'/images/streets/entrance.webp',  name:'Longevity Resort',                descKey:'map.poi.resort' },
+  { id:'bigbuddha',  lat:9.570853, lng:100.059840, primary:false, img:'/images/poi/temple.webp',    name:'Wat Phra Yai · Big Buddha',       descKey:'map.poi.bigbuddha' },
+  { id:'legacyspa',  lat:9.565938, lng:100.083438, primary:false, img:'/images/poi/spa.webp',       name:'Legacy Spa Bophut',               descKey:'map.poi.legacyspa' },
+  { id:'khunsi',     lat:9.522938, lng:100.013188, primary:false, img:'/images/poi/waterfall.webp', name:'Khun Si Waterfall',               descKey:'map.poi.khunsi' },
+  { id:'elephant',   lat:9.548065, lng:100.038457, primary:false, img:'/images/poi/elephant.webp',  name:'Samui Elephant Sanctuary',        descKey:'map.poi.elephant' },
+  { id:'tarnim',     lat:9.482938, lng: 99.994438, primary:false, img:'/images/poi/temple.webp',    name:'Tarnim Magic Garden',             descKey:'map.poi.tarnim' },
+  { id:'theroof',    lat:9.517000, lng:100.050500, primary:false, img:'/images/poi/rooftop.webp',   name:'The Roof Samui',                  descKey:'map.poi.theroof' },
+  { id:'bophut',     lat:9.561102, lng:100.028013, primary:false, img:'/images/poi/beach.webp',     name:'Bo Phut Beach',                   descKey:'map.poi.bophut' },
+  { id:'airport',    lat:9.547790, lng:100.061997, primary:false, img:'/images/poi/airport.webp',   name:'Samui Airport',                   descKey:'map.poi.airport' },
+  { id:'choengmon',  lat:9.573770, lng:100.080686, primary:false, img:'/images/poi/beach.webp',     name:'Choeng Mon Beach',                descKey:'map.poi.choengmon' },
+  { id:'chaweng',    lat:9.529000, lng:100.062000, primary:false, img:'/images/poi/beach.webp',     name:'Chaweng Beach',                   descKey:'map.poi.chaweng' },
+  { id:'fishermans', lat:9.558438, lng:100.031438, primary:false, img:'/images/poi/market.webp',    name:"Fisherman's Village Night Market",descKey:'map.poi.fishermans' },
 ];
 
 export function MapSection() {
+  const t = useT();
   const wrapRef = useRef<HTMLDivElement>(null);
   const mapEl   = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,15 +199,14 @@ export function MapSection() {
             fontFamily: ff, fontWeight: 400, fontSize: 'clamp(38px,4.6vw,68px)',
             lineHeight: 1.04, letterSpacing: '-0.01em', margin: '0 0 clamp(14px,1.8vw,22px)',
           }}>
-            <span className="gold-text" style={{ filter: 'drop-shadow(0 0 24px var(--gold-glow))' }}>Location</span>
+            <span className="gold-text" style={{ filter: 'drop-shadow(0 0 24px var(--gold-glow))' }}>{t('map.headline')}</span>
           </h2>
           <p style={{
-            fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
+            fontFamily: ff, fontWeight: 400, fontStyle: 'normal',
             fontSize: 'clamp(14px,1.4vw,18px)', lineHeight: 1.8,
             color: 'var(--cr70)', margin: 0,
           }}>
-            On the peaceful northeast cape of Koh Samui, minutes from the shore,
-            the airport, and the island&rsquo;s most beautiful corners.
+            {t('map.sub')}
           </p>
           {/* Nudge to interact with the map */}
           <span className="lr-map-cue" style={{
@@ -215,7 +216,7 @@ export function MapSection() {
             letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gold)',
           }}>
             <span style={{ display: 'inline-flex', width: 9, height: 9, borderRadius: '50%', background: 'var(--gold)', animation: 'scPulse 2s ease-in-out infinite' }} />
-            Tap the points to explore the island
+            {t('map.cue')}
           </span>
         </div>
 
@@ -237,14 +238,14 @@ export function MapSection() {
                     position: 'absolute', top: 14, left: 14,
                     fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.2em', textTransform: 'uppercase',
                     color: 'var(--bg)', background: 'var(--gold)', padding: '5px 12px', borderRadius: 100,
-                  }}>The Estate</span>
+                  }}>{t('map.estate')}</span>
                 )}
               </div>
               <h3 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(22px,2.3vw,32px)', color: 'var(--cream)', lineHeight: 1.2, margin: 'clamp(16px,2.2vw,26px) 0 10px' }}>
                 {poi.name}
               </h3>
               <p style={{ fontFamily: ffs, fontSize: 'clamp(13px,1.2vw,16px)', fontWeight: 300, lineHeight: 1.75, color: 'var(--cr70)', margin: 0 }}>
-                {poi.desc}
+                {t(poi.descKey)}
               </p>
             </div>
           )}
@@ -293,7 +294,7 @@ export function MapSection() {
                 style={{ width: 78, height: 78, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}>
                 <span style={{ display: 'block', fontFamily: ff, fontSize: 16, color: 'var(--cream)', lineHeight: 1.2, marginBottom: 5 }}>{poi.name}</span>
-                <p className="lr-map-info-desc" style={{ fontFamily: ffs, fontSize: 11.5, fontWeight: 300, lineHeight: 1.5, color: 'var(--cr70)', margin: 0 }}>{poi.desc}</p>
+                <p className="lr-map-info-desc" style={{ fontFamily: ffs, fontSize: 11.5, fontWeight: 300, lineHeight: 1.5, color: 'var(--cr70)', margin: 0 }}>{t(poi.descKey)}</p>
               </div>
             </div>
           )}

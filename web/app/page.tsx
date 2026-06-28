@@ -2,6 +2,7 @@
 
 import { Nav }               from '@/components/nav';
 import { HeroSection }       from '@/components/hero-section';
+import { IntroSection }      from '@/components/intro-section';
 import { StorySection }      from '@/components/story-section';
 import { SolutionSection }   from '@/components/solution-section';
 import { EstateSection }     from '@/components/estate-section';
@@ -11,9 +12,6 @@ import { AmenitiesSection }  from '@/components/amenities-section';
 import { VillasSection }     from '@/components/villas-section';
 import { InteriorSection }   from '@/components/interior-section';
 import { MapSection }        from '@/components/map-section';
-import { InvestmentSection } from '@/components/investment-section';
-import { FaqSection }        from '@/components/faq-section';
-import { BehindSection }     from '@/components/behind-section';
 import { CtaSection }        from '@/components/cta-section';
 import { FooterSection }     from '@/components/footer-section';
 import { ReserveFab }        from '@/components/reserve-fab';
@@ -25,6 +23,7 @@ export default function Home() {
       <div className="grain-overlay" aria-hidden="true" />
       <Nav />
       <HeroSection />
+      <IntroSection />
       <StorySection />
       <SolutionSection />
       <EstateSection />
@@ -34,9 +33,6 @@ export default function Home() {
       <VillasSection />
       <InteriorSection />
       <MapSection />
-      <InvestmentSection />
-      <FaqSection />
-      <BehindSection />
       <CtaSection />
       <FooterSection />
       <ReserveFab />

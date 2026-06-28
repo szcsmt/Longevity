@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useT } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
@@ -10,6 +11,7 @@ const ffs = 'var(--font-raleway), sans-serif';
 const IMAGE = '/images/sanaila.jpg';
 
 export function EstateSection() {
+  const t = useT();
   const scrollRef   = useRef<HTMLDivElement>(null);
   const imgRef      = useRef<HTMLDivElement>(null);
   const textRef     = useRef<HTMLDivElement>(null);
@@ -22,13 +24,18 @@ export function EstateSection() {
 
     let ticking = false;
     let active  = true;
-    let secTop  = 0;     // section's document-relative top (cached)
-    let maxScroll = 0;   // cached — never read layout on the scroll path
+    let secTop  = 0;       // section's document-relative top (cached)
+    let maxScroll = 0;     // cached — never read layout on the scroll path
+    let zoomFactor = 0.85; // how far the image pushes in (cached per width)
 
     function measure() {
       const rect = el!.getBoundingClientRect();
       secTop = rect.top + window.scrollY;
       maxScroll = el!.offsetHeight - window.innerHeight;
+      // On a wide laptop a 2× zoom crops so hard the frame is all leaves. Keep the
+      // push gentle on big screens, stronger on phones where the crop reads fine.
+      const w = window.innerWidth;
+      zoomFactor = w >= 1024 ? 0.4 : w >= 700 ? 0.6 : 0.85;
     }
 
     function update() {
@@ -39,9 +46,9 @@ export function EstateSection() {
       const p = raw * (2 - raw);
 
       if (imgRef.current) {
-        // Strong "step into the jungle" push: zoom deep (to 2.0×) so it feels like
-        // you walk into the scene. translateZ(0) keeps it on its own GPU layer.
-        imgRef.current.style.transform = `translateZ(0) scale(${1 + p * 1.0})`;
+        // "Step into the jungle" push, but scaled to the screen so wide laptops
+        // don't over-crop. translateZ(0) keeps it on its own GPU layer.
+        imgRef.current.style.transform = `translateZ(0) scale(${1 + p * zoomFactor})`;
       }
       if (vignetteRef.current) {
         // Edges darken as you go deeper → the jungle closes in around you.
@@ -133,7 +140,7 @@ export function EstateSection() {
             zIndex: 10, willChange: 'opacity',
             pointerEvents: 'none',
           }}
-        >The Estate</span>
+        >{t('estate.label')}</span>
 
         {/* ── Text overlay (reveals as you zoom in) ── */}
         <div
@@ -154,7 +161,7 @@ export function EstateSection() {
             letterSpacing: '0.32em', textTransform: 'uppercase',
             color: 'var(--gold)',
             marginBottom: 'clamp(14px,2vw,24px)',
-          }}>The Estate</span>
+          }}>{t('estate.label')}</span>
 
           <h2 style={{
             fontFamily: ff, fontWeight: 400,
@@ -163,16 +170,16 @@ export function EstateSection() {
             color: 'var(--w90)', margin: '0 0 20px',
             textShadow: '0 2px 48px rgba(6,14,8,0.90), 0 0 70px rgba(201,169,110,0.20)',
           }}>
-            Where the jungle<br />meets the sea.
+            {t('estate.headline')}
           </h2>
 
           <p style={{
-            fontFamily: ff, fontWeight: 400, fontStyle: 'italic',
+            fontFamily: ff, fontWeight: 400, fontStyle: 'normal',
             fontSize: 'clamp(13px,1.3vw,17px)',
             color: 'rgba(255,252,248,0.42)',
             letterSpacing: '0.01em',
             textShadow: '0 1px 16px rgba(6,14,8,0.8)',
-          }}>Koh Samui &nbsp;·&nbsp; Private Estate &nbsp;·&nbsp; 8 rai</p>
+          }}>{t('estate.sub')}</p>
         </div>
 
       </div>

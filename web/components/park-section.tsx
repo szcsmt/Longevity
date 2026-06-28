@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useT, richText } from '@/lib/i18n';
 // Placeholder icons — swap Shield/Gem/Sofa for your uploaded SVGs later.
-import { Shield, Gem, Sofa, Waves, HeartPulse, Building2 } from 'lucide-react';
+import { Shield, Gem, Sofa, ConciergeBell, HeartPulse, Building2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
 export function ParkSection() {
+  const t = useT();
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -24,16 +26,16 @@ export function ParkSection() {
   }, []);
 
   // `num` shows the value, `icon` shows an icon (swap for custom SVGs).
-  const highlights: { value: string | null; icon: LucideIcon | null; label: string; desc: string }[] = [
-    { value: '10%', icon: null,   label: 'Fixed return',        desc: 'Guaranteed, paid to you every 3 months.' },
-    { value: null,  icon: Shield, label: 'Buyback guarantee',   desc: 'Full repurchase option after 3 years, at your discretion.' },
-    { value: null,  icon: Gem,    label: 'Premium Quality',     desc: 'Thermally glazed, soundproofed, engineered for the climate. A standard you can feel.' },
+  const highlights: { value: string | null; icon: LucideIcon | null; labelKey: string; descKey: string }[] = [
+    { value: '10%', icon: null,   labelKey: 'park.h1.label', descKey: 'park.h1.desc' },
+    { value: null,  icon: Shield, labelKey: 'park.h2.label', descKey: 'park.h2.desc' },
+    { value: null,  icon: Gem,    labelKey: 'park.h3.label', descKey: 'park.h3.desc' },
   ];
-  const facts: { icon: LucideIcon; v: string; l: string }[] = [
-    { icon: Waves,      v: '5 to 7 min',      l: 'To the nearest beach' },
-    { icon: HeartPulse, v: 'Included',        l: 'Wellness membership' },
-    { icon: Sofa,       v: 'Fully furnished', l: 'Move in ready' },
-    { icon: Building2,  v: 'On-site',         l: 'Longevity facility' },
+  const facts: { icon: LucideIcon; vKey: string; lKey: string }[] = [
+    { icon: ConciergeBell, vKey: 'park.fact1.v', lKey: 'park.fact1.l' },
+    { icon: HeartPulse,    vKey: 'park.fact2.v', lKey: 'park.fact2.l' },
+    { icon: Sofa,          vKey: 'park.fact3.v', lKey: 'park.fact3.l' },
+    { icon: Building2,     vKey: 'park.fact4.v', lKey: 'park.fact4.l' },
   ];
 
   return (
@@ -61,7 +63,7 @@ export function ParkSection() {
           lineHeight: 1.1, letterSpacing: '-0.01em', color: 'var(--cream)',
           margin: '0 0 clamp(28px,3.5vw,44px)', maxWidth: '12em',
         }}>
-          A home that <em className="gold-text" style={{ fontStyle: 'italic' }}>pays you back.</em>
+          {richText(t('park.headline'), { fontStyle: 'normal' })}
         </h2>
 
         {/* Interactive highlights — hover to light them up */}
@@ -76,7 +78,7 @@ export function ParkSection() {
           {highlights.map((h) => {
             const Icon = h.icon;
             return (
-              <div key={h.label} className="po-item" style={{
+              <div key={h.labelKey} className="po-item" style={{
                 display: 'grid', gridTemplateColumns: 'clamp(90px,11vw,140px) 1fr',
                 gap: 'clamp(16px,2.2vw,32px)', alignItems: 'center',
                 padding: 'clamp(13px,1.7vw,20px) clamp(8px,1.2vw,16px)',
@@ -101,8 +103,8 @@ export function ParkSection() {
                   ) : null}
                 </div>
                 <div>
-                  <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(12px,1.15vw,14px)', fontWeight: 400, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--cream)', marginBottom: 7 }}>{h.label}</span>
-                  <span className="po-desc" style={{ display: 'block', fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(13px,1.25vw,16px)', lineHeight: 1.55, color: 'var(--cr70)', transition: 'color 0.4s' }}>{h.desc}</span>
+                  <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(12px,1.15vw,14px)', fontWeight: 400, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--cream)', marginBottom: 7 }}>{t(h.labelKey)}</span>
+                  <span className="po-desc" style={{ display: 'block', fontFamily: ff, fontStyle: 'normal', fontSize: 'clamp(13px,1.25vw,16px)', lineHeight: 1.55, color: 'var(--cr70)', transition: 'color 0.4s' }}>{t(h.descKey)}</span>
                 </div>
               </div>
             );
@@ -114,14 +116,14 @@ export function ParkSection() {
             minmax(0,max-content) lets the columns shrink on narrow phones instead of
             overflowing (which used to clip the framed photo on the right). */}
         <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, max-content))', alignItems: 'center', gap: 'clamp(16px,2vw,24px) clamp(24px,4vw,60px)', marginTop: 'clamp(24px,3vw,38px)' }}>
-          {facts.map(({ icon: Icon, v, l }) => (
-            <div key={v} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+          {facts.map(({ icon: Icon, vKey, lKey }) => (
+            <div key={vKey} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, flexShrink: 0, borderRadius: '50%', border: '1px solid rgba(201,169,110,0.28)', color: 'var(--gold)' }}>
                 <Icon size={17} strokeWidth={1.5} />
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <span style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.3vw,17px)', color: 'var(--gold)', lineHeight: 1.1 }}>{v}</span>
-                <span style={{ fontFamily: ffs, fontSize: 'clamp(9.5px,0.88vw,11px)', fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--cr70)' }}>{l}</span>
+                <span style={{ fontFamily: ff, fontStyle: 'normal', fontSize: 'clamp(14px,1.3vw,17px)', color: 'var(--gold)', lineHeight: 1.1 }}>{t(vKey)}</span>
+                <span style={{ fontFamily: ffs, fontSize: 'clamp(9.5px,0.88vw,11px)', fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--cr70)' }}>{t(lKey)}</span>
               </div>
             </div>
           ))}
@@ -137,7 +139,7 @@ export function ParkSection() {
             color: 'var(--gold)', textDecoration: 'none', background: 'transparent',
             border: '1px solid rgba(201,169,110,0.55)', borderRadius: 100, padding: '15px 28px',
             transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
-          }}>Enquire about ownership →</a>
+          }}>{t('park.cta')} →</a>
 
       </div>
 
@@ -176,7 +178,7 @@ export function ParkSection() {
             background: 'rgba(6,14,8,0.6)', border: '1px solid rgba(201,169,110,0.25)', backdropFilter: 'blur(8px)',
           }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)', flexShrink: 0 }} />
-            <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--cr70)' }}>Private residence</span>
+            <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--cr70)' }}>{t('park.caption')}</span>
           </div>
         </div>
       </div>

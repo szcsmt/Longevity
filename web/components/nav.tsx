@@ -1,22 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useT } from '@/lib/i18n';
+import { LanguageSelector } from '@/components/language-selector';
 
 const ffs = 'var(--font-raleway), sans-serif';
 const ff  = 'var(--font-playfair), serif';
 
 const links = [
-  { label: 'The Estate', href: '#discover' },
-  { label: 'The Park',   href: '#park'     },
-  { label: 'Villas',     href: '#villas'   },
-  { label: 'Personalise', href: '#personalise' },
-  { label: 'Location',   href: '#location' },
-  { label: 'Investment', href: '#investment' },
-  { label: 'Behind the Resort', href: '#team' },
-  { label: 'Reserve',    href: '#reserve'  },
+  { tk: 'nav.estate',      href: '#discover'    },
+  { tk: 'nav.park',        href: '#park'        },
+  { tk: 'nav.villas',      href: '#villas'      },
+  { tk: 'nav.personalise', href: '#personalise' },
+  { tk: 'nav.location',    href: '#location'    },
+  { tk: 'nav.investment',  href: '#returns'     },
+  { tk: 'nav.reserve',     href: '#reserve'     },
 ];
 
 export function Nav() {
+  const t = useT();
   const [open, setOpen]         = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -73,7 +75,10 @@ export function Nav() {
           />
         </a>
 
-        {/* Hamburger — two lines */}
+        {/* Language selector + hamburger */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px,1.4vw,18px)', pointerEvents: 'auto' }}>
+        <LanguageSelector />
+
         <button
           onClick={() => setOpen(o => !o)}
           aria-label={open ? 'Close menu' : 'Open menu'}
@@ -105,6 +110,7 @@ export function Nav() {
             transformOrigin: 'center',
           }} />
         </button>
+        </div>
       </nav>
 
       {/* Menu overlay */}
@@ -121,7 +127,7 @@ export function Nav() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(20px,3.5vh,36px)', width: '100%' }}>
           {links.map((lnk, i) => (
             <a
-              key={lnk.href}
+              key={lnk.tk}
               href={lnk.href}
               onClick={() => setOpen(false)}
               style={{
@@ -138,7 +144,7 @@ export function Nav() {
               }}
             >
               <span style={{ display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.55, marginBottom: 4 }}>0{i + 1}</span>
-              {lnk.label}
+              {t(lnk.tk)}
             </a>
           ))}
         </div>
@@ -149,7 +155,7 @@ export function Nav() {
           transition: 'opacity 0.6s ease 400ms',
         }}>
           <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--cream)' }}>
-            Koh Samui &nbsp;·&nbsp; Thailand
+            {t('locThailand')}
           </span>
         </div>
       </div>

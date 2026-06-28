@@ -24,7 +24,7 @@ const faqs = [
 
 export function FaqSection() {
   const ref = useRef<HTMLElement>(null);
-  const [open, setOpen] = useState<number | null>(0);
+  const [open, setOpen] = useState<number | null>(null);
 
   useEffect(() => {
     const items = ref.current?.querySelectorAll<HTMLElement>('.reveal') ?? [];
@@ -41,7 +41,7 @@ export function FaqSection() {
   return (
     <section id="faq" ref={ref} style={{
       background: 'transparent', position: 'relative',
-      padding: 'clamp(70px,8vw,120px) clamp(24px,8vw,120px)',
+      padding: 'clamp(48px,6vw,84px) clamp(24px,8vw,120px)',
       borderTop: '1px solid rgba(201,169,110,0.06)',
     }}>
       <style>{`
@@ -52,9 +52,9 @@ export function FaqSection() {
         .faq-q[data-open="true"] svg { transform: rotate(45deg); }
       `}</style>
 
-      <span className="reveal" style={{ display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.30em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.7, marginBottom: 'clamp(18px,2.2vw,28px)' }}>Investor FAQ</span>
-      <h2 className="reveal" style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(32px,4.6vw,64px)', lineHeight: 1.06, letterSpacing: '-0.015em', color: 'var(--cream)', margin: '0 0 clamp(40px,5vw,64px)' }}>
-        Questions, <em className="gold-text" style={{ fontStyle: 'italic' }}>answered.</em>
+      <span className="reveal" style={{ display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.30em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.7, marginBottom: 'clamp(12px,1.6vw,18px)' }}>Investor FAQ</span>
+      <h2 className="reveal" style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(26px,3.4vw,44px)', lineHeight: 1.08, letterSpacing: '-0.015em', color: 'var(--cream)', margin: '0 0 clamp(26px,3.2vw,40px)' }}>
+        Questions, <em className="gold-text" style={{ fontStyle: 'normal' }}>answered.</em>
       </h2>
 
       <div className="reveal" style={{ maxWidth: 820 }}>
@@ -70,8 +70,8 @@ export function FaqSection() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20,
                   width: '100%', textAlign: 'left', cursor: 'pointer',
                   background: 'transparent', border: 'none',
-                  padding: 'clamp(18px,2.2vw,26px) 0',
-                  fontFamily: ff, fontWeight: 400, fontSize: 'clamp(16px,1.7vw,22px)',
+                  padding: 'clamp(14px,1.7vw,19px) 0',
+                  fontFamily: ff, fontWeight: 400, fontSize: 'clamp(15px,1.5vw,19px)',
                   color: isOpen ? 'var(--cream)' : 'var(--cr70)',
                   transition: 'color 0.3s',
                 }}

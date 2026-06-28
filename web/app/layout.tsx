@@ -2,12 +2,14 @@ import type { Metadata, Viewport } from 'next';
 import { Playfair_Display, Raleway } from 'next/font/google';
 import './globals.css';
 import { CookieConsent } from '@/components/cookie-consent';
+import { LanguageProvider } from '@/lib/i18n';
 
-// Only the weights/styles the design actually uses are fetched (Playfair 400 +
-// italic, Raleway 300/400). The unused 500/700/200 just added font files.
+// latin-ext covers German/Hungarian/French accents; cyrillic covers Russian.
+// (Raleway has no cyrillic subset, so Russian body text falls back to the system
+// sans; Chinese falls back to the system CJK font in both.)
 const playfair = Playfair_Display({
   variable: '--font-playfair',
-  subsets: ['latin'],
+  subsets: ['latin', 'latin-ext', 'cyrillic'],
   weight: ['400'],
   style: ['normal', 'italic'],
   display: 'swap',
@@ -15,7 +17,7 @@ const playfair = Playfair_Display({
 
 const raleway = Raleway({
   variable: '--font-raleway',
-  subsets: ['latin'],
+  subsets: ['latin', 'latin-ext'],
   weight: ['300', '400'],
   display: 'swap',
 });
@@ -36,8 +38,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${playfair.variable} ${raleway.variable}`}>
       <body>
-        {children}
-        <CookieConsent />
+        <LanguageProvider>
+          {children}
+          <CookieConsent />
+        </LanguageProvider>
       </body>
     </html>
   );

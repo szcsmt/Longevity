@@ -3,17 +3,18 @@
 import { useState, useEffect } from 'react';
 import { Sofa, Briefcase, Mic, ArrowUpRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
 interface Config {
   id: string;
-  name: string;
+  nameKey: string;
   icon: LucideIcon;
-  tagline: string;
-  desc: string;
-  features: string[];
+  tagKey: string;
+  descKey: string;
+  featKey: string;
   img: string;     // placeholder render — swap for the real config render later
   tint: string;
 }
@@ -21,30 +22,13 @@ interface Config {
 /* The structure never changes — only the interior fit-out. Images are placeholders
    (existing interior renders) until the real per-configuration renders are supplied. */
 const configs: Config[] = [
-  {
-    id: 'living', name: 'Living Lounge', icon: Sofa,
-    tagline: 'The heart of the home.',
-    desc: 'An open, sunlit lounge that flows to the terrace and pool. The natural default for the villa.',
-    features: ['Indoor and outdoor flow', 'Custom lounge seating', 'Circadian lighting'],
-    img: '/images/villa/int-living-1.webp', tint: 'rgba(201,169,110,0.30)',
-  },
-  {
-    id: 'office', name: 'Home Office', icon: Briefcase,
-    tagline: 'Focus, framed by the jungle.',
-    desc: 'A quiet workspace with no glare, a built in desk, soundproofing and fibre. Productivity with a view.',
-    features: ['Soundproofed walls', 'Built in desk & storage', 'Fast fibre'],
-    img: '/images/villa/office.webp', tint: 'rgba(150,170,190,0.28)',
-  },
-  {
-    id: 'podcast', name: 'Podcast Studio', icon: Mic,
-    tagline: 'Acoustically treated, ready to record.',
-    desc: 'A soundproofed room with warm lighting and a layout ready to record in. Press record and create.',
-    features: ['Sound isolation', 'Recording ready wiring', 'Warm key lighting'],
-    img: '/images/villa/podcast.webp', tint: 'rgba(206,138,120,0.30)',
-  },
+  { id: 'living',  nameKey: 'int.c1.name', icon: Sofa,      tagKey: 'int.c1.tag', descKey: 'int.c1.desc', featKey: 'int.c1.feat', img: '/images/villa/int-living-1.webp', tint: 'rgba(201,169,110,0.30)' },
+  { id: 'office',  nameKey: 'int.c2.name', icon: Briefcase, tagKey: 'int.c2.tag', descKey: 'int.c2.desc', featKey: 'int.c2.feat', img: '/images/villa/office.webp',       tint: 'rgba(150,170,190,0.28)' },
+  { id: 'podcast', nameKey: 'int.c3.name', icon: Mic,       tagKey: 'int.c3.tag', descKey: 'int.c3.desc', featKey: 'int.c3.feat', img: '/images/villa/podcast.webp',      tint: 'rgba(206,138,120,0.30)' },
 ];
 
 export function InteriorSection() {
+  const t = useT();
   const [active, setActive] = useState(0);
   const [auto, setAuto]     = useState(true);    // cycles the cards on its own…
   const [paused, setPaused] = useState(false);   // …pauses while hovering
@@ -73,9 +57,9 @@ export function InteriorSection() {
       <div className="section-glow" aria-hidden="true" style={{ top: '2%', right: '-6%', width: 'min(560px,55vw)', height: 'min(560px,55vw)' }} />
 
       {/* Intro */}
-      <span style={{ display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.30em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.7, marginBottom: 'clamp(20px,2.5vw,30px)' }}>Make it yours</span>
+      <span style={{ display: 'block', fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.30em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.7, marginBottom: 'clamp(20px,2.5vw,30px)' }}>{t('int.label')}</span>
       <h2 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(38px,5.8vw,84px)', lineHeight: 1.04, letterSpacing: '-0.015em', color: 'var(--cream)', margin: '0 0 clamp(26px,3.5vw,48px)' }}>
-        Your villa.<br /><em className="gold-text" style={{ fontStyle: 'italic' }}>Your interior.</em>
+        {richText(t('int.headline'), { fontStyle: 'normal' })}
       </h2>
 
       {/* Configurator.
@@ -99,7 +83,7 @@ export function InteriorSection() {
           }}>
             {configs.map((c, i) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={c.id} src={c.img} alt={c.name} loading="lazy" decoding="async"
+              <img key={c.id} src={c.img} alt={t(c.nameKey)} loading="lazy" decoding="async"
                 style={{
                   position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
                   opacity: i === active ? 1 : 0, transform: i === active ? 'scale(1)' : 'scale(1.04)',
@@ -109,18 +93,18 @@ export function InteriorSection() {
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(120% 80% at 80% 10%, ${cur.tint} 0%, transparent 55%)` }} />
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to top, rgba(6,14,8,0.82) 6%, transparent 46%)' }} />
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 'clamp(20px,2.8vw,40px)' }}>
-              <span style={{ display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.85, marginBottom: 8 }}>0{active + 1} / 0{configs.length} · The interior</span>
-              <h3 key={cur.id} style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(26px,3.4vw,48px)', lineHeight: 1, color: 'var(--cream)', margin: '0 0 6px', animation: 'fadeIn 0.5s ease both' }}>{cur.name}</h3>
-              <p style={{ fontFamily: ff, fontStyle: 'italic', fontSize: 'clamp(14px,1.5vw,20px)', color: 'var(--gold)', margin: 0 }}>{cur.tagline}</p>
+              <span style={{ display: 'block', fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.85, marginBottom: 8 }}>0{active + 1} / 0{configs.length} · {t('int.theInterior')}</span>
+              <h3 key={cur.id} style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(26px,3.4vw,48px)', lineHeight: 1, color: 'var(--cream)', margin: '0 0 6px', animation: 'fadeIn 0.5s ease both' }}>{t(cur.nameKey)}</h3>
+              <p style={{ fontFamily: ff, fontStyle: 'normal', fontSize: 'clamp(14px,1.5vw,20px)', color: 'var(--gold)', margin: 0 }}>{t(cur.tagKey)}</p>
             </div>
           </div>
         </div>
 
         {/* DETAILS: description + feature pills */}
         <div key={cur.id + '-d'} style={{ gridArea: 'details', animation: 'fadeIn 0.5s ease both' }}>
-          <p style={{ fontFamily: ff, fontSize: 'clamp(14px,1.4vw,17px)', lineHeight: 1.8, color: 'var(--cr70)', margin: '0 0 clamp(18px,2vw,24px)', maxWidth: 640 }}>{cur.desc}</p>
+          <p style={{ fontFamily: ff, fontSize: 'clamp(14px,1.4vw,17px)', lineHeight: 1.8, color: 'var(--cr70)', margin: '0 0 clamp(18px,2vw,24px)', maxWidth: 640 }}>{t(cur.descKey)}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 12px' }}>
-            {cur.features.map(f => (
+            {t(cur.featKey).split('|').map(f => (
               <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: ffs, fontSize: 'clamp(9px,0.9vw,11px)', fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--cr70)', padding: '8px 15px', borderRadius: 100, border: '1px solid rgba(201,169,110,0.22)' }}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />{f}
               </span>
@@ -130,7 +114,7 @@ export function InteriorSection() {
 
         {/* SELECTOR */}
         <div style={{ gridArea: 'selector' }}>
-          <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(10px,1vw,12.5px)', fontWeight: 400, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.8, marginBottom: 'clamp(16px,2vw,22px)' }}>Choose the interior</span>
+          <span style={{ display: 'block', fontFamily: ffs, fontSize: 'clamp(10px,1vw,12.5px)', fontWeight: 400, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.8, marginBottom: 'clamp(16px,2vw,22px)' }}>{t('int.choose')}</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} onMouseLeave={() => setPaused(false)}>
             {configs.map((c, i) => {
               const Icon = c.icon;
@@ -150,8 +134,8 @@ export function InteriorSection() {
                     <Icon size={18} strokeWidth={1.5} />
                   </span>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ fontFamily: ff, fontSize: 'clamp(16px,1.6vw,19px)', color: on ? 'var(--cream)' : 'var(--cr70)' }}>{c.name}</span>
-                    <span style={{ fontFamily: ffs, fontSize: 'clamp(10px,0.95vw,12px)', fontWeight: 400, letterSpacing: '0.08em', textTransform: 'uppercase', color: on ? 'var(--cr70)' : 'var(--cr40)' }}>{c.tagline}</span>
+                    <span style={{ fontFamily: ff, fontSize: 'clamp(16px,1.6vw,19px)', color: on ? 'var(--cream)' : 'var(--cr70)' }}>{t(c.nameKey)}</span>
+                    <span style={{ fontFamily: ffs, fontSize: 'clamp(10px,0.95vw,12px)', fontWeight: 400, letterSpacing: '0.08em', textTransform: 'uppercase', color: on ? 'var(--cr70)' : 'var(--cr40)' }}>{t(c.tagKey)}</span>
                   </span>
                 </button>
               );
@@ -169,10 +153,10 @@ export function InteriorSection() {
               transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
               animation: 'goldGlow 3.4s ease-in-out infinite',
             }}>
-            Enquire about a bespoke interior <ArrowUpRight size={14} />
+            {t('int.cta')} <ArrowUpRight size={14} />
           </a>
           <p style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.1em', color: 'rgba(228,217,195,0.3)', lineHeight: 1.7, margin: 'clamp(16px,2vw,22px) 0 0' }}>
-            Visuals shown are indicative. Your interior is rendered and agreed before build.
+            {t('int.disclaimer')}
           </p>
         </div>
       </div>

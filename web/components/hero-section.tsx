@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '@/lib/i18n';
 
 const FRAME_COUNT = 73;
 const POSTER = '/hero/poster.webp';
 const framePath = (i: number) => `/hero/f-${String(i + 1).padStart(3, '0')}.webp`;
 
 export function HeroSection() {
+  const t = useT();
   const scrollEl  = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [titleVisible, setTitleVisible] = useState(false);
@@ -298,7 +300,7 @@ export function HeroSection() {
             onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--w90)'; b.style.borderColor = 'var(--w90)'; b.style.color = 'var(--bg)'; }}
             onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(6,14,8,0.34)'; b.style.borderColor = 'rgba(228,217,195,0.5)'; b.style.color = 'var(--w90)'; }}
           >
-            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:300, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>Explore</span>
+            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:300, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>{t('hero.explore')}</span>
           </a>
 
           {/* Enter the Estate — primary, solid gold → The Villas */}
@@ -315,7 +317,7 @@ export function HeroSection() {
             onMouseEnter={e => { const b = e.currentTarget; b.style.filter = 'brightness(1.08)'; b.style.transform = 'translateY(-2px)'; }}
             onMouseLeave={e => { const b = e.currentTarget; b.style.filter = 'none'; b.style.transform = 'translateY(0)'; }}
           >
-            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:500, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>Enter the Estate</span>
+            <span style={{ fontFamily:'var(--font-raleway), sans-serif', fontSize:10, fontWeight:500, letterSpacing:'0.20em', textTransform:'uppercase', color:'inherit' }}>{t('hero.enter')}</span>
             <span aria-hidden="true" style={{ display:'flex', alignItems:'center' }}>
               <svg width="18" height="10" viewBox="0 0 18 10" fill="none">
                 <path d="M1 5h16M11 1l6 4-6 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -341,7 +343,7 @@ export function HeroSection() {
             letterSpacing:'0.34em', textTransform:'uppercase',
             color:'var(--w90)', opacity:0.9,
             textShadow:'0 1px 14px rgba(6,14,8,0.85)',
-          }}>Scroll to explore</span>
+          }}>{t('hero.scroll')}</span>
 
           {/* Glowing mouse with an animated dot */}
           <div style={{
