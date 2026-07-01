@@ -59,9 +59,11 @@ reserve = warm, brochure = cold, etc.), and **turn the scenario ON** (a webhook 
 - If you want a `dataLayer` event on form submit (for GTM triggers), it's a one-line add in `sendLead` (`web/lib/source.ts`) — currently the lead goes only via /api/lead.
 
 ## 5. Consent (CookieYes — Google-certified CMP)
-- CookieYes is installed in `web/app/layout.tsx`, loading **before GTM** (client_data ID `2926553fd3e7d76877f91545cb4ce7c3`).
-- **In the CookieYes dashboard you must:** enable **"Google Consent Mode"**, **publish** the banner, and set geo-targeting. Without Consent Mode enabled, tags are not gated by consent.
-- Reopen consent: elements with class `cky-banner-element` (footer "Cookie preferences" + the /cookies page) trigger CookieYes. If reopen doesn't work, enable CookieYes's "revisit consent" button in the dashboard.
+- **CookieYes is now added via GTM** (per your request) — the direct `<script>` was **removed** from the site code and from production. CookieYes client_data ID: **`2926553fd3e7d76877f91545cb4ce7c3`** (full src: `https://cdn-cookieyes.com/client_data/2926553fd3e7d76877f91545cb4ce7c3/script.js`).
+- **In the CookieYes dashboard:** enable **"Google Consent Mode"**, **publish** the banner, set geo-targeting.
+- ⚠️ **Consent timing:** loaded via GTM, CookieYes runs *after* GTM. Make sure the Consent Mode default (`denied`) is set before any tag fires (e.g., a Consent Initialization / default-consent step in GTM that runs first).
+- ⚠️ **Do not** also add the CookieYes `<script>` back into the site — it would load twice.
+- Reopen consent: elements with class `cky-banner-element` (footer "Cookie preferences" + the /cookies page) trigger CookieYes.
 
 ## 6. Environment variables (Vercel → Settings → Environment Variables)
 - **`MAKE_WEBHOOK`** = the make.com Custom Webhook URL (already set; server-side, not exposed).
@@ -92,7 +94,7 @@ reserve = warm, brochure = cold, etc.), and **turn the scenario ON** (a webhook 
 | `web/lib/dictionaries.ts` | All copy, 6 languages |
 
 ## 10. Notes / pending (NOT CRM — for the owner, not blocking your work)
-- **Key-facts band** (`web/components/key-facts.tsx`, first section after the hero, with a villa render): this is a **PREVIEW pending the owner's approval** and is English-only. Do **not** treat it as final / do not deploy it without the owner confirming.
+- **Key-facts band** (`web/components/key-facts.tsx`, first section after the hero, with a villa render): **preview pending the owner's approval**, English-only. It is **rendered on localhost/dev only** (`web/app/page.tsx`: `process.env.NODE_ENV === 'development'`), so it does **not** appear in production. To enable in production once approved: change that line to `<KeyFactsBand />`.
 - Recent **English copy overhaul** is EN-only for the changed strings; DE/HU/FR/ZH/RU still show the older text on those strings until re-translated.
 - **Legal pages** (`/privacy`, `/cookies`, `/imprint`) are DRAFT templates — need a lawyer + real company details.
 - **3D tour** = 3destate viewer (villas). Labels inside it (House 13, "Make inquiry", etc.) are set in the 3destate project, not this code.

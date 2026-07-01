@@ -24,7 +24,8 @@ export default function Home() {
       <div className="grain-overlay" aria-hidden="true" />
       <Nav />
       <HeroSection />
-      <KeyFactsBand />
+      {/* Preview only (localhost/dev) until the owner approves it — kept out of production. */}
+      {process.env.NODE_ENV === 'development' && <KeyFactsBand />}
       <IntroSection />
       <StorySection />
       <SolutionSection />

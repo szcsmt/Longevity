@@ -41,10 +41,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${playfair.variable} ${raleway.variable}`}>
       <body>
-        {/* CookieYes — Google-certified CMP. MUST load before GTM so it can set the
-            Consent Mode defaults (denied) before any tag fires. (Enable "Google
-            Consent Mode" in the CookieYes dashboard for the gtag signals.) */}
-        <Script id="cookieyes" src="https://cdn-cookieyes.com/client_data/2926553fd3e7d76877f91545cb4ce7c3/script.js" strategy="beforeInteractive" />
+        {/* CookieYes (Google-certified CMP) is now added via GTM (client_data id
+            2926553fd3e7d76877f91545cb4ce7c3) — do NOT also load it here, or the banner
+            loads twice. NOTE for consent timing: in GTM it loads after GTM, so make
+            sure the Consent Mode default (denied) is set before tags fire. */}
         {/* Google Tag Manager (noscript) — immediately after <body> per GTM install */}
         <noscript>
           <iframe
