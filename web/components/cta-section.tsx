@@ -80,7 +80,8 @@ export function CtaSection() {
       note: form.note.trim(),
       gdpr_consent: true,
     });
-    setSent(true);
+    // Real page navigation to a unique thank-you URL (clean conversion pageview for GTM).
+    window.location.href = '/thank-you/reserve';
   }
 
   const inputStyle: React.CSSProperties = {

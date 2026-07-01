@@ -56,7 +56,8 @@ reserve = warm, brochure = cold, etc.), and **turn the scenario ON** (a webhook 
 - GTM container **`GTM-PG5LJCZL`** is installed in `web/app/layout.tsx` (loader in `<head>` via `next/script`, noscript iframe after `<body>`).
 - **GA4 and Meta Pixel are NOT configured yet** — add them as **tags inside GTM**, gated by Consent Mode (section 5). There is no hardcoded GA/Pixel in the site; everything goes through GTM.
 - **Vercel Web Analytics** is active (cookieless, `@vercel/analytics`) — visible in the Vercel dashboard.
-- If you want a `dataLayer` event on form submit (for GTM triggers), it's a one-line add in `sendLead` (`web/lib/source.ts`) — currently the lead goes only via /api/lead.
+- **Thank-you / conversion URLs:** after a successful submit each form navigates (real page load) to a unique URL — **`/thank-you/enquiry`**, **`/thank-you/brochure`**, **`/thank-you/reserve`**. Use these as conversion triggers in GTM (Page View / GA4 event / Ads conversion on the Page Path). Spam submissions do NOT navigate there, so they won't inflate conversions.
+- If you'd also like a `dataLayer` event on submit (in addition to the thank-you pageview), it's a one-line add in `sendLead` (`web/lib/source.ts`).
 
 ## 5. Consent (CookieYes — Google-certified CMP)
 - **CookieYes is now added via GTM** (per your request) — the direct `<script>` was **removed** from the site code and from production. CookieYes client_data ID: **`2926553fd3e7d76877f91545cb4ce7c3`** (full src: `https://cdn-cookieyes.com/client_data/2926553fd3e7d76877f91545cb4ce7c3/script.js`).

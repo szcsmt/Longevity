@@ -58,8 +58,8 @@ export function EnquiryModal() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (form.company) { setSent(true); return; }                       // honeypot
-    if (Date.now() - openedAt.current < 1200) { setSent(true); return; } // time trap
+    if (form.company) { setOpen(false); return; }                       // honeypot (silent)
+    if (Date.now() - openedAt.current < 1200) { setOpen(false); return; } // time trap (silent)
     const errs: Errors = {};
     if (!form.name.trim())    errs.name  = t('cta.err.name');
     if (!emailOk(form.email)) errs.email = t('cta.err.email');
@@ -76,7 +76,8 @@ export function EnquiryModal() {
       whatsapp: form.phone.trim(),
       gdpr_consent: true,
     });
-    setSent(true);
+    // Real page navigation to a unique thank-you URL (clean conversion pageview for GTM).
+    window.location.href = '/thank-you/enquiry';
   }
 
   if (!open) return null;

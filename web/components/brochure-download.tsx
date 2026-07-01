@@ -49,7 +49,8 @@ export function BrochureDownload({ variant }: { variant: 'cta' | 'footer' }) {
     if (Object.keys(errs).length) return;
     // Lead only — the team sends the brochure by email (no direct download).
     sendLead({ form_type: 'brochure_request', name: name.trim(), email: email.trim(), gdpr_consent: true });
-    setDone(true);
+    // Real page navigation to a unique thank-you URL (clean conversion pageview for GTM).
+    window.location.href = '/thank-you/brochure';
   }
 
   // ── Trigger button ──
