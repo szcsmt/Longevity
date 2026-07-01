@@ -431,8 +431,9 @@ body {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
-  /* Gentle pulse only once visible (transform-free → cheap) */
-  animation: fabBreathe 3.2s ease-in-out infinite;
+  /* Static gold halo. A box-shadow keyframe here repainted the fixed FAB on every
+     scroll frame; a static glow looks the same and costs nothing once visible. */
+  box-shadow: 0 16px 44px -14px rgba(0,0,0,0.7), 0 0 34px -3px rgba(201,169,110,0.6);
 }
 .reserve-fab:hover {
   filter: brightness(1.08);
@@ -634,6 +635,19 @@ body {
 .cookie-btn-ghost { background: transparent; color: var(--cream); border: 1px solid rgba(201,169,110,0.4); }
 .cookie-btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
 @media (max-width: 768px) { .cookie-banner { left: 12px; right: 12px; width: auto; } }
+
+/* Customise panel — per-category toggles */
+.cookie-cats { display: flex; flex-direction: column; gap: 12px; margin: 0 0 16px; }
+.cookie-cat { border-top: 1px solid rgba(201,169,110,0.14); padding-top: 12px; }
+.cookie-cat:first-child { border-top: none; padding-top: 0; }
+.cookie-cat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cookie-cat-title { font-family: var(--font-raleway), sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cream); }
+.cookie-cat-badge { font-family: var(--font-raleway), sans-serif; font-size: 8.5px; font-weight: 300; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); opacity: 0.7; }
+.cookie-cat-desc { font-family: var(--font-raleway), sans-serif; font-weight: 300; font-size: 11px; line-height: 1.6; color: var(--cr40); margin: 5px 0 0; }
+.cookie-switch { position: relative; flex-shrink: 0; width: 38px; height: 21px; border-radius: 100px; cursor: pointer; padding: 0; border: 1px solid rgba(201,169,110,0.4); background: rgba(201,169,110,0.08); transition: background 0.3s, border-color 0.3s; }
+.cookie-switch > span { position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: var(--cream); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1), background 0.3s; }
+.cookie-switch.on { background: var(--gold); border-color: var(--gold); }
+.cookie-switch.on > span { transform: translateX(17px); background: var(--bg); }
 
 .cookie-reset-btn { cursor: pointer; font-family: var(--font-raleway), sans-serif; font-size: 10px; font-weight: 300; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); background: transparent; border: 1px solid rgba(201,169,110,0.45); border-radius: 100px; padding: 13px 24px; transition: background 0.35s, color 0.35s, border-color 0.35s; }
 .cookie-reset-btn:hover { background: var(--gold); color: var(--bg); border-color: var(--gold); }

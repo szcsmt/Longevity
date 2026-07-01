@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties } from 'react';
 import { Lightbulb } from 'lucide-react';
 import { useT, richText } from '@/lib/i18n';
 
@@ -70,9 +70,18 @@ export function AmenitiesSection() {
     }}>
 
       <style>{`
-        @keyframes hsPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(201,169,110,0.45); } 70% { box-shadow: 0 0 0 14px rgba(201,169,110,0); } }
         .hs-dot { transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), background 0.3s, border-color 0.3s; }
         .hs-dot:hover { transform: translate(-50%,-50%) scale(1.12); }
+        /* Attention ring via transform/opacity only (runs on the compositor — the old
+           box-shadow keyframe repainted all nine dots on the main thread every frame). */
+        .hs-dot::after {
+          content: ''; position: absolute; inset: -1px; border-radius: 50%;
+          border: 1px solid rgba(201,169,110,0.5); pointer-events: none;
+          animation: hsRing 2.6s ease-out infinite; animation-delay: var(--d, 0s);
+        }
+        .hs-dot[data-on="true"]::after { display: none; }
+        @keyframes hsRing { 0% { transform: scale(1); opacity: 0.55; } 70%, 100% { transform: scale(1.9); opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) { .hs-dot::after { animation: none; } }
       `}</style>
 
       <div className="section-glow" aria-hidden="true" style={{
@@ -112,7 +121,7 @@ export function AmenitiesSection() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/images/heals-you.webp"
-          alt="A Longevity Resort villa interior"
+          alt="A Longevity Resort residence interior"
           loading="lazy" decoding="async"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.82) saturate(1.05)' }}
         />
@@ -130,6 +139,7 @@ export function AmenitiesSection() {
             <button
               key={h.titleKey}
               className="hs-dot"
+              data-on={on}
               aria-label={t(h.titleKey)}
               onMouseEnter={() => show(i)}
               onMouseLeave={scheduleHide}
@@ -140,13 +150,11 @@ export function AmenitiesSection() {
                 width: 38, height: 38, borderRadius: '50%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', zIndex: on ? 6 : 4,
-                background: on ? 'var(--gold)' : 'rgba(6,14,8,0.55)',
+                background: on ? 'var(--gold)' : 'rgba(6,14,8,0.72)',
                 border: `1px solid ${on ? 'var(--gold)' : 'rgba(201,169,110,0.65)'}`,
                 color: on ? 'var(--bg)' : 'var(--gold)',
-                backdropFilter: 'blur(6px)',
-                animation: on ? 'none' : 'hsPulse 2.6s ease-out infinite',
-                animationDelay: `${i * 0.35}s`,
-              }}
+                ['--d' as string]: `${i * 0.35}s`,
+              } as CSSProperties}
             >
               {typeof Ic === 'string' ? (
                 <span aria-hidden="true" style={{

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { openEnquiry } from '@/components/enquiry-modal';
 import { useT, richText } from '@/lib/i18n';
 // Placeholder icons — swap Shield/Gem/Sofa for your uploaded SVGs later.
 import { Shield, Gem, Sofa, ConciergeBell, HeartPulse, Building2 } from 'lucide-react';
@@ -130,16 +131,17 @@ export function ParkSection() {
         </div>
 
         {/* CTA */}
-        <a href="#reserve" className="reveal"
+        <button type="button" onClick={() => openEnquiry('investment')} className="reveal"
           onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
           onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.55)'; }}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 11, marginTop: 'clamp(24px,3vw,40px)', alignSelf: 'flex-start',
+            cursor: 'pointer',
             fontFamily: ffs, fontSize: 'clamp(9px,0.95vw,11px)', fontWeight: 400, letterSpacing: '0.22em', textTransform: 'uppercase',
-            color: 'var(--gold)', textDecoration: 'none', background: 'transparent',
+            color: 'var(--gold)', background: 'transparent',
             border: '1px solid rgba(201,169,110,0.55)', borderRadius: 100, padding: '15px 28px',
             transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
-          }}>{t('park.cta')} →</a>
+          }}>{t('park.cta')} →</button>
 
       </div>
 
@@ -156,7 +158,7 @@ export function ParkSection() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/images/pays-you-back.webp"
-            alt="Longevity Resort villa, poolside dining"
+            alt="Longevity Resort residence, poolside dining"
             loading="lazy"
             decoding="async"
             style={{

@@ -2,10 +2,22 @@
 
 import { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
 import { ArrowUpRight } from 'lucide-react';
+import { openEnquiry } from '@/components/enquiry-modal';
 import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
+
+/* 3destate "3D Twin" — embedded via the official launcher script (NOT an iframe;
+   the vendor's own guide says iframes degrade the mobile experience). The launcher
+   reads the app id off its <script> tag and renders the live viewer into #sm3de.
+   One shared tour for now — give each villa its own appId below when supplied. */
+const TOUR_APP_ID   = 'naboo-sol-fzc-balalake-resort-dsa73hsa-co-sm-prod';
+const TOUR_LAUNCHER = 'https://oneappappsprd.z6.web.core.windows.net/launcher/production/app.js';
+/* Per-villa unit ids inside the 3D Twin. Passing `initUnitOpenId` opens that unit's
+   interior model directly instead of the whole estate from above. The project has
+   three unit types (50.17 / 53.34 / 66.30 m², 1/1/2 rooms) — mapped to M / L / XL. */
+const TOUR_UNIT = { M: 'TH-KOH-0001_13', L: 'TH-KOH-0001_10', XL: 'TH-KOH-0001_1' } as const;
 
 interface VillaData {
   index: string;
@@ -25,15 +37,17 @@ interface VillaData {
   imgPortrait?: string;
   gallery: { src: string; captionKey: string }[];
   alt: string;
-  /* 3D twin walkthrough URL (Matterport / Kuula / etc.).
-     Leave empty until the tour is ready — the button then shows an
-     elegant "coming soon" state instead of a broken link. */
-  tourUrl?: string;
+  /* 3destate 3D Twin application id. Leave empty until the tour is ready — the
+     button then shows an elegant "coming soon" state instead of a broken link. */
+  tourAppId?: string;
+  /* Optional unit id within the 3D Twin — opens this villa's interior model
+     directly instead of the estate overview. */
+  tourUnitId?: string;
 }
 
 const villas: VillaData[] = [
   {
-    index: '01', name: 'Villa M', size: '76.46 m²',
+    index: '01', name: 'Residence M', size: '76.46 m²',
     bedroomsKey: 'v.bed1', guestsKey: 'v.guests2', poolKey: 'vM.pool',
     taglineKey: 'vM.tag', descKey: 'vM.desc', hlKey: 'vM.hl',
     img: '/images/villa-m/m-1.webp',
@@ -48,12 +62,13 @@ const villas: VillaData[] = [
       { src: '/images/villa-m/m-8.webp', captionKey: 'cap.interior' },
       { src: '/images/villa-m/m-9.webp', captionKey: 'cap.interior' },
     ],
-    alt: 'Villa M, one bedroom pool villa',
+    alt: 'Residence M, one bedroom pool residence',
     imgPortrait: '/images/villa-m/m-1.webp',
-    tourUrl: '',   // ← paste Villa M's 3D twin link here
+    tourAppId: TOUR_APP_ID,
+    tourUnitId: TOUR_UNIT.M,
   },
   {
-    index: '02', name: 'Villa L', size: '79.19 m²',
+    index: '02', name: 'Residence L', size: '79.19 m²',
     bedroomsKey: 'v.bed1', guestsKey: 'v.guests2', poolKey: 'vL.pool',
     taglineKey: 'vL.tag', descKey: 'vL.desc', hlKey: 'vL.hl',
     img: '/images/villa-l/l-1.webp',
@@ -71,12 +86,13 @@ const villas: VillaData[] = [
       { src: '/images/villa-l/l-11.webp', captionKey: 'cap.interior' },
       { src: '/images/villa-l/l-12.webp', captionKey: 'cap.interior' },
     ],
-    alt: 'Villa L, one bedroom pool villa',
+    alt: 'Residence L, one bedroom pool residence',
     imgPortrait: '/images/villa-l/l-1.webp',
-    tourUrl: '',   // ← paste Villa L's 3D twin link here
+    tourAppId: TOUR_APP_ID,
+    tourUnitId: TOUR_UNIT.L,
   },
   {
-    index: '03', name: 'Villa XL', size: '126.65 m²',
+    index: '03', name: 'Residence XL', size: '126.65 m²',
     bedroomsKey: 'v.bed2', guestsKey: 'v.guests4', poolKey: 'vXL.pool',
     taglineKey: 'vXL.tag', descKey: 'vXL.desc', hlKey: 'vXL.hl',
     img: '/images/villa-2br/x-1.webp',
@@ -97,11 +113,80 @@ const villas: VillaData[] = [
       { src: '/images/villa-2br/x-14.webp', captionKey: 'cap.interior' },
       { src: '/images/villa-2br/x-15.webp', captionKey: 'cap.interior' },
     ],
-    alt: 'Villa XL, two bedroom pool villa',
+    alt: 'Residence XL, two bedroom pool residence',
     imgPortrait: '/images/villa-2br/x-1.webp',
-    tourUrl: '',   // ← paste Villa XL's 3D twin link here
+    tourAppId: TOUR_APP_ID,
+    tourUnitId: TOUR_UNIT.XL,
   },
 ];
+
+/* ─── 3D Twin viewer ───
+   Mounts the 3destate launcher the official way: a #sm3de host element plus the
+   launcher <script> (id "sm-init-script", data-appid). The launcher auto-inits on
+   first load; on every later open we re-init through its public window API so the
+   viewer rebuilds inside the fresh host without a page reload. */
+// Strip every state param the viewer reads/writes, so our address bar goes back to
+// clean once the tour closes (the viewer mirrors its state into the page URL).
+function clearTourParams() {
+  const u = new URL(window.location.href);
+  let changed = false;
+  [...u.searchParams.keys()].forEach(k => { if (k.startsWith('sm-')) { u.searchParams.delete(k); changed = true; } });
+  if (changed) window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+}
+
+function Tour3D({ appId, unitId }: { appId: string; unitId?: string }) {
+  useEffect(() => {
+    const ROOT = 'sm3de';
+    let cancelled = false;
+
+    // The viewer takes its starting state from the page URL. Pointing it at one
+    // unit's interior (Dollhouse = the 3D apartment model) opens that villa
+    // directly instead of the whole estate from above.
+    if (unitId) {
+      const u = new URL(window.location.href);
+      [...u.searchParams.keys()].forEach(k => { if (k.startsWith('sm-')) u.searchParams.delete(k); });
+      u.searchParams.set('sm-screen-type', 'UnitDetails');
+      u.searchParams.set('sm-unit', unitId);
+      u.searchParams.set('sm-media', 'Dollhouse');
+      window.history.replaceState(null, '', u.toString());
+    } else {
+      clearTourParams();
+    }
+
+    const config = { appId, rootElement: ROOT };
+    type Launcher = { init: (o: typeof config) => unknown };
+    const w = window as unknown as {
+      AppLauncher3DEOA?: Launcher;
+      AppLauncher3DEOAConfig?: typeof config;
+    };
+
+    if (w.AppLauncher3DEOA?.init) {
+      // Launcher already on the page from a previous open — rebuild for this villa
+      // (it re-reads the URL params we just set).
+      if (!cancelled) w.AppLauncher3DEOA.init(config);
+    } else if (!document.getElementById('sm-init-script')) {
+      // First open: the launcher auto-inits from this global config; the viewer
+      // reads the unit from the URL. No manual init, or it would build twice.
+      w.AppLauncher3DEOAConfig = config;
+      const s = document.createElement('script');
+      s.id = 'sm-init-script';
+      s.src = TOUR_LAUNCHER;
+      s.async = true;
+      s.setAttribute('data-appid', appId);
+      s.setAttribute('data-rootelement', ROOT);
+      document.body.appendChild(s);
+    }
+
+    return () => {
+      cancelled = true;
+      const host = document.getElementById(ROOT);
+      if (host) host.innerHTML = '';   // clear the viewer so the next open starts clean
+      clearTourParams();               // and restore a clean address bar
+    };
+  }, [appId, unitId]);
+
+  return <div id="sm3de" style={{ width: '100%', height: '100%' }} />;
+}
 
 /* ─── Image Carousel ─── */
 function VillaImageCarousel({
@@ -351,7 +436,7 @@ function VillaImageCarousel({
 }
 
 /* ─── Modal ─── */
-function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void }) {
+function VillaModal({ villa, onClose, onOpen3D }: { villa: VillaData; onClose: () => void; onOpen3D?: () => void }) {
   const t = useT();
   // Open on the 2nd image — image 1 is the cover already shown in the section,
   // so clicking reveals something new (and you can swipe back to image 1).
@@ -364,6 +449,20 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
   useEffect(() => {
     villa.gallery.forEach(g => { const im = new Image(); im.src = g.src; im.decode?.().catch(() => {}); });
   }, [villa]);
+
+  // 2-layer crossfade: only the current and the just-left image are mounted, so the
+  // browser keeps ~2 composited layers instead of one per gallery image. Stacking
+  // all 15 (each promoted with will-change) is what made paging stutter.
+  const [imgPrev, setImgPrev] = useState<number | null>(null);
+  const prevRef = useRef(img);
+  useEffect(() => {
+    const old = prevRef.current;
+    if (old === img) return;
+    prevRef.current = img;
+    setImgPrev(old);
+    const tmo = setTimeout(() => setImgPrev(null), 460); // drop the old layer after the fade
+    return () => clearTimeout(tmo);
+  }, [img]);
 
   // Drag / swipe the gallery (in addition to the arrows + arrow keys).
   const dragStart   = useRef(0);
@@ -426,16 +525,14 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
             onPointerCancel={() => { draggingImg.current = false; }}
             style={{ flex: 1, position: 'relative', minHeight: 280, overflow: 'hidden', isolation: 'isolate', touchAction: 'pan-y', cursor: len > 1 ? 'grab' : 'default', userSelect: 'none' }}
           >
-            {villa.gallery.map((g, i) => (
+            {villa.gallery.map((g, i) => (i === img || i === imgPrev) ? (
               <img key={i} src={g.src} alt={t(g.captionKey)} loading="eager" decoding="async" style={{
                 position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
                 opacity: i === img ? 1 : 0,
                 transition: 'opacity 0.4s ease',
                 willChange: 'opacity',
-                transform: 'translateZ(0)',
-                backfaceVisibility: 'hidden',
               }} />
-            ))}
+            ) : null)}
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(6,14,8,0.8), transparent)', padding: '20px 20px 14px' }}>
               <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.16em', color: 'var(--cr70)' }}>{t(villa.gallery[img].captionKey)}</span>
             </div>
@@ -488,18 +585,35 @@ function VillaModal({ villa, onClose }: { villa: VillaData; onClose: () => void 
               ))}
             </ul>
           </div>
-          <a href="#reserve" onClick={onClose}
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 'auto',
-              fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.26em', textTransform: 'uppercase',
-              color: 'var(--gold)', background: 'transparent', border: '1px solid rgba(201,169,110,0.55)',
-              borderRadius: 100, padding: '16px 28px', textDecoration: 'none',
-              transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
-              animation: 'goldGlow 3.4s ease-in-out infinite',
-            }}
-            onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
-            onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.55)'; }}
-          >{t('v.reserveThis')}</a>
+          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* View it in 3D — opens this villa's interior model right here. */}
+            {villa.tourAppId && onOpen3D && (
+              <button onClick={onOpen3D}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 11,
+                  fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase',
+                  color: 'var(--bg)', background: 'var(--gold)', border: '1px solid var(--gold)',
+                  borderRadius: 100, padding: '16px 28px', cursor: 'pointer',
+                  boxShadow: '0 0 24px -12px var(--gold-glow)',
+                }}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 1.6 14 5v6L8 14.4 2 11V5z" /><path d="M2 5l6 3.4L14 5" /><path d="M8 8.4v6" />
+                </svg>
+                {t('v.view3d')}
+              </button>
+            )}
+            <button type="button" onClick={() => { onClose(); openEnquiry('villa: ' + villa.name); }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12, cursor: 'pointer',
+                fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.26em', textTransform: 'uppercase',
+                color: 'var(--gold)', background: 'transparent', border: '1px solid rgba(201,169,110,0.55)',
+                borderRadius: 100, padding: '16px 28px',
+                transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
+              }}
+              onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
+              onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.55)'; }}
+            >{t('v.reserveThis')}</button>
+          </div>
         </div>
 
         <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close" style={{ position: 'fixed', top: 'clamp(16px,3vw,28px)', right: 'clamp(16px,3vw,28px)', zIndex: 1001, width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(228,217,195,0.30)', background: 'rgba(6,14,8,0.85)', backdropFilter: 'blur(8px)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -553,10 +667,7 @@ export function VillasSection() {
 
   // Open the 3D twin walkthrough — real link in a new tab if set, otherwise
   // an elegant "coming soon" dialog so the button always does something.
-  const open3D = useCallback((v: VillaData) => {
-    if (v.tourUrl) window.open(v.tourUrl, '_blank', 'noopener,noreferrer');
-    else setTour(v);
-  }, []);
+  const open3D = useCallback((v: VillaData) => { setTour(v); }, []);
 
   // Lock body scroll + Escape-to-close while the 3D dialog is open
   useEffect(() => {
@@ -672,8 +783,7 @@ export function VillasSection() {
                   color: 'var(--gold)',
                   background: 'rgba(201,169,110,0.12)', border: '1px solid rgba(201,169,110,0.6)',
                   borderRadius: 100, padding: '16px 30px', cursor: 'pointer',
-                  boxShadow: '0 0 24px -12px var(--gold-glow)',
-                  animation: 'goldGlow 3s ease-in-out infinite',   // gentle pulse so it draws the eye
+                  boxShadow: '0 0 26px -8px var(--gold-glow)',   // static glow (no per-frame box-shadow repaint)
                   transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
                 }}
                 onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
@@ -717,7 +827,7 @@ export function VillasSection() {
                 key={i}
                 className="vdot"
                 onClick={() => navigate(i)}
-                aria-label={`Villa ${i + 1}`}
+                aria-label={`Residence ${i + 1}`}
                 style={{
                   height: 7, borderRadius: 4,
                   width: i === active ? 26 : 7,
@@ -733,7 +843,7 @@ export function VillasSection() {
 
       </section>
 
-      {modal && <VillaModal villa={modal} onClose={() => setModal(null)} />}
+      {modal && <VillaModal villa={modal} onClose={() => setModal(null)} onOpen3D={() => { const v = modal; setModal(null); setTour(v); }} />}
 
       {/* 3D walkthrough — "coming soon" dialog (shown until a tourUrl is set) */}
       {tour && (
@@ -746,6 +856,16 @@ export function VillasSection() {
             padding: 'clamp(16px,4vw,48px)', animation: 'fadeIn 0.3s ease both',
           }}
         >
+          {tour.tourAppId ? (
+            <div onClick={e => e.stopPropagation()} style={{
+              width: '100%', maxWidth: 1320, height: 'min(88vh, 880px)',
+              background: '#0A1A0D', border: '1px solid rgba(201,169,110,0.25)',
+              borderRadius: 'clamp(12px,1.4vw,20px)', overflow: 'hidden', position: 'relative',
+              boxShadow: '0 50px 120px -30px rgba(0,0,0,0.9), 0 0 60px -10px var(--gold-glow)',
+            }}>
+              <Tour3D appId={tour.tourAppId} unitId={tour.tourUnitId} />
+            </div>
+          ) : (
           <div
             onClick={e => e.stopPropagation()}
             style={{
@@ -760,7 +880,7 @@ export function VillasSection() {
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 64, height: 64, borderRadius: '50%', marginBottom: 'clamp(20px,2.5vw,28px)',
               border: '1px solid rgba(201,169,110,0.4)', color: 'var(--gold)',
-              background: 'rgba(201,169,110,0.08)', animation: 'goldGlow 3.4s ease-in-out infinite',
+              background: 'rgba(201,169,110,0.08)', boxShadow: '0 0 30px -8px var(--gold-glow)',
             }}>
               <svg width="28" height="28" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8 1.6 14 5v6L8 14.4 2 11V5z" />
@@ -797,6 +917,7 @@ export function VillasSection() {
               <ArrowUpRight size={14} />
             </a>
           </div>
+          )}
 
           <button onClick={(e) => { e.stopPropagation(); setTour(null); }} aria-label="Close" style={{ position: 'fixed', top: 'clamp(16px,3vw,28px)', right: 'clamp(16px,3vw,28px)', zIndex: 2001, width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(228,217,195,0.30)', background: 'rgba(6,14,8,0.85)', backdropFilter: 'blur(8px)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="13" height="13" viewBox="0 0 10 10" fill="none" stroke="var(--cream)" strokeWidth="1.3" strokeLinecap="round"><path d="M1 1l8 8M9 1L1 9"/></svg>

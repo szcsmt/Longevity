@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { BrochureDownload } from '@/components/brochure-download';
+import { captureSource, sendLead } from '@/lib/source';
 import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
@@ -18,8 +19,8 @@ export function CtaSection() {
   const t = useT();
   const ref   = useRef<HTMLElement>(null);
   const [sent, setSent] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', villa: '', note: '', company: '' });
-  const [errors, setErrors] = useState<{ name?: string; email?: string; phone?: string }>({});
+  const [form, setForm] = useState({ name: '', email: '', phone: '', villa: '', note: '', company: '', source: '', gdpr: false });
+  const [errors, setErrors] = useState<{ name?: string; email?: string; phone?: string; gdpr?: string }>({});
   // Ownership-path steps: each toggles open/closed on click (step 1 open by default).
   const [openSteps, setOpenSteps] = useState<number[]>([0]);
   const toggleStep = (i: number) =>
@@ -28,6 +29,12 @@ export function CtaSection() {
 
   useEffect(() => {
     mountedAt.current = Date.now();   // start the spam time-trap clock on mount
+
+    // Fill the hidden source field from ?source= / ?utm_source= (e.g. a QR code),
+    // captured for the whole session so it survives scrolling/navigation.
+    const src = captureSource();
+    if (src) setForm(f => ({ ...f, source: src }));
+
     const items = ref.current?.querySelectorAll<HTMLElement>('.reveal') ?? [];
     items.forEach((el, i) => {
       const obs = new IntersectionObserver(([e]) => {
@@ -57,9 +64,22 @@ export function CtaSection() {
     if (!form.name.trim())     errs.name  = t('cta.err.name');
     if (!emailOk(form.email))  errs.email = t('cta.err.email');
     if (!phoneOk(form.phone))  errs.phone = t('cta.err.phone');
+    if (!form.gdpr)            errs.gdpr  = t('enq.err.gdpr');
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
+    // Real submission → forward to the CRM (via /api/lead → make.com), tagged with the
+    // CTA it came from so the CRM can score it (reserve = warm, per the pipeline map).
+    sendLead({
+      form_type: 'reserve',
+      form_origin: 'reserve',
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      villa: form.villa,
+      note: form.note.trim(),
+      gdpr_consent: true,
+    });
     setSent(true);
   }
 
@@ -129,7 +149,7 @@ export function CtaSection() {
           color: var(--gold);
           transition: background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s;
           margin-top: 12px;
-          animation: goldGlow 3.4s ease-in-out infinite;
+          box-shadow: 0 0 30px -8px var(--gold-glow);
         }
         .cta-submit:hover {
           background: var(--gold);
@@ -278,6 +298,10 @@ export function CtaSection() {
                   </label>
                 </div>
 
+                {/* Hidden source field — auto-filled from ?utm_source= / ?source= (e.g. a QR code).
+                    Submitted with the enquiry so each registrant can be attributed. */}
+                <input type="hidden" name="source" value={form.source} readOnly />
+
                 <div className="lr-form-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(20px,3vw,36px)' }}>
                   <div>
                     <span style={labelStyle}>{t('cta.form.name')}</span>
@@ -317,6 +341,18 @@ export function CtaSection() {
                     onChange={update('note')}
                   />
                 </div>
+
+                {/* GDPR consent — required */}
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 11, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.gdpr}
+                    onChange={e => { setForm(f => ({ ...f, gdpr: e.target.checked })); if (errors.gdpr) setErrors(p => ({ ...p, gdpr: undefined })); }}
+                    style={{ width: 17, height: 17, marginTop: 1, accentColor: 'var(--gold)', flexShrink: 0, cursor: 'pointer' }} />
+                  <span style={{ fontFamily: ffs, fontSize: 11.5, fontWeight: 300, lineHeight: 1.6, color: 'var(--cr70)' }}>
+                    {t('enq.gdpr')}{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', textDecoration: 'underline', textUnderlineOffset: 2 }}>{t('enq.gdprLink')}</a>.
+                  </span>
+                </label>
+                {errors.gdpr && <span className="cta-err">{errors.gdpr}</span>}
 
                 <button type="submit" className="cta-submit">
                   {t('cta.submit')}

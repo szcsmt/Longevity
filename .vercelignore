@@ -1,0 +1,6 @@
+# Only the web/ app is deployed. Keep the raw source assets (brochures, videos,
+# villa render folders, design hand-offs) out of the Vercel upload.
+/*
+!/web
+!/.vercel
+!/.vercelignore

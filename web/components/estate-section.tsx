@@ -8,7 +8,8 @@ const ffs = 'var(--font-raleway), sans-serif';
 
 /* The Estate — a single full-bleed jungle image. As you scroll it zooms in
    (you step closer) and the headline fades up. No collage, no clutter. */
-const IMAGE = '/images/sanaila.jpg';
+const IMAGE   = '/images/sanaila.jpg';
+const IMAGE_M = '/images/sanaila-m.webp';   // 1440px — far lighter texture to scale on phones
 
 export function EstateSection() {
   const t = useT();
@@ -22,7 +23,10 @@ export function EstateSection() {
     const el = scrollRef.current;
     if (!el) return;
 
-    let ticking = false;
+    let rafId = 0;
+    let looping = false;
+    let lastY = -1;
+    let idle = 0;
     let active  = true;
     let secTop  = 0;       // section's document-relative top (cached)
     let maxScroll = 0;     // cached — never read layout on the scroll path
@@ -39,7 +43,6 @@ export function EstateSection() {
     }
 
     function update() {
-      ticking = false;
       if (maxScroll <= 0) return;
       const raw = Math.min(1, Math.max(0, (window.scrollY - secTop) / maxScroll));
       // easeOut — responds immediately as you scroll (no slow lingering start).
@@ -62,25 +65,51 @@ export function EstateSection() {
       }
     }
 
-    function tick() { if (active && !ticking) { ticking = true; requestAnimationFrame(update); } }
-    function onResize() { measure(); tick(); }
+    // Continuous rAF loop while the section is active and the page is moving.
+    // Sampling scrollY every frame keeps the zoom locked to the compositor's scroll
+    // position — on phones (esp. iOS momentum scroll) the `scroll` event arrives late
+    // and batched, so an event-driven update visibly trails the finger. The loop
+    // self-stops after a few idle frames so it never spins when nothing moves.
+    function loop() {
+      const y = window.scrollY;
+      if (y === lastY) idle++; else { idle = 0; lastY = y; }
+      update();
+      if (active && idle < 10) { rafId = requestAnimationFrame(loop); }
+      else looping = false;
+    }
+    function kick() {
+      if (!looping && active) { looping = true; idle = 0; lastY = -1; rafId = requestAnimationFrame(loop); }
+    }
+    function onResize() { measure(); kick(); }
+
+    // Promote the animated layers to the GPU only while the section is in play.
+    // Keeping `will-change` on a full-screen image permanently holds a big layer in
+    // GPU memory and adds page-wide compositing pressure on phones.
+    function setLayers(on: boolean) {
+      if (imgRef.current)      imgRef.current.style.willChange      = on ? 'transform' : 'auto';
+      if (vignetteRef.current) vignetteRef.current.style.willChange = on ? 'opacity'   : 'auto';
+      if (textRef.current)     textRef.current.style.willChange     = on ? 'opacity'   : 'auto';
+      if (labelRef.current)    labelRef.current.style.willChange    = on ? 'opacity'   : 'auto';
+    }
 
     // Only animate while the section is near the viewport.
     const io = new IntersectionObserver(([e]) => {
       active = e.isIntersecting;
-      if (active) { measure(); tick(); }
+      setLayers(active);
+      if (active) { measure(); kick(); }
     }, { rootMargin: '200px 0px' });
     io.observe(el);
 
     measure();
-    window.addEventListener('scroll', tick, { passive: true });
+    window.addEventListener('scroll', kick, { passive: true });
     window.addEventListener('resize', onResize, { passive: true });
     update(); // sync on mount
 
     return () => {
-      window.removeEventListener('scroll', tick);
+      window.removeEventListener('scroll', kick);
       window.removeEventListener('resize', onResize);
       io.disconnect();
+      cancelAnimationFrame(rafId);
     };
   }, []);
 
@@ -104,24 +133,33 @@ export function EstateSection() {
             zIndex: 1,
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* No CSS filter here: a brightness/saturate filter on a layer that scales
+              every scroll frame forces the mobile GPU to re-run the shader over the
+              full-screen image. The darkening is a static scrim below instead.
+              srcSet hands phones the lighter 1440px texture (reliable everywhere —
+              unlike <picture display:contents>, which misrenders on older iOS).
+              eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={IMAGE}
+            srcSet={`${IMAGE_M} 1440w, ${IMAGE} 1920w`}
+            sizes="100vw"
             alt="The Estate"
             loading="eager"
             decoding="async"
-            style={{
-              width: '100%', height: '100%',
-              objectFit: 'cover', display: 'block',
-              transform: 'translateZ(0)',
-              filter: 'brightness(0.80) saturate(1.05)',
-            }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         </div>
 
+        {/* Static darkening scrim (replaces the old brightness filter — a flat layer
+            costs nothing per frame, unlike a filter on the scaling image). */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
+          background: 'rgba(6,14,8,0.20)',
+        }} />
+
         {/* ── Atmospheric vignette — darkens as you push deeper (jungle closes in) ── */}
         <div ref={vignetteRef} aria-hidden="true" style={{
-          position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
+          position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
           opacity: 0.4, willChange: 'opacity',
           background: 'radial-gradient(ellipse 78% 66% at 50% 46%, transparent 26%, rgba(6,14,8,0.92) 100%)',
         }} />

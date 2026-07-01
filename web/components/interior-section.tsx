@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Sofa, Briefcase, Mic, ArrowUpRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { openEnquiry } from '@/components/enquiry-modal';
 import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
@@ -142,19 +143,20 @@ export function InteriorSection() {
             })}
           </div>
 
-          <a href="#reserve"
+          <button type="button" onClick={() => openEnquiry('interior')}
             onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
             onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'transparent'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.55)'; }}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 'clamp(24px,3vw,34px)',
+              width: '100%', cursor: 'pointer',
               fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.26em', textTransform: 'uppercase',
               color: 'var(--gold)', background: 'transparent', border: '1px solid rgba(201,169,110,0.55)',
-              borderRadius: 100, padding: '17px 28px', textDecoration: 'none',
+              borderRadius: 100, padding: '17px 28px',
               transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
-              animation: 'goldGlow 3.4s ease-in-out infinite',
+              boxShadow: '0 0 30px -8px var(--gold-glow)',
             }}>
             {t('int.cta')} <ArrowUpRight size={14} />
-          </a>
+          </button>
           <p style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.1em', color: 'rgba(228,217,195,0.3)', lineHeight: 1.7, margin: 'clamp(16px,2vw,22px) 0 0' }}>
             {t('int.disclaimer')}
           </p>

@@ -2,6 +2,7 @@
 
 import { Nav }               from '@/components/nav';
 import { HeroSection }       from '@/components/hero-section';
+import { KeyFactsBand }      from '@/components/key-facts';
 import { IntroSection }      from '@/components/intro-section';
 import { StorySection }      from '@/components/story-section';
 import { SolutionSection }   from '@/components/solution-section';
@@ -23,6 +24,7 @@ export default function Home() {
       <div className="grain-overlay" aria-hidden="true" />
       <Nav />
       <HeroSection />
+      <KeyFactsBand />
       <IntroSection />
       <StorySection />
       <SolutionSection />

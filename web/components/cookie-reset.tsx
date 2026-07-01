@@ -1,16 +1,11 @@
 'use client';
 
-import { CONSENT_KEY } from '@/components/cookie-consent';
-
-/* "Manage / withdraw consent" control on the Cookie Policy page — clears the
-   stored choice and reloads so the consent banner appears again. */
+/* "Manage / withdraw consent" control on the Cookie Policy page — opens the CookieYes
+   consent banner. `cky-banner-element` is the class CookieYes binds its settings
+   trigger to. */
 export function CookieReset() {
-  const reset = () => {
-    try { localStorage.removeItem(CONSENT_KEY); } catch { /* ignore */ }
-    location.reload();
-  };
   return (
-    <button type="button" className="cookie-reset-btn" onClick={reset}>
+    <button type="button" className="cookie-reset-btn cky-banner-element">
       Manage cookie preferences
     </button>
   );

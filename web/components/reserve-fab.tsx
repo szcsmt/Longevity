@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { openEnquiry } from '@/components/enquiry-modal';
 import { useT } from '@/lib/i18n';
 
 /* Persistent "Reserve" call-to-action.
@@ -62,10 +63,7 @@ export function ReserveFab() {
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    const el = document.getElementById('reserve');
-    if (!el) return;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    openEnquiry('fab');   // open the enquiry popup in place instead of scrolling to the bottom
   };
 
   return (

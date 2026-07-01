@@ -49,13 +49,16 @@ export function HeroSection() {
     let poster: HTMLImageElement | null = null;
     let drawn = -1;            // index of frame currently painted (-1 = canvas needs repaint)
     let targetFrame = 0;
-    // Keep the backing store modest so each scrub frame is cheap to draw (a big
-    // canvas is what lags the scroll on phones). 1.5× is a good sharp/smooth balance.
-    const dprCap = 1.5;
+    // Keep the backing store modest so each scrub frame is cheap to draw — a big
+    // canvas is what lags the scroll on phones. drawImage cost scales with the
+    // DESTINATION pixel count, so on touch we cap harder: 1.25× still reads sharp
+    // (the 1916px source is far bigger than any phone canvas) while cutting the
+    // per-frame paint ~30% vs 1.5×. Desktop keeps 1.5× for crispness.
+    const dprCap = coarse ? 1.25 : 1.5;
     let dpr = Math.min(window.devicePixelRatio || 1, dprCap);
     let maxScroll = 0;         // cached — avoids layout reads on scroll
     let lastW = 0;             // last canvas width we sized to (for the height-only resize guard)
-    let ticking = false;
+    let looping = false, lastY = -1, idle = 0, rafId = 0;   // continuous-rAF scrub loop
 
     // cover-fit a source image onto the full canvas
     function paint(img: HTMLImageElement) {
@@ -87,7 +90,6 @@ export function HeroSection() {
     // Defensive: if the canvas isn't measured yet (maxScroll <= 0) we just
     // paint the first frame and wait — we never get stuck on a blank canvas.
     function update() {
-      ticking = false;
       if (maxScroll <= 0) { render(0); return; }
       const prog = Math.min(1, Math.max(0, window.scrollY / maxScroll));
       targetFrame = Math.round(prog * (FRAME_COUNT - 1));
@@ -122,7 +124,20 @@ export function HeroSection() {
       update();                   // re-apply the current scroll position
     }
 
-    function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+    // Continuous rAF loop instead of a scroll-event handler: on phones the `scroll`
+    // event lags behind iOS momentum scrolling, so the scrubbed frame trailed the
+    // finger (the "not smooth on phone" feel). Reading scrollY every frame locks the
+    // sequence to the real scroll position. It self-stops a few idle frames after the
+    // page stops moving, and never runs once the hero is scrolled away.
+    function frame() {
+      const y = window.scrollY;
+      if (y === lastY) idle++; else { idle = 0; lastY = y; }
+      update();
+      const nearHero = maxScroll <= 0 || y <= maxScroll + window.innerHeight;
+      if (nearHero && idle < 10) rafId = requestAnimationFrame(frame);
+      else looping = false;
+    }
+    function kick() { if (!looping) { looping = true; idle = 0; lastY = -1; rafId = requestAnimationFrame(frame); } }
 
     // ── Poster first → instant paint ──
     const p = new Image();
@@ -184,11 +199,13 @@ export function HeroSection() {
       ? window.requestIdleCallback(startLoad, { timeout: 1500 })
       : window.setTimeout(startLoad, 400);
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    update();
+    window.addEventListener('scroll', kick, { passive: true });
+    update();   // immediate first sync
+    kick();     // keep it locked to the scroll while the hero is in view
 
     return () => {
-      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', kick);
+      cancelAnimationFrame(rafId);
       detachSizer();
       if (hasRIC) window.cancelIdleCallback(idleHandle); else clearTimeout(idleHandle);
     };
