@@ -23,6 +23,9 @@ interface VillaData {
   index: string;
   name: string;
   size: string;
+  /* List price, pre-formatted (currency + grouped digits). Same string across all
+     locales — only the "Price" label is translated. */
+  price: string;
   bedroomsKey: string;
   guestsKey: string;
   poolKey: string;
@@ -47,7 +50,7 @@ interface VillaData {
 
 const villas: VillaData[] = [
   {
-    index: '01', name: 'Residence M', size: '76.46 m²',
+    index: '01', name: 'Residence M', size: '76.46 m²', price: 'THB 7,500,000',
     bedroomsKey: 'v.bed1', guestsKey: 'v.guests2', poolKey: 'vM.pool',
     taglineKey: 'vM.tag', descKey: 'vM.desc', hlKey: 'vM.hl',
     img: '/images/villa-m/m-1.webp',
@@ -68,7 +71,7 @@ const villas: VillaData[] = [
     tourUnitId: TOUR_UNIT.M,
   },
   {
-    index: '02', name: 'Residence L', size: '79.19 m²',
+    index: '02', name: 'Residence L', size: '79.19 m²', price: 'THB 7,900,000',
     bedroomsKey: 'v.bed1', guestsKey: 'v.guests2', poolKey: 'vL.pool',
     taglineKey: 'vL.tag', descKey: 'vL.desc', hlKey: 'vL.hl',
     img: '/images/villa-l/l-1.webp',
@@ -92,7 +95,7 @@ const villas: VillaData[] = [
     tourUnitId: TOUR_UNIT.L,
   },
   {
-    index: '03', name: 'Residence XL', size: '126.65 m²',
+    index: '03', name: 'Residence XL', size: '126.65 m²', price: 'THB 10,900,000',
     bedroomsKey: 'v.bed2', guestsKey: 'v.guests4', poolKey: 'vXL.pool',
     taglineKey: 'vXL.tag', descKey: 'vXL.desc', hlKey: 'vXL.hl',
     img: '/images/villa-2br/x-1.webp',
@@ -566,6 +569,11 @@ function VillaModal({ villa, onClose, onOpen3D }: { villa: VillaData; onClose: (
           </div>
           <span style={{ display: 'block', width: 28, height: 1, background: 'var(--gold-40)' }} />
           <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.85, color: 'var(--cr70)', margin: 0 }}>{t(villa.descKey)}</p>
+          {/* List price — headline number above the spec grid */}
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: ffs, fontSize: 8, fontWeight: 300, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.6 }}>{t('v.price')}</span>
+            <span style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(22px,2.4vw,30px)', color: 'var(--cream)', letterSpacing: '0.005em' }}>{villa.price}</span>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: 'rgba(201,169,110,0.08)', border: '1px solid rgba(201,169,110,0.08)', borderRadius: 12, overflow: 'hidden' }}>
             {[{k:t('v.spec.size'),v:villa.size},{k:t('v.spec.rooms'),v:t(villa.bedroomsKey)},{k:t('v.spec.guests'),v:t(villa.guestsKey)},{k:t('v.spec.pool'),v:t(villa.poolKey)}].map(({k,v}) => (
               <div key={k} style={{ padding: '12px 14px', background: 'rgba(6,14,8,0.6)' }}>
@@ -754,6 +762,17 @@ export function VillasSection() {
               {[t(villa.bedroomsKey), villa.size, t(villa.guestsKey)].map(s => (
                 <span key={s} style={{ fontFamily: ffs, fontSize: 'clamp(11px,1.05vw,13px)', fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--cream)', borderLeft: '2px solid var(--gold-40)', paddingLeft: 12 }}>{s}</span>
               ))}
+            </div>
+
+            {/* List price — hairline-separated from the specs; serif number for a
+                calm, premium read that sits naturally in the card. */}
+            <div style={{
+              marginTop: 'clamp(18px,2.6vw,30px)', paddingTop: 'clamp(15px,2vw,22px)',
+              borderTop: '1px solid var(--cr15)',
+              display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap',
+            }}>
+              <span style={{ fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.6 }}>{t('v.price')}</span>
+              <span style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(22px,2.4vw,32px)', color: 'var(--cream)', letterSpacing: '0.005em', lineHeight: 1 }}>{villa.price}</span>
             </div>
           </div>
 

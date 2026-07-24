@@ -231,6 +231,7 @@ export const messages: Record<string, Entry> = {
   'v.spec.rooms': { en: 'Rooms', de: 'Zimmer', hu: 'Szobák', fr: 'Pièces', zh: '房间', ru: 'Комнаты' },
   'v.spec.guests': { en: 'Sleeps', de: 'Gäste', hu: 'Vendégek', fr: 'Personnes', zh: '可住人数', ru: 'Гостей' },
   'v.spec.pool': { en: 'Pool', de: 'Pool', hu: 'Medence', fr: 'Piscine', zh: '泳池', ru: 'Бассейн' },
+  'v.price': { en: 'Price', de: 'Preis', hu: 'Ár', fr: 'Prix', zh: '价格', ru: 'Цена' },
   'v.bed1': { en: '1 Bedroom', de: '1 Schlafzimmer', hu: '1 hálószoba', fr: '1 chambre', zh: '一居室', ru: '1 спальня' },
   'v.bed2': { en: '2 Bedrooms', de: '2 Schlafzimmer', hu: '2 hálószoba', fr: '2 chambres', zh: '两居室', ru: '2 спальни' },
   'v.guests2': { en: 'Up to 2', de: 'Bis zu 2 Gäste', hu: 'Akár 2 vendég', fr: "Jusqu'à 2 personnes", zh: '最多 2 人', ru: 'До 2 гостей' },
