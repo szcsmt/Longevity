@@ -597,12 +597,15 @@ function VillaModal({ villa, onClose, onOpen3D }: { villa: VillaData; onClose: (
             {/* View it in 3D — opens this villa's interior model right here. */}
             {villa.tourAppId && onOpen3D && (
               <button onClick={onOpen3D}
+                onMouseEnter={e => { const b = e.currentTarget; b.style.boxShadow = '0 0 42px -4px var(--gold-glow)'; b.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={e => { const b = e.currentTarget; b.style.boxShadow = '0 0 24px -12px var(--gold-glow)'; b.style.transform = 'none'; }}
                 style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 11,
                   fontFamily: ffs, fontSize: 9, fontWeight: 300, letterSpacing: '0.24em', textTransform: 'uppercase',
                   color: 'var(--bg)', background: 'var(--gold)', border: '1px solid var(--gold)',
                   borderRadius: 100, padding: '16px 28px', cursor: 'pointer',
                   boxShadow: '0 0 24px -12px var(--gold-glow)',
+                  transition: 'box-shadow 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1)',
                 }}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 1.6 14 5v6L8 14.4 2 11V5z" /><path d="M2 5l6 3.4L14 5" /><path d="M8 8.4v6" />
@@ -699,6 +702,17 @@ export function VillasSection() {
         /* Transform-only pulse (no box-shadow animation) for a GPU-light, repaint-free loop */
         @keyframes tapPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .tap-hint { animation: tapPulse 1.9s ease-in-out infinite; }
+        /* Villa name — big on stacked phones/tablets (full width). On desktop the name sits
+           in a narrow text column beside the photo, so the size is tuned to fit that column
+           and never slide behind the image (long names like "Residence XL" used to clip). */
+        .lr-villa-name { font-size: clamp(38px,8.4vw,54px); white-space: normal; overflow-wrap: break-word; }
+        @media (min-width: 901px) {
+          /* Sized so even the longest name ("Residence XL") stays on ONE line inside the
+             narrow text column (min 260px), never clipping or sliding behind the photo.
+             white-space: normal is kept as a safety net — if it ever can't fit, it wraps
+             instead of overflowing. */
+          .lr-villa-name { font-size: clamp(26px,2.7vw,36px); }
+        }
         /* In-image edge arrows: only on phones/tablets, where the outside arrows are hidden */
         .villa-edge-arrow { display: none; }
         @media (max-width: 900px) {
@@ -743,7 +757,7 @@ export function VillasSection() {
             (so the title and photo sit together on one screen). */}
         <div className="lr-villa-card" style={{
           display: 'grid',
-          gridTemplateColumns: 'clamp(200px,22%,280px) 1fr',
+          gridTemplateColumns: 'clamp(260px,28%,380px) 1fr',
           gridTemplateRows: '1fr auto auto 1fr',
           gridTemplateAreas: '". media" "head media" "body media" ". media"',
           columnGap: 'clamp(22px,2.6vw,40px)',
@@ -754,7 +768,7 @@ export function VillasSection() {
           {/* HEAD: name + tagline + specs — slides with the photo (see headRef). */}
           <div ref={headRef} style={{ gridArea: 'head', display: 'flex', flexDirection: 'column' }}>
             <h3 style={{ margin: '0 0 clamp(8px,1.2vw,14px)', lineHeight: 1 }}>
-              <span className="gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontSize: 'clamp(46px,6vw,88px)', letterSpacing: '-0.01em', lineHeight: 1.0, whiteSpace: 'nowrap' }}>{villa.name}</span>
+              <span className="lr-villa-name gold-text" style={{ display: 'block', fontFamily: ff, fontWeight: 400, letterSpacing: '-0.01em', lineHeight: 1.03 }}>{villa.name}</span>
               <span style={{ display: 'block', fontFamily: ff, fontWeight: 400, fontStyle: 'normal', fontSize: 'clamp(17px,2vw,28px)', letterSpacing: '0.01em', color: 'var(--gold)', lineHeight: 1.4 }}>{t(villa.taglineKey)}</span>
             </h3>
 
@@ -802,11 +816,11 @@ export function VillasSection() {
                   color: 'var(--gold)',
                   background: 'rgba(201,169,110,0.12)', border: '1px solid rgba(201,169,110,0.6)',
                   borderRadius: 100, padding: '16px 30px', cursor: 'pointer',
-                  boxShadow: '0 0 26px -8px var(--gold-glow)',   // static glow (no per-frame box-shadow repaint)
-                  transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s',
+                  boxShadow: '0 0 26px -8px var(--gold-glow)',
+                  transition: 'background 0.45s cubic-bezier(0.16,1,0.3,1), color 0.45s, border-color 0.45s, box-shadow 0.45s',
                 }}
-                onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; }}
-                onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(201,169,110,0.12)'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.6)'; }}
+                onMouseEnter={e => { const b = e.currentTarget; b.style.background = 'var(--gold)'; b.style.color = 'var(--bg)'; b.style.borderColor = 'var(--gold)'; b.style.boxShadow = '0 0 44px -6px var(--gold-glow)'; }}
+                onMouseLeave={e => { const b = e.currentTarget; b.style.background = 'rgba(201,169,110,0.12)'; b.style.color = 'var(--gold)'; b.style.borderColor = 'rgba(201,169,110,0.6)'; b.style.boxShadow = '0 0 26px -8px var(--gold-glow)'; }}
               >
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 1.6 14 5v6L8 14.4 2 11V5z" />
