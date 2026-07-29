@@ -4,80 +4,94 @@ import { CookieReset } from '@/components/cookie-reset';
 
 export const metadata: Metadata = {
   title: 'Cookie Policy — Longevity Resort',
-  description: 'How Longevity Resort uses cookies and similar storage, and how to manage your choices.',
+  description: 'How this website uses cookies and similar storage, and how to manage your choices.',
 };
 
 export default function CookiePage() {
   return (
-    <LegalPage title="Cookie Policy" updated="22 June 2026">
+    <LegalPage title="Cookie Policy" updated="28 July 2026">
       <p>
-        This Cookie Policy explains how <strong>Longevity Resort</strong> uses cookies and
-        similar storage technologies on this website, and how you can control them. It should be
-        read together with our <a href="/privacy">Privacy &amp; GDPR Policy</a>.
+        This Cookie Policy explains how <strong>Longevity Property Group Limited</strong>{' '}
+        (&ldquo;the Company&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) uses cookies and similar
+        storage technologies on https://longevitysamui.com, and how you can control them. It
+        should be read together with our <a href="/privacy">Privacy &amp; Data Protection
+        Policy</a>, of which it forms part.
       </p>
 
       <h2>1. What cookies and similar storage are</h2>
       <p>
-        Cookies are small text files stored on your device by a website. Similar technologies,
-        such as the browser&rsquo;s local storage, work in the same way. They can be
-        &ldquo;strictly necessary&rdquo; (needed for the site to function) or
-        &ldquo;non-essential&rdquo; (for example analytics or marketing).
+        Cookies are small text files placed on your device by a website. Similar technologies —
+        such as local storage, session storage, pixels and software development kits — serve
+        comparable functions. Cookies may be &ldquo;first-party&rdquo; (set by this website) or
+        &ldquo;third-party&rdquo; (set by another domain), and &ldquo;session&rdquo; (deleted
+        when the browser closes) or &ldquo;persistent&rdquo; (retained for a defined period).
+        They are categorised as strictly necessary, functional, analytical/performance or
+        advertisement/targeting cookies.
       </p>
 
-      <h2>2. What we currently use</h2>
+      <h2>2. Consent management</h2>
       <p>
-        This site is intentionally light. By default we use <strong>only strictly necessary
-        storage</strong>, and we do not load analytics, advertising or social-media tracking
-        unless you accept them through the consent banner.
-      </p>
-      <table>
-        <thead>
-          <tr><th>Name</th><th>Type</th><th>Purpose</th><th>Duration</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>lr-cookie-consent</td>
-            <td>Strictly necessary (local storage)</td>
-            <td>Remembers your cookie choice so we don&rsquo;t ask again.</td>
-            <td>Until you clear it / 12 months</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h2>3. Third-party content</h2>
-      <p>
-        The Location section embeds an interactive map. The map tiles are loaded from a
-        third-party map provider (OpenStreetMap / CARTO), which means your IP address is shared
-        with that provider purely so the map images can be delivered. The map does not set
-        advertising cookies.
+        On your first visit, a consent banner operated by the <strong>CookieYes</strong>{' '}
+        consent-management platform (deployed via Google Tag Manager) asks for your choices.
+        Strictly necessary storage operates without consent, as permitted by applicable law; all
+        non-essential categories remain disabled unless and until you enable them. Your consent
+        state, including the categories accepted or refused and the time of the consent event,
+        is recorded by the consent-management platform in order to demonstrate compliance. Tags
+        managed through Google Tag Manager are conditioned on your consent state and are not
+        fired for categories you have not accepted.
       </p>
 
-      <h2>4. Analytics and marketing</h2>
+      <h2>3. Cookies used on this website</h2>
       <p>
-        We do not currently run analytics or marketing cookies. If we add them in future, they
-        will be listed here and will only run after you give consent for the relevant category
-        in the banner.
+        The table below is generated and kept up to date automatically by our consent-management
+        platform on the basis of periodic scans of this website, and reflects the cookies and
+        similar technologies currently in use, their providers, purposes and retention periods.
+        It is the same declaration that is accessible from the consent banner.
+      </p>
+      {/* CookieYes auto-populated cookie declaration — the CookieYes script (loaded
+          via GTM) fills this element with the live, categorised cookie audit table. */}
+      <div className="cky-audit-table-element" />
+      <p>
+        If the table is not visible, your browser or an extension may be blocking the
+        consent-management script; the declaration can also be viewed through the consent
+        banner itself via the &ldquo;Manage cookie preferences&rdquo; control below.
+      </p>
+
+      <h2>4. Third-party content</h2>
+      <p>
+        The Location section of the website embeds an interactive map. Map tiles are loaded from
+        a third-party map provider (OpenStreetMap / CARTO), which requires your IP address to be
+        transmitted to that provider solely for the delivery of the map images. Aggregate,
+        cookieless usage measurement is additionally performed by the website&rsquo;s hosting
+        infrastructure (Vercel), which does not involve the placement of cookies or the use of
+        advertising identifiers.
       </p>
 
       <h2>5. Managing your choices</h2>
       <p>
-        When you first visit, the consent banner lets you choose <strong>&ldquo;Only
-        necessary&rdquo;</strong> or <strong>&ldquo;Accept all&rdquo;</strong>. Non-essential
-        storage stays off unless you opt in. You can change your decision at any time below, or
-        by clearing cookies and site data in your browser settings.
+        You may review, change or withdraw your consent at any time using the control below,
+        which reopens the consent banner. You may also delete or block cookies through your
+        browser settings; please note that blocking strictly necessary storage may affect the
+        proper functioning of the website. For further information on the processing of personal
+        data collected through cookies, including the legal bases relied upon and your rights,
+        please refer to our <a href="/privacy">Privacy &amp; Data Protection Policy</a>.
       </p>
       <p><CookieReset /></p>
 
-      <h2>6. Changes</h2>
+      <h2>6. Changes to this Policy</h2>
       <p>
-        We may update this policy as the site evolves. The current version, with its
-        &ldquo;last updated&rdquo; date, is always shown on this page.
+        We may update this Cookie Policy from time to time to reflect changes in the cookies
+        used, our service providers or legal requirements. The version published on this page,
+        together with its &ldquo;last updated&rdquo; date, is the version in force. The cookie
+        table in Section 3 updates automatically and may change without a revision to the date
+        of this Policy.
       </p>
 
       <h2>7. Contact</h2>
       <p>
-        Questions about cookies? Email{' '}
-        <a href="mailto:info@longevityresort.com">info@longevityresort.com</a>.
+        Questions concerning this Cookie Policy should be addressed to Longevity Property Group
+        Limited, No 5, 17/F, Strand 50, 50 Bonham Strand, Sheung Wan, Hong Kong, or by email to{' '}
+        <a href="mailto:sales@longevitysamui.com">sales@longevitysamui.com</a>.
       </p>
     </LegalPage>
   );

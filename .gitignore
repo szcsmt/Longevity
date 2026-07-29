@@ -24,3 +24,4 @@ npm-debug.log*
 # brochure source (served copy lives in web/public/brochure/)
 /Longevity Brochure 2026.pdf
 Screen.mov
+.env*

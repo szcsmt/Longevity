@@ -8,6 +8,8 @@ const ffs = 'var(--font-raleway), sans-serif';
 const ff  = 'var(--font-playfair), serif';
 
 const links = [
+  // Centre link only where the preview section renders (dev) — kept out of production.
+  ...(process.env.NODE_ENV === 'development' ? [{ tk: 'nav.centre', href: '#centre' }] : []),
   { tk: 'nav.estate',      href: '#discover'    },
   { tk: 'nav.park',        href: '#park'        },
   { tk: 'nav.villas',      href: '#villas'      },

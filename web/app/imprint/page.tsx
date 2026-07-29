@@ -8,33 +8,27 @@ export const metadata: Metadata = {
 
 export default function ImprintPage() {
   return (
-    <LegalPage title="Imprint" updated="22 June 2026">
-      <div className="legal-note">
-        <p>
-          This legal notice is a base template. The company identity, registration and
-          responsible-person details in square brackets must be completed and confirmed by legal
-          counsel before the site goes live.
-        </p>
-      </div>
-
+    <LegalPage title="Imprint" updated="28 July 2026">
       <h2>Company information</h2>
       <ul>
-        <li><strong>Longevity Property Group LLC</strong></li>
-        <li>Hong Kong</li>
-        <li>[Registered address]</li>
-        <li>[Company / registration number]</li>
-        <li>[Managing director / authorised representative]</li>
+        <li><strong>Longevity Property Group Limited</strong></li>
+        <li>No 5, 17/F, Strand 50, 50 Bonham Strand</li>
+        <li>Sheung Wan, Hong Kong</li>
+        <li>A company incorporated in the Hong Kong Special Administrative Region</li>
       </ul>
 
       <h2>Contact</h2>
       <ul>
         <li>Email: <a href="mailto:sales@longevitysamui.com">sales@longevitysamui.com</a></li>
         <li>Web: <a href="https://longevitysamui.com">longevitysamui.com</a></li>
-        <li>Location: Plai Laem, Koh Samui, Thailand</li>
+        <li>Development location: Plai Laem, Koh Samui, Thailand</li>
       </ul>
 
       <h2>Responsible for content</h2>
-      <p>[Name and address of the person responsible for the content of this website.]</p>
+      <p>
+        Longevity Property Group Limited, No 5, 17/F, Strand 50, 50 Bonham Strand, Sheung Wan,
+        Hong Kong.
+      </p>
 
       <h2>Hosting</h2>
       <p>

@@ -651,3 +651,9 @@ body {
 
 .cookie-reset-btn { cursor: pointer; font-family: var(--font-raleway), sans-serif; font-size: 10px; font-weight: 300; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); background: transparent; border: 1px solid rgba(201,169,110,0.45); border-radius: 100px; padding: 13px 24px; transition: background 0.35s, color 0.35s, border-color 0.35s; }
 .cookie-reset-btn:hover { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+
+/* Hide the CookieYes floating "revisit consent" widget (the blue round icon).
+   Consent stays reachable via the "Manage cookie preferences" button on the
+   Cookie Policy page (footer link), so withdrawing consent remains one click
+   away as GDPR requires — just without the off-brand floating button. */
+.cky-btn-revisit-wrapper { display: none !important; }

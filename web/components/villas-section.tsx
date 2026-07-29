@@ -50,7 +50,7 @@ interface VillaData {
 
 const villas: VillaData[] = [
   {
-    index: '01', name: 'Residence M', size: '76.46 m²', price: 'THB 7,500,000',
+    index: '01', name: 'Residence M', size: '76.46 m²', price: 'THB 7,650,000',
     bedroomsKey: 'v.bed1', guestsKey: 'v.guests2', poolKey: 'vM.pool',
     taglineKey: 'vM.tag', descKey: 'vM.desc', hlKey: 'vM.hl',
     img: '/images/villa-m/m-1.webp',
@@ -71,7 +71,7 @@ const villas: VillaData[] = [
     tourUnitId: TOUR_UNIT.M,
   },
   {
-    index: '02', name: 'Residence L', size: '79.19 m²', price: 'THB 7,900,000',
+    index: '02', name: 'Residence L', size: '79.19 m²', price: 'THB 8,050,000',
     bedroomsKey: 'v.bed1', guestsKey: 'v.guests2', poolKey: 'vL.pool',
     taglineKey: 'vL.tag', descKey: 'vL.desc', hlKey: 'vL.hl',
     img: '/images/villa-l/l-1.webp',
@@ -95,7 +95,7 @@ const villas: VillaData[] = [
     tourUnitId: TOUR_UNIT.L,
   },
   {
-    index: '03', name: 'Residence XL', size: '126.65 m²', price: 'THB 10,900,000',
+    index: '03', name: 'Residence XL', size: '126.65 m²', price: 'THB 11,200,000',
     bedroomsKey: 'v.bed2', guestsKey: 'v.guests4', poolKey: 'vXL.pool',
     taglineKey: 'vXL.tag', descKey: 'vXL.desc', hlKey: 'vXL.hl',
     img: '/images/villa-2br/x-1.webp',
