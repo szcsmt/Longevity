@@ -111,6 +111,10 @@ export function Masterplan({
         .mp-swatch { width: 13px; height: 13px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,0.25) inset; }
         .mp-count { font-variant-numeric: tabular-nums; color: var(--c-mut); margin-left: 4px; }
         .mp-hint { margin-left: auto; font-size: 12px; color: var(--c-mut-2); }
+        @media (max-width: 720px) {
+          .mp-dot { min-width: 24px; min-height: 24px; }
+          .mp-hint { flex: 1 1 100%; margin-left: 0; }
+        }
 
         .mp-scroll { overflow-x: auto; border: 1px solid var(--c-line); border-radius: 14px; background: #f4f4ef; }
         .mp-wrap { container-type: inline-size; position: relative; min-width: 780px; max-width: 1280px; margin: 0 auto; }
@@ -173,6 +177,12 @@ export function Masterplan({
         .mp-extra button { background: none; border: none; color: var(--c-mut-2); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px; }
         .mp-extra button:hover { color: var(--c-hot); }
         .mp-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        @media (max-width: 460px) {
+          .mp-2col { grid-template-columns: 1fr; }
+          .mp-drawer { width: 100vw; }
+          .mp-dbody { padding: 16px 16px 28px; }
+          .mp-dhead { padding: 18px 16px 14px; }
+        }
       `}</style>
 
       {/* Legend + counts */}
