@@ -1,15 +1,16 @@
 import { cookies } from 'next/headers';
-import { CRM_COOKIE, passwordMatches, sessionToken } from '@/lib/crm/auth';
+import { CRM_COOKIE, passwordMatches, sessionToken, usernameMatches } from '@/lib/crm/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const { password } = await req.json().catch(() => ({ password: '' }));
-  if (!passwordMatches(password || '')) {
-    return Response.json({ ok: false, error: 'invalid password' }, { status: 401 });
+  const { username, password } = await req.json().catch(() => ({ username: '', password: '' }));
+  const token = sessionToken();
+  if (!token || !usernameMatches(username || '') || !passwordMatches(password || '')) {
+    return Response.json({ ok: false, error: 'invalid credentials' }, { status: 401 });
   }
   const jar = await cookies();
-  jar.set(CRM_COOKIE, sessionToken(), {
+  jar.set(CRM_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getLead } from '@/lib/crm/store';
+import { getLead, relatedLeads } from '@/lib/crm/store';
 import { LeadWorkspace } from '@/components/crm/lead-workspace';
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +9,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const lead = await getLead(id);
   if (!lead) notFound();
+  const related = await relatedLeads(lead);
 
   return (
     <>
@@ -22,7 +23,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           </p>
         </div>
       </div>
-      <LeadWorkspace lead={lead} />
+      <LeadWorkspace lead={lead} related={related} />
     </>
   );
 }

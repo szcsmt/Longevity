@@ -1,13 +1,23 @@
 import Link from 'next/link';
 import { listLeads } from '@/lib/crm/store';
+import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
+import { LeadsTable } from '@/components/crm/leads-table';
 
 export const dynamic = 'force-dynamic';
 
-const FORM_TYPES = ['enquiry', 'reserve', 'brochure_request'];
-const fmtDay = (iso?: string) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+const FORM_TYPES = ['enquiry', 'reserve', 'brochure_request', 'manual'];
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || '';
+
+const SCORE_RANK: Record<string, number> = { hot: 0, warm: 1, cold: 2 };
+const stageRank = (s: string) => STAGES.findIndex((st) => st.id === s);
+
+const SORTS: Record<string, (a: Lead, b: Lead) => number> = {
+  received: (a, b) => (b.created_at || '').localeCompare(a.created_at || ''),
+  name: (a, b) => (a.name || 'zz').localeCompare(b.name || 'zz'),
+  score: (a, b) => (SCORE_RANK[a.score] ?? 9) - (SCORE_RANK[b.score] ?? 9),
+  stage: (a, b) => stageRank(a.stage) - stageRank(b.stage),
+};
 
 export default async function LeadsPage({
   searchParams,
@@ -21,7 +31,21 @@ export default async function LeadsPage({
     form_type: str(sp.form_type),
     q: str(sp.q),
   };
-  const leads = await listLeads(filter as never);
+  // Object.hasOwn, not a truthy lookup: '__proto__' or 'hasOwnProperty' would
+  // otherwise pass the check and hand Array.sort a non-function comparator.
+  const sort = Object.hasOwn(SORTS, str(sp.sort)) ? str(sp.sort) : 'received';
+  const leads = (await listLeads(filter as never)).sort(SORTS[sort]);
+
+  // Preserve the current view in links (sorting keeps filters, export keeps both).
+  const qs = (over: Record<string, string>) => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries({ ...filter, sort, ...over })) if (v) p.set(k, v);
+    const s = p.toString();
+    return s ? `?${s}` : '';
+  };
+  const sortHrefs = Object.fromEntries(
+    Object.keys(SORTS).map((id) => [id, `/admin/leads${qs({ sort: id })}`]),
+  );
 
   return (
     <>
@@ -30,7 +54,11 @@ export default async function LeadsPage({
           <h1 className="crm-title">Leads</h1>
           <p className="crm-sub">{leads.length} {leads.length === 1 ? 'lead' : 'leads'} matching your view.</p>
         </div>
-        <Link className="crm-btn" href="/admin/pipeline">Pipeline view →</Link>
+        <div className="act-row">
+          <Link className="crm-btn gold" href="/admin/leads/new">+ Add lead</Link>
+          <a className="crm-btn" href={`/api/crm/export${qs({ sort: '' })}`}>Export CSV</a>
+          <Link className="crm-btn" href="/admin/pipeline">Pipeline view →</Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -39,19 +67,19 @@ export default async function LeadsPage({
           <input className="crm-input" name="q" placeholder="Search name, email, phone, villa…" defaultValue={filter.q} />
         </div>
         <div className="fld">
-          <select className="crm-select" name="stage" defaultValue={filter.stage}>
+          <select className="crm-select" name="stage" defaultValue={filter.stage} aria-label="Filter by stage">
             <option value="">All stages</option>
             {STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
         </div>
         <div className="fld">
-          <select className="crm-select" name="score" defaultValue={filter.score}>
+          <select className="crm-select" name="score" defaultValue={filter.score} aria-label="Filter by score">
             <option value="">All scores</option>
             {SCORES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
           </select>
         </div>
         <div className="fld">
-          <select className="crm-select" name="form_type" defaultValue={filter.form_type}>
+          <select className="crm-select" name="form_type" defaultValue={filter.form_type} aria-label="Filter by form type">
             <option value="">All forms</option>
             {FORM_TYPES.map((f) => <option key={f} value={f}>{f.replace('_', ' ')}</option>)}
           </select>
@@ -60,49 +88,7 @@ export default async function LeadsPage({
         <Link className="crm-btn ghost" href="/admin/leads">Reset</Link>
       </form>
 
-      {/* Table */}
-      <div className="crm-card" style={{ padding: '8px 6px' }}>
-        {leads.length === 0 ? (
-          <div className="empty" style={{ padding: 40 }}>No leads match these filters.</div>
-        ) : (
-          <table className="crm-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Enquiry</th>
-                <th>Source</th>
-                <th>Score</th>
-                <th>Stage</th>
-                <th>Received</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((l) => (
-                <tr key={l.id}>
-                  <td>
-                    <Link href={`/admin/leads/${l.id}`} className="crm-row">
-                      <div className="crm-name">{l.name || 'Unknown'}</div>
-                      <div className="crm-meta">{l.email || l.phone || '—'}</div>
-                    </Link>
-                  </td>
-                  <td>
-                    <div style={{ textTransform: 'capitalize' }}>{(l.form_type || 'enquiry').replace('_', ' ')}</div>
-                    <div className="crm-meta">{l.villa || l.form_origin || ''}</div>
-                  </td>
-                  <td className="crm-meta">{l.source || l.utm_source || 'direct'}</td>
-                  <td><span className={`badge ${l.score}`}>{l.score}</span></td>
-                  <td><span className="badge stage">{STAGES.find((s) => s.id === l.stage)?.label}</span></td>
-                  <td className="crm-meta tabnum">{fmtDay(l.submitted_at || l.created_at)}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <Link href={`/admin/leads/${l.id}`} className="crm-btn ghost sm">Open</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <LeadsTable leads={leads} sortHrefs={sortHrefs} sort={sort} />
     </>
   );
 }

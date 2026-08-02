@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Lead, Stage } from '@/lib/crm/types';
 import { STAGES } from '@/lib/crm/types';
@@ -8,41 +8,99 @@ import { STAGES } from '@/lib/crm/types';
 export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
   const [leads, setLeads] = useState<Lead[]>(initial);
   const [busy, setBusy] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overCol, setOverCol] = useState<Stage | null>(null);
 
-  async function move(lead: Lead, dir: -1 | 1) {
-    const idx = STAGES.findIndex((s) => s.id === lead.stage);
-    const next = STAGES[idx + dir];
-    if (!next) return;
+  // Resync from the server whenever AutoRefresh re-renders the page — but not
+  // mid-move, when the optimistic state is ahead of the incoming snapshot.
+  useEffect(() => {
+    if (!busy) setLeads(initial);
+  }, [initial, busy]);
+
+  async function moveTo(lead: Lead, stage: Stage) {
+    if (lead.stage === stage) return;
+    const prev = lead.stage;
     setBusy(lead.id);
     // optimistic
-    setLeads((ls) => ls.map((l) => (l.id === lead.id ? { ...l, stage: next.id as Stage } : l)));
+    setLeads((ls) => ls.map((l) => (l.id === lead.id ? { ...l, stage } : l)));
     try {
-      await fetch(`/api/crm/leads/${lead.id}`, {
+      const res = await fetch(`/api/crm/leads/${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ op: 'update', patch: { stage: next.id } }),
+        body: JSON.stringify({ op: 'update', patch: { stage } }),
       });
+      if (!res.ok) throw new Error(String(res.status));
+      if (stage === 'lost') {
+        const reason = prompt('Why was this lead lost? (optional — saved as a note)');
+        if (reason?.trim()) {
+          await fetch(`/api/crm/leads/${lead.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ op: 'addNote', body: `Lost: ${reason.trim()}` }),
+          }).catch(() => {});
+        }
+      }
+    } catch {
+      // The server never saw the move — put the card back where it was.
+      setLeads((ls) => ls.map((l) => (l.id === lead.id ? { ...l, stage: prev } : l)));
+      alert('Could not save the move — check your connection and try again.');
     } finally {
       setBusy(null);
     }
+  }
+
+  function moveStep(lead: Lead, dir: -1 | 1) {
+    const idx = STAGES.findIndex((s) => s.id === lead.stage);
+    const next = STAGES[idx + dir];
+    if (next) moveTo(lead, next.id);
   }
 
   return (
     <div className="kb-wrap">
       {STAGES.map((col) => {
         const items = leads.filter((l) => l.stage === col.id);
+        const hot = items.filter((l) => l.score === 'hot').length;
         return (
-          <div className="kb-col" key={col.id}>
+          <div
+            className={`kb-col${overCol === col.id ? ' drop' : ''}`}
+            key={col.id}
+            onDragOver={(e) => { e.preventDefault(); setOverCol(col.id); }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setOverCol(null);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              setOverCol(null);
+              const id = e.dataTransfer.getData('text/plain') || dragId;
+              const lead = leads.find((l) => l.id === id);
+              if (lead) moveTo(lead, col.id);
+              setDragId(null);
+            }}
+          >
             <h4>
               <span>{col.label}</span>
-              <span className="cnt">{items.length}</span>
+              <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}>
+                {hot > 0 && <span className="cnt hot-cnt">{hot} hot</span>}
+                <span className="cnt">{items.length}</span>
+              </span>
             </h4>
             {items.length === 0 && <div className="empty" style={{ padding: '8px 0' }}>—</div>}
             {items.map((l) => {
               const idx = STAGES.findIndex((s) => s.id === l.stage);
               return (
-                <div className="kb-card" key={l.id} style={{ opacity: busy === l.id ? 0.6 : 1 }}>
-                  <Link href={`/admin/leads/${l.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <div
+                  className={`kb-card${dragId === l.id ? ' dragging' : ''}`}
+                  key={l.id}
+                  style={{ opacity: busy === l.id ? 0.6 : 1 }}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', l.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDragId(l.id);
+                  }}
+                  onDragEnd={() => { setDragId(null); setOverCol(null); }}
+                >
+                  <Link href={`/admin/leads/${l.id}`} style={{ textDecoration: 'none', color: 'inherit' }} draggable={false}>
                     <div className="nm">{l.name || 'Unknown'}</div>
                     <div className="mt">
                       {l.villa || l.form_type || 'enquiry'}
@@ -52,8 +110,8 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
                   <div className="kb-card-foot">
                     <span className={`badge ${l.score}`}>{l.score}</span>
                     <div className="kb-move">
-                      <button onClick={() => move(l, -1)} disabled={idx === 0} aria-label="Move back">‹</button>
-                      <button onClick={() => move(l, 1)} disabled={idx === STAGES.length - 1} aria-label="Move forward">›</button>
+                      <button onClick={() => moveStep(l, -1)} disabled={idx === 0} aria-label="Move back">‹</button>
+                      <button onClick={() => moveStep(l, 1)} disabled={idx === STAGES.length - 1} aria-label="Move forward">›</button>
                     </div>
                   </div>
                 </div>

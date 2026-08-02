@@ -11,7 +11,7 @@ export default async function PipelinePage() {
       <div className="crm-head">
         <div>
           <h1 className="crm-title">Pipeline</h1>
-          <p className="crm-sub">Drag leads through the stages with the ‹ › controls. Click a card to open it.</p>
+          <p className="crm-sub">Drag cards between stages (or use the ‹ › controls). Click a card to open it.</p>
         </div>
         <Link className="crm-btn" href="/admin/leads">List view →</Link>
       </div>
