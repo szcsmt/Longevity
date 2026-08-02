@@ -41,8 +41,12 @@ const items = [
   },
 ];
 
-export function CrmNav() {
+/* Red badge counts: leads = untouched new + awaiting-reply, followups =
+   overdue tasks. Zero renders nothing — a clean nav means nothing is burning. */
+export function CrmNav({ alerts }: { alerts?: { leads?: number; followups?: number } }) {
   const path = usePathname() || '';
+  const badgeFor = (href: string) =>
+    href === '/admin/leads' ? alerts?.leads : href === '/admin/tasks' ? alerts?.followups : undefined;
   return (
     <nav className="crm-nav">
       {/* Quick search — lands on the Leads list filtered to the query */}
@@ -51,12 +55,14 @@ export function CrmNav() {
       </form>
       {items.map((it) => {
         const active = it.href === '/admin' ? path === '/admin' : path.startsWith(it.href);
+        const badge = badgeFor(it.href);
         return (
           <Link key={it.href} href={it.href} className={`crm-nav-link${active ? ' active' : ''}`}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               {it.icon}
             </svg>
             {it.label}
+            {badge ? <span className="nav-badge" aria-label={`${badge} needs attention`}>{badge}</span> : null}
           </Link>
         );
       })}

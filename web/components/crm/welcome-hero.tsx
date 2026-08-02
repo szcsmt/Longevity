@@ -11,12 +11,23 @@ import { KineticField } from './kinetic-field';
 
 type Lang = 'hu' | 'en';
 
-const T: Record<Lang, { hello: string; leads: string; analytics: string; masterplan: string }> = {
-  hu: { hello: 'Isten hozta', leads: 'Leadek', analytics: 'Analitika', masterplan: 'Masterplan' },
-  en: { hello: 'Welcome', leads: 'Leads', analytics: 'Analytics', masterplan: 'Masterplan' },
+const T: Record<Lang, {
+  hello: string; leads: string; analytics: string; masterplan: string;
+  overdue: string; untouched: string; awaiting: string; clear: string;
+}> = {
+  hu: {
+    hello: 'Isten hozta', leads: 'Leadek', analytics: 'Analitika', masterplan: 'Masterplan',
+    overdue: 'lejárt teendő', untouched: 'érintetlen új lead', awaiting: 'válaszra vár', clear: '',
+  },
+  en: {
+    hello: 'Welcome', leads: 'Leads', analytics: 'Analytics', masterplan: 'Masterplan',
+    overdue: 'overdue tasks', untouched: 'untouched new leads', awaiting: 'awaiting reply', clear: '',
+  },
 };
 
-export function WelcomeHero({ user }: { user: string }) {
+export interface HeroAlerts { overdue: number; untouched: number; awaiting: number }
+
+export function WelcomeHero({ user, alerts }: { user: string; alerts?: HeroAlerts }) {
   const [lang, setLang] = useState<Lang>('hu');
 
   useEffect(() => {
@@ -52,6 +63,15 @@ export function WelcomeHero({ user }: { user: string }) {
           <span>·</span>
           <Link href="/admin/masterplan">{t.masterplan}</Link>
         </nav>
+
+        {/* What needs doing — quiet when everything is handled. */}
+        {alerts && (alerts.overdue + alerts.untouched + alerts.awaiting > 0) && (
+          <div className="welcome-alerts">
+            {alerts.overdue > 0 && <Link href="/admin/tasks">⚠ {alerts.overdue} {t.overdue}</Link>}
+            {alerts.untouched > 0 && <Link href="/admin/leads">{alerts.untouched} {t.untouched}</Link>}
+            {alerts.awaiting > 0 && <Link href="/admin/leads">{alerts.awaiting} {t.awaiting}</Link>}
+          </div>
+        )}
       </div>
     </div>
   );

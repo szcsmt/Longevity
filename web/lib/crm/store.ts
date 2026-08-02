@@ -365,6 +365,30 @@ export async function setAwaitingReply(id: string, on: boolean): Promise<Lead | 
   });
 }
 
+/* What needs a human RIGHT NOW — shown as red badges in the nav on every admin
+   page (re-read on each auto-refresh, so it is always current). */
+export interface AttentionCounts {
+  overdue: number;   // open tasks past their calendar due date
+  untouched: number; // new leads >48h with no note/task
+  awaiting: number;  // leads silent past the reply threshold
+}
+
+export async function attentionCounts(): Promise<AttentionCounts> {
+  const leads = await (await backend()).allLeads();
+  const today = now().slice(0, 10);
+  const twoDaysAgo = daysAgo(2);
+  const replyCut = daysAgo(REPLY_FLAG_DAYS);
+  let overdue = 0, untouched = 0, awaiting = 0;
+  for (const l of leads) {
+    overdue += l.tasks.filter((t) => !t.done && t.due && t.due.slice(0, 10) < today).length;
+    if (l.stage === 'new' && (l.created_at || '') < twoDaysAgo && l.notes.length === 0 && l.tasks.length === 0)
+      untouched++;
+    if (l.awaiting_reply_since && l.awaiting_reply_since < replyCut && l.stage !== 'lost' && l.stage !== 'won')
+      awaiting++;
+  }
+  return { overdue, untouched, awaiting };
+}
+
 // ── Villa availability & sales (masterplan) ──
 
 const VALID_STATUS: VillaStatus[] = ['free', 'reserved', 'sold'];

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { Construction, VillaRecord, VillaHistoryEntry, VillaStatus } from '@/lib/crm/types';
 import { CONSTRUCTION, PHASES } from '@/lib/crm/types';
@@ -35,6 +35,13 @@ export function Masterplan({
   const [contractDraft, setContractDraft] = useState('');
   const [extraLabel, setExtraLabel] = useState('');
   const [extraPrice, setExtraPrice] = useState('');
+
+  // The layout auto-refreshes every few seconds; adopt the fresh server
+  // snapshot so the board always shows current data — except mid-save, when
+  // our optimistic state is ahead of the incoming props.
+  useEffect(() => {
+    if (!saving) { setRecords(initial); setHistory(initHistory); }
+  }, [initial, initHistory, saving]);
 
   const byId = useMemo(() => Object.fromEntries(villas.map((v) => [v.id, v])), [villas]);
   const leadById = useMemo(() => Object.fromEntries(leads.map((l) => [l.id, l])), [leads]);
