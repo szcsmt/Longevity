@@ -10,11 +10,6 @@ const items = [
     icon: <path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z" />,
   },
   {
-    href: '/admin/overview',
-    label: 'Overview',
-    icon: <path d="M12 20a8 8 0 1 1 8-8M12 12l4.5-2.5M2 20h20" />,
-  },
-  {
     href: '/admin/leads',
     label: 'Leads',
     icon: <path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm0 2c-2.7 0-8 1.3-8 4v3h9m7-7c-2.7 0-8 1.3-8 4v3h16v-3c0-2.7-5.3-4-8-4Z" />,
@@ -33,16 +28,6 @@ const items = [
     href: '/admin/tasks',
     label: 'Follow-ups',
     icon: <path d="m9 11 3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
-  },
-  {
-    href: '/admin/villas',
-    label: 'Residences',
-    icon: <path d="M3 10 12 3l9 7v11H3V10Zm6 11v-6h6v6" />,
-  },
-  {
-    href: '/admin/reports',
-    label: 'Reports',
-    icon: <path d="M3 3v18h18M7 16v2m5-9v9m5-5v5" />,
   },
   {
     href: '/admin/analytics',

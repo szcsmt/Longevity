@@ -4,3 +4,7 @@
 !/web
 !/.vercel
 !/.vercelignore
+
+# Never upload dependency or build trees — Vercel installs and builds remotely.
+web/node_modules
+web/.next
