@@ -3,7 +3,7 @@
    header (or `?key=`). We store it straight into the CRM and do NOT forward it
    back to make.com — that avoids a loop, unlike /api/lead. Flexible field
    mapping so Bigin/WhatsApp payloads map cleanly to our lead shape. */
-import { createLeadFromPayload, addNote } from '@/lib/crm/store';
+import { upsertLeadFromPayload } from '@/lib/crm/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,9 +86,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const lead = await createLeadFromPayload(payload as Record<string, unknown>);
-    if (message) await addNote(lead.id, message);
-    return Response.json({ ok: true, id: lead.id });
+    // One person = one lead: a known contact's new message lands as a note on
+    // their existing lead (and counts as their reply); only a genuinely new
+    // contact creates a lead.
+    const { lead, created } = await upsertLeadFromPayload(payload as Record<string, unknown>, message);
+    return Response.json({ ok: true, id: lead.id, created });
   } catch {
     return Response.json({ ok: false, error: 'store error' }, { status: 500 });
   }

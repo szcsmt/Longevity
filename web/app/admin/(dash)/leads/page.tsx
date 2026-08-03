@@ -3,6 +3,7 @@ import { listLeads } from '@/lib/crm/store';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
 import { LeadsTable } from '@/components/crm/leads-table';
+import { DedupeButton } from '@/components/crm/dedupe-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +57,7 @@ export default async function LeadsPage({
         </div>
         <div className="act-row">
           <Link className="crm-btn gold" href="/admin/leads/new">+ Add lead</Link>
+          <DedupeButton />
           <a className="crm-btn" href={`/api/crm/export${qs({ sort: '' })}`}>Export CSV</a>
           <Link className="crm-btn" href="/admin/pipeline">Pipeline view →</Link>
         </div>

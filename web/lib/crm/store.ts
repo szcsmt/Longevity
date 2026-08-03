@@ -135,6 +135,88 @@ export async function createLeadFromPayload(p: Record<string, unknown>): Promise
   return lead;
 }
 
+/* ── One person = one lead ──
+   Contact matching so a returning enquirer or a new WhatsApp message lands ON
+   the existing lead instead of creating another one. */
+
+/** Comparable phone key: last 9 digits, only when there are enough of them. */
+const phoneKey = (s?: string): string => {
+  const d = (s || '').replace(/\D/g, '');
+  return d.length >= 8 ? d.slice(-9) : '';
+};
+
+export async function findLeadByContact(email?: string, phone?: string, whatsapp?: string): Promise<Lead | null> {
+  const e = (email || '').trim().toLowerCase();
+  const pk = phoneKey(phone) || phoneKey(whatsapp);
+  if (!e && !pk) return null;
+  const leads = await (await backend()).allLeads();
+  const matches = leads.filter((l) =>
+    (e && (l.email || '').trim().toLowerCase() === e) ||
+    (pk && (phoneKey(l.phone) === pk || phoneKey(l.whatsapp) === pk)),
+  );
+  if (!matches.length) return null;
+  // The person's most recently active lead is the conversation to continue.
+  return matches.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
+}
+
+export interface UpsertResult { lead: Lead; created: boolean }
+
+const SCORE_RANK: Record<Score, number> = { hot: 0, warm: 1, cold: 2 };
+
+/* The intake used by every automated channel (website forms, make.com/Bigin,
+   WhatsApp): a NEW person gets a new lead; a KNOWN person gets the message and
+   context appended to their existing lead. An inbound message also counts as a
+   reply (clears the waiting flag) and revives a lost lead. */
+export async function upsertLeadFromPayload(
+  p: Record<string, unknown>,
+  message?: string,
+): Promise<UpsertResult> {
+  const s = (k: string) =>
+    typeof p[k] === 'string' ? cleanText(p[k] as string).slice(0, 300) : undefined;
+
+  const existing = await findLeadByContact(s('email'), s('phone'), s('whatsapp'));
+  if (!existing) {
+    const lead = await createLeadFromPayload(p);
+    const withNote = message ? await addNote(lead.id, message) : null;
+    return { lead: withNote || lead, created: true };
+  }
+
+  const channel = (s('form_type') || 'message').replace('_', ' ');
+  const source = s('source');
+  const newScore = scoreFor(s('form_type'), s('form_origin'));
+  const updated = await mutate(existing.id, (lead) => {
+    // Fill blanks only — never overwrite what the operator curated.
+    for (const k of ['name', 'email', 'phone', 'whatsapp', 'villa'] as const) {
+      const v = s(k);
+      if (!lead[k] && v) lead[k] = v;
+    }
+    if (!lead.value) lead.value = villaByName(lead.villa)?.price;
+    // Hotter signal upgrades the score; a cooler one never downgrades it.
+    if (SCORE_RANK[newScore] < SCORE_RANK[lead.score]) {
+      logActivity(lead, 'score', `Score ${cap(lead.score)} → ${cap(newScore)} (new ${channel})`);
+      lead.score = newScore;
+    }
+    if (message) {
+      lead.notes.unshift({ id: randomUUID(), body: cleanText(message).trim().slice(0, 4000), at: now() });
+    }
+    logActivity(lead, 'message', `New ${channel} received${source ? ` via ${source}` : ''}`);
+    // The customer spoke — the reply-timer has done its job.
+    if (lead.awaiting_reply_since) {
+      lead.awaiting_reply_since = undefined;
+      logActivity(lead, 'email', 'Reply received (inbound message)');
+      const chase = lead.tasks.find((t) => t.title === REPLY_TASK_TITLE && !t.done);
+      if (chase) chase.done = true;
+    }
+    // Someone we lost writing again is a second chance, not history.
+    if (lead.stage === 'lost') {
+      logActivity(lead, 'stage', `${stageLabel('lost')} → ${stageLabel('new')} (re-engaged)`);
+      lead.stage = 'new';
+      lead.lost_reason = undefined;
+    }
+  });
+  return { lead: updated || existing, created: false };
+}
+
 /* A lead entered by hand — a phone call, a walk-in, a broker referral. Same
    shape as a website lead so every view treats them identically. */
 export interface ManualLeadInput {
@@ -267,6 +349,82 @@ export async function mergeLeads(primaryId: string, otherId: string): Promise<Le
   if (!merged) return null;
   await be.removeLead(otherId);
   return merged;
+}
+
+/* ── Duplicate cleanup ──
+   Groups leads that belong to the same person (shared email OR shared phone,
+   linked transitively) and folds each group into its OLDEST lead — the first
+   enquiry keeps the original attribution; everything else (notes, tasks,
+   history, consent) is carried over by mergeLeads. */
+
+export interface DedupeReport {
+  groups: number;      // people with more than one lead
+  extras: number;      // leads that would be (or were) folded away
+  sample: string[];    // a few affected names for the confirmation dialog
+}
+
+async function duplicateGroups(): Promise<Lead[][]> {
+  const leads = await (await backend()).allLeads();
+  // Union-find over contact keys so email- and phone-matches chain together.
+  const parent = new Map<string, string>();
+  const find = (x: string): string => {
+    let r = x;
+    while (parent.get(r) !== r) r = parent.get(r)!;
+    parent.set(x, r);
+    return r;
+  };
+  const union = (a: string, b: string) => {
+    if (!parent.has(a)) parent.set(a, a);
+    if (!parent.has(b)) parent.set(b, b);
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+  const keyOwner = new Map<string, string>(); // contact key -> lead id
+  for (const l of leads) {
+    const keys = [
+      (l.email || '').trim().toLowerCase() && `e:${(l.email || '').trim().toLowerCase()}`,
+      phoneKey(l.phone) && `p:${phoneKey(l.phone)}`,
+      phoneKey(l.whatsapp) && `p:${phoneKey(l.whatsapp)}`,
+    ].filter(Boolean) as string[];
+    if (!parent.has(l.id)) parent.set(l.id, l.id);
+    for (const k of keys) {
+      const owner = keyOwner.get(k);
+      if (owner) union(l.id, owner);
+      else keyOwner.set(k, l.id);
+    }
+  }
+  const byRoot = new Map<string, Lead[]>();
+  for (const l of leads) {
+    if (!parent.has(l.id)) continue;
+    const r = find(l.id);
+    byRoot.set(r, [...(byRoot.get(r) || []), l]);
+  }
+  return [...byRoot.values()]
+    .filter((g) => g.length > 1)
+    .map((g) => g.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')));
+}
+
+export async function dedupeReport(): Promise<DedupeReport> {
+  const groups = await duplicateGroups();
+  return {
+    groups: groups.length,
+    extras: groups.reduce((n, g) => n + g.length - 1, 0),
+    sample: groups.slice(0, 5).map((g) => g[0].name || g[0].email || g[0].phone || 'Unknown'),
+  };
+}
+
+export async function dedupeMerge(): Promise<{ groups: number; merged: number }> {
+  const groups = await duplicateGroups();
+  let merged = 0;
+  for (const g of groups) {
+    const primary = g[0]; // oldest — the original enquiry
+    for (const other of g.slice(1)) {
+      try {
+        if (await mergeLeads(primary.id, other.id)) merged++;
+      } catch { /* keep folding the rest */ }
+    }
+  }
+  return { groups: groups.length, merged };
 }
 
 /* Bulk operations for the list view. One failing lead must not abort the rest

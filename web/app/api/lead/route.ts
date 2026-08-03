@@ -3,7 +3,7 @@
    spammed). Set MAKE_WEBHOOK in the Vercel project env to activate; until then leads
    are accepted (the form still shows its thank-you) but not forwarded. */
 
-import { createLeadFromPayload } from '@/lib/crm/store';
+import { upsertLeadFromPayload } from '@/lib/crm/store';
 import { notifyNewLead } from '@/lib/crm/notify';
 import { sendAutoWelcome } from '@/lib/crm/automation';
 
@@ -43,12 +43,16 @@ export async function POST(request: Request) {
   // then still forward to make.com for any existing automations.
   try {
     if (body && typeof body === 'object') {
-      const lead = await createLeadFromPayload(body as Record<string, unknown>);
-      // Instant e-mail alert (no-op unless RESEND_API_KEY + CRM_NOTIFY_TO are set).
-      await notifyNewLead(lead).catch(() => {});
-      // Minute-0 thank-you to the customer — inert until CRM_AUTO_FROM is set
-      // (Bigin handles customer e-mail until then).
-      await sendAutoWelcome(lead).catch(() => {});
+      // One person = one lead: a repeat enquiry appends to the existing lead.
+      const { lead, created } = await upsertLeadFromPayload(body as Record<string, unknown>);
+      if (created) {
+        // Instant e-mail alert (no-op unless RESEND_API_KEY + CRM_NOTIFY_TO are set).
+        await notifyNewLead(lead).catch(() => {});
+        // Minute-0 thank-you to the customer — inert until CRM_AUTO_FROM is set
+        // (Bigin handles customer e-mail until then). Only for NEW people; a
+        // returning contact must never get a second welcome.
+        await sendAutoWelcome(lead).catch(() => {});
+      }
     }
   } catch {
     /* store failure must not affect the visitor's submit */
