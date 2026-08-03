@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Lead, Stage } from '@/lib/crm/types';
-import { STAGES } from '@/lib/crm/types';
+import { LOST_REASONS, STAGES } from '@/lib/crm/types';
+import { LostReasonDialog } from '@/components/crm/lost-reason-dialog';
 
 export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
   const [leads, setLeads] = useState<Lead[]>(initial);
@@ -17,8 +18,19 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
     if (!busy) setLeads(initial);
   }, [initial, busy]);
 
+  const [losingLead, setLosingLead] = useState<Lead | null>(null);
+
   async function moveTo(lead: Lead, stage: Stage) {
     if (lead.stage === stage) return;
+    // Losing a deal requires a reason — route through the dialog first.
+    if (stage === 'lost') {
+      setLosingLead(lead);
+      return;
+    }
+    await commitMove(lead, stage);
+  }
+
+  async function commitMove(lead: Lead, stage: Stage, extra?: { lost_reason: string; note: string }) {
     const prev = lead.stage;
     setBusy(lead.id);
     // optimistic
@@ -27,18 +39,15 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
       const res = await fetch(`/api/crm/leads/${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ op: 'update', patch: { stage } }),
+        body: JSON.stringify({ op: 'update', patch: extra ? { stage, lost_reason: extra.lost_reason } : { stage } }),
       });
       if (!res.ok) throw new Error(String(res.status));
-      if (stage === 'lost') {
-        const reason = prompt('Why was this lead lost? (optional — saved as a note)');
-        if (reason?.trim()) {
-          await fetch(`/api/crm/leads/${lead.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ op: 'addNote', body: `Lost: ${reason.trim()}` }),
-          }).catch(() => {});
-        }
+      if (extra?.note) {
+        await fetch(`/api/crm/leads/${lead.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ op: 'addNote', body: extra.note }),
+        }).catch(() => {});
       }
     } catch {
       // The server never saw the move — put the card back where it was.
@@ -57,6 +66,21 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
 
   return (
     <div className="kb-wrap">
+      {losingLead && (
+        <LostReasonDialog
+          leadName={losingLead.name || ''}
+          onCancel={() => setLosingLead(null)}
+          onConfirm={(reasonId, detail) => {
+            const label = LOST_REASONS.find((r) => r.id === reasonId)?.label || reasonId;
+            const lead = losingLead;
+            setLosingLead(null);
+            commitMove(lead, 'lost', {
+              lost_reason: reasonId,
+              note: `Lost: ${label}${detail ? ` — ${detail}` : ''}`,
+            });
+          }}
+        />
+      )}
       {STAGES.map((col) => {
         const items = leads.filter((l) => l.stage === col.id);
         const hot = items.filter((l) => l.score === 'hot').length;

@@ -5,18 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
+import { hasNoNextStep, isStalled, stageAgeDays } from '@/lib/crm/rules';
 
 /* Fixed locale + UTC so server prerender and browser hydration agree. */
 const fmtDay = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }) : '—';
-
-/* A lead is "stale" when it arrived over 48h ago and nobody has done anything
-   with it yet — same rule as the dashboard's Needs attention panel. */
-const isStale = (l: Lead) =>
-  l.stage === 'new' &&
-  (l.created_at || '') < new Date(Date.now() - 2 * 86_400_000).toISOString() &&
-  l.notes.length === 0 &&
-  l.tasks.length === 0;
 
 export function LeadsTable({ leads, sortHrefs, sort }: {
   leads: Lead[];
@@ -149,7 +142,16 @@ export function LeadsTable({ leads, sortHrefs, sort }: {
                   <td><span className="badge stage">{STAGES.find((s) => s.id === l.stage)?.label}</span></td>
                   <td className="crm-meta tabnum">
                     {fmtDay(l.submitted_at || l.created_at)}
-                    {isStale(l) && <span className="stale" title="New lead, no follow-up in 48h+"> · needs follow-up</span>}
+                    {isStalled(l) && (
+                      <span className="flag stalled" title="Sitting in this stage past its threshold">
+                        {' '}· stalled {stageAgeDays(l)}d
+                      </span>
+                    )}
+                    {!isStalled(l) && hasNoNextStep(l) && (
+                      <span className="flag nonext" title="Active lead with no open task and no reply timer">
+                        {' '}· no next step
+                      </span>
+                    )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <Link href={`/admin/leads/${l.id}`} className="crm-btn ghost sm">Open</Link>

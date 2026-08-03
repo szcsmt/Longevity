@@ -22,7 +22,7 @@ export default async function DashLayout({ children }: { children: React.ReactNo
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/LOGO.svg" alt="Longevity Resort" />
           </div>
-          <CrmNav alerts={{ leads: att.untouched + att.awaiting, followups: att.overdue }} />
+          <CrmNav alerts={{ leads: att.actionable, followups: att.overdue }} />
           <div className="crm-side-foot">
             <LogoutButton />
           </div>

@@ -83,6 +83,21 @@ export interface Note {
   at: string; // ISO
 }
 
+export interface SentEmail {
+  id: string;
+  step: 'welcome' | 'reminder';
+  subject: string;
+  at: string; // ISO
+}
+
+export const LOST_REASONS = [
+  { id: 'price',       label: 'Price' },
+  { id: 'timing',      label: 'Timing — not now' },
+  { id: 'competitor',  label: 'Bought elsewhere' },
+  { id: 'unreachable', label: 'Went silent / unreachable' },
+  { id: 'other',       label: 'Other' },
+] as const;
+
 export interface Task {
   id: string;
   title: string;
@@ -124,6 +139,14 @@ export interface Lead {
      CRM flags the lead and the linked plot. */
   awaiting_reply_since?: string;
 
+  /* Why the deal was lost — one of LOST_REASONS. The free-text detail lives
+     in a "Lost:" note; this field feeds reporting. */
+  lost_reason?: string;
+
+  /* Automated e-mails actually sent to this lead (welcome, reminder…).
+     Drives the sequence logic and renders on the timeline. */
+  outbox?: SentEmail[];
+
   // Attribution
   utm_source?: string;
   utm_medium?: string;
@@ -151,7 +174,7 @@ export interface Lead {
 }
 
 export type LeadPatch = Partial<
-  Pick<Lead, 'name' | 'email' | 'phone' | 'whatsapp' | 'villa' | 'stage' | 'score' | 'value'>
+  Pick<Lead, 'name' | 'email' | 'phone' | 'whatsapp' | 'villa' | 'stage' | 'score' | 'value' | 'lost_reason'>
 >;
 
 /* A lightweight interaction event — a real click on the live site (open a form,

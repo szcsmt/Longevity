@@ -4,9 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Lead, Score, Stage } from '@/lib/crm/types';
-import { STAGES, SCORES } from '@/lib/crm/types';
+import { LOST_REASONS, STAGES, SCORES } from '@/lib/crm/types';
 import { fmtTHB } from '@/lib/crm/villas';
 import { messageTemplates } from '@/lib/crm/templates';
+import { LostReasonDialog } from '@/components/crm/lost-reason-dialog';
 
 /* Fixed locale + UTC: the server prerender and the browser must produce the
    same text, or React reports a hydration mismatch on every page load. */
@@ -39,6 +40,7 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
   const [valueDraft, setValueDraft] = useState(initial.value ? String(initial.value) : '');
   const [valueDirty, setValueDirty] = useState(false);
   const [tpl, setTpl] = useState(0);
+  const [losing, setLosing] = useState(false);
 
   async function patch(payload: Record<string, unknown>) {
     setBusy(true);
@@ -61,12 +63,19 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
   }
 
   async function setStage(stage: Stage) {
-    await patch({ op: 'update', patch: { stage } });
-    // A lost deal without a reason is a lesson wasted — ask for one.
+    // A lost deal without a reason is a lesson wasted — the dialog enforces one.
     if (stage === 'lost') {
-      const reason = prompt('Why was this lead lost? (optional — saved as a note)');
-      if (reason?.trim()) await patch({ op: 'addNote', body: `Lost: ${reason.trim()}` });
+      setLosing(true);
+      return;
     }
+    await patch({ op: 'update', patch: { stage } });
+  }
+
+  async function confirmLost(reasonId: string, detail: string) {
+    setLosing(false);
+    const label = LOST_REASONS.find((r) => r.id === reasonId)?.label || reasonId;
+    await patch({ op: 'update', patch: { stage: 'lost', lost_reason: reasonId } });
+    await patch({ op: 'addNote', body: `Lost: ${label}${detail ? ` — ${detail}` : ''}` });
   }
 
   function startEdit() {
@@ -326,6 +335,11 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
                     {late ? '⚠ ' : ''}Awaiting reply · {days} {days === 1 ? 'day' : 'days'}
                   </div>
                   <div className="crm-meta">Since {fmtDate(lead.awaiting_reply_since)}</div>
+                  {days >= 5 && (
+                    <div className="crm-meta" style={{ color: 'var(--c-hot)', marginTop: 6 }}>
+                      Two silent follow-ups — time to switch channel: call or WhatsApp.
+                    </div>
+                  )}
                 </div>
                 <button className="crm-btn gold sm" disabled={busy} onClick={() => patch({ op: 'awaiting', on: false })}>
                   Reply received
@@ -402,6 +416,14 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
           <button className="crm-btn danger sm" onClick={remove}>Delete lead</button>
         </div>
       </div>
+
+      {losing && (
+        <LostReasonDialog
+          leadName={lead.name || ''}
+          onConfirm={confirmLost}
+          onCancel={() => setLosing(false)}
+        />
+      )}
     </div>
   );
 }

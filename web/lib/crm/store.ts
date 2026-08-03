@@ -5,7 +5,9 @@ import type {
 } from './types';
 import { PHASES, SCORES, STAGES } from './types';
 import { scoreFor } from './scoring';
+import { STAGE_MAX_DAYS, hasNoNextStep, isStalled } from './rules';
 import { fmtTHB, phaseAmount, villaByName } from './villas';
+export { STAGE_MAX_DAYS, stageAgeDays, stageEnteredAt, isStalled, hasNoNextStep } from './rules';
 import { hasDatabase, type Backend } from './backend';
 import { fileBackend } from './backend-file';
 export type { VillaHistoryEntry, VillaRecord, VillaStatus } from './types';
@@ -218,6 +220,8 @@ export async function updateLead(id: string, patch: LeadPatch): Promise<Lead | n
     if ('value' in patch && patch.value !== lead.value)
       logActivity(lead, 'value', patch.value ? `Deal value set to ${fmtTHB(patch.value)}` : 'Deal value cleared');
     Object.assign(lead, patch);
+    // A revived deal is no longer lost — drop the stale reason.
+    if (patch.stage && patch.stage !== 'lost') lead.lost_reason = undefined;
   });
 }
 
@@ -335,6 +339,15 @@ export async function deleteLead(id: string): Promise<boolean> {
   return (await backend()).removeLead(id);
 }
 
+/** Log an automated e-mail on the lead: outbox entry (drives the sequence)
+    plus a timeline activity (visible history). */
+export async function recordSentEmail(id: string, email: import('./types').SentEmail): Promise<Lead | null> {
+  return mutate(id, (lead) => {
+    (lead.outbox ??= []).push(email);
+    logActivity(lead, 'email', `Auto-email sent: ${email.subject}`);
+  });
+}
+
 /* ── Awaiting-reply tracking ──
    The operator marks "email sent" on a lead; after 3 quiet days the lead (and
    its plot, if linked) shows a red flag. Marking it also drops a follow-up
@@ -366,27 +379,38 @@ export async function setAwaitingReply(id: string, on: boolean): Promise<Lead | 
 }
 
 /* What needs a human RIGHT NOW — shown as red badges in the nav on every admin
-   page (re-read on each auto-refresh, so it is always current). */
+   page (re-read on each auto-refresh, so it is always current). The rules
+   themselves live in rules.ts (pure, shared with client components). */
 export interface AttentionCounts {
-  overdue: number;   // open tasks past their calendar due date
-  untouched: number; // new leads >48h with no note/task
-  awaiting: number;  // leads silent past the reply threshold
+  overdue: number;    // open tasks past their calendar due date
+  untouched: number;  // new leads past the first-response threshold, untouched
+  awaiting: number;   // leads silent past the reply threshold
+  stalled: number;    // sitting in a stage past its max days
+  noNext: number;     // active leads with no next step at all
+  actionable: number; // DISTINCT leads flagged for any of the above (nav badge)
 }
 
 export async function attentionCounts(): Promise<AttentionCounts> {
   const leads = await (await backend()).allLeads();
   const today = now().slice(0, 10);
-  const twoDaysAgo = daysAgo(2);
+  const newCut = daysAgo(STAGE_MAX_DAYS.new ?? 1);
   const replyCut = daysAgo(REPLY_FLAG_DAYS);
-  let overdue = 0, untouched = 0, awaiting = 0;
+  let overdue = 0, untouched = 0, awaiting = 0, stalled = 0, noNext = 0, actionable = 0;
   for (const l of leads) {
     overdue += l.tasks.filter((t) => !t.done && t.due && t.due.slice(0, 10) < today).length;
-    if (l.stage === 'new' && (l.created_at || '') < twoDaysAgo && l.notes.length === 0 && l.tasks.length === 0)
-      untouched++;
-    if (l.awaiting_reply_since && l.awaiting_reply_since < replyCut && l.stage !== 'lost' && l.stage !== 'won')
-      awaiting++;
+    const isUntouched =
+      l.stage === 'new' && (l.created_at || '') < newCut && l.notes.length === 0 && l.tasks.length === 0;
+    const isAwaiting =
+      Boolean(l.awaiting_reply_since && l.awaiting_reply_since < replyCut && l.stage !== 'lost' && l.stage !== 'won');
+    const stall = isStalled(l);
+    const none = hasNoNextStep(l);
+    if (isUntouched) untouched++;
+    if (isAwaiting) awaiting++;
+    if (stall) stalled++;
+    if (none) noNext++;
+    if (isUntouched || isAwaiting || stall || none) actionable++;
   }
-  return { overdue, untouched, awaiting };
+  return { overdue, untouched, awaiting, stalled, noNext, actionable };
 }
 
 // ── Villa availability & sales (masterplan) ──
@@ -679,9 +703,9 @@ export async function stats(): Promise<Stats> {
     )
     .sort((a, b) => a.due.localeCompare(b.due))
     .slice(0, 8);
-  const twoDaysAgo = daysAgo(2);
+  const newCut = daysAgo(STAGE_MAX_DAYS.new ?? 1);
   const untouched = leads
-    .filter((l) => l.stage === 'new' && (l.created_at || '') < twoDaysAgo && l.notes.length === 0 && l.tasks.length === 0)
+    .filter((l) => l.stage === 'new' && (l.created_at || '') < newCut && l.notes.length === 0 && l.tasks.length === 0)
     .map((l) => ({
       leadId: l.id,
       leadName: l.name || 'Unknown',

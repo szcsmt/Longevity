@@ -1,13 +1,13 @@
 import { isAuthed } from '@/lib/crm/auth';
 import { addNote, addTask, deleteLead, mergeLeads, setAwaitingReply, toggleTask, updateLead } from '@/lib/crm/store';
-import { SCORES, STAGES } from '@/lib/crm/types';
+import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
 import type { LeadPatch } from '@/lib/crm/types';
 
 export const dynamic = 'force-dynamic';
 
 /* Only these keys may be patched — anything else in the payload is dropped so
    a crafted request can't overwrite attribution, history or timestamps. */
-const PATCHABLE = ['name', 'email', 'phone', 'whatsapp', 'villa', 'stage', 'score', 'value'] as const;
+const PATCHABLE = ['name', 'email', 'phone', 'whatsapp', 'villa', 'stage', 'score', 'value', 'lost_reason'] as const;
 
 function sanitizePatch(raw: unknown): LeadPatch {
   const src = (raw || {}) as Record<string, unknown>;
@@ -22,6 +22,9 @@ function sanitizePatch(raw: unknown): LeadPatch {
       if (STAGES.some((s) => s.id === v)) patch[k] = v;
     } else if (k === 'score') {
       if ((SCORES as string[]).includes(v as string)) patch[k] = v;
+    } else if (k === 'lost_reason') {
+      if (v === null || v === '') patch[k] = undefined;
+      else if (LOST_REASONS.some((r) => r.id === v)) patch[k] = v;
     } else if (typeof v === 'string') {
       patch[k] = v.slice(0, 300);
     }

@@ -5,6 +5,7 @@
 
 import { createLeadFromPayload } from '@/lib/crm/store';
 import { notifyNewLead } from '@/lib/crm/notify';
+import { sendAutoWelcome } from '@/lib/crm/automation';
 
 export const dynamic = 'force-dynamic'; // never cache a POST handler
 
@@ -45,6 +46,9 @@ export async function POST(request: Request) {
       const lead = await createLeadFromPayload(body as Record<string, unknown>);
       // Instant e-mail alert (no-op unless RESEND_API_KEY + CRM_NOTIFY_TO are set).
       await notifyNewLead(lead).catch(() => {});
+      // Minute-0 thank-you to the customer — inert until CRM_AUTO_FROM is set
+      // (Bigin handles customer e-mail until then).
+      await sendAutoWelcome(lead).catch(() => {});
     }
   } catch {
     /* store failure must not affect the visitor's submit */
