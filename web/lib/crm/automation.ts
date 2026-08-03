@@ -14,14 +14,36 @@ const BROCHURE_URL = `${SITE}/brochure/longevity-brochure-2026.pdf`;
 
 const firstName = (l: Lead) => (l.name || '').trim().split(/\s+/)[0] || 'there';
 
+/* The human behind the automated e-mails. Set in env so it can be changed
+   any time (and later become per-salesperson):
+     CRM_AGENT_NAME  — e.g. "Máté Szűcs"
+     CRM_AGENT_TITLE — e.g. "Sales Director, Longevity Samui"
+     CRM_AGENT_PHONE — e.g. "+66 12 345 6789" (also becomes the WhatsApp link)
+   Until a name is set, a neutral team signature is used. */
+function signature(): string {
+  const name = process.env.CRM_AGENT_NAME;
+  const title = process.env.CRM_AGENT_TITLE || 'Longevity Samui';
+  const phone = process.env.CRM_AGENT_PHONE;
+  const wa = phone ? `https://wa.me/${phone.replace(/[^\d]/g, '')}` : null;
+  if (!name) {
+    return `<p style="margin:26px 0 0">Warm regards,<br/>The Longevity Samui team<br/>
+      <a href="${SITE}" style="color:#666">${SITE.replace('https://', '')}</a></p>`;
+  }
+  return `
+    <p style="margin:26px 0 0">Warm regards,</p>
+    <p style="margin:14px 0 0"><b>${name}</b><br/>
+      <span style="color:#555">${title}</span><br/>
+      ${phone ? `${phone}${wa ? ` · <a href="${wa}" style="color:#555">WhatsApp</a>` : ''}<br/>` : ''}
+      <a href="${SITE}" style="color:#555">${SITE.replace('https://', '')}</a></p>`;
+}
+
+/* Deliberately plain: system font, no banners, no marketing chrome. A short
+   first-person note that looks hand-written converts; a designed newsletter
+   gets skimmed and archived. */
 const wrap = (body: string) => `
-  <div style="font-family:Georgia,serif;color:#1c1c1c;font-size:16px;line-height:1.65;max-width:560px">
+  <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#222;font-size:15px;line-height:1.6;max-width:540px">
     ${body}
-    <p style="margin-top:28px">Warm regards,<br/>The Longevity Samui team</p>
-    <p style="font-size:12px;color:#8a8a8a;margin-top:24px">
-      Longevity Wellness Resort · Koh Samui, Thailand · <a href="${SITE}" style="color:#8a8a8a">${SITE.replace('https://', '')}</a><br/>
-      If you'd rather not hear from us, just reply and let us know.
-    </p>
+    ${signature()}
   </div>`;
 
 export function welcomeEmail(l: Lead): { subject: string; html: string } {
@@ -30,45 +52,47 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
     return {
       subject: 'Your Longevity Samui brochure',
       html: wrap(`
-        <p>Dear ${name},</p>
-        <p>Thank you for your interest in Longevity Wellness Resort. Your brochure is ready:</p>
+        <p>Hi ${name},</p>
+        <p>Thanks for your interest in Longevity — here's the brochure you asked for:</p>
         <p><a href="${BROCHURE_URL}" style="color:#9a7b3f;font-weight:bold">Download the brochure (PDF)</a></p>
-        <p>If any residence catches your eye, reply to this e-mail and we'll gladly walk you
-        through availability, pricing and the reservation process.</p>`),
+        <p>Have a look, and if any of the residences catches your eye, just hit reply —
+        I'm happy to walk you through availability, pricing and how reservation works.</p>`),
     };
   }
   if (l.form_type === 'reserve' || (l.form_origin || '').startsWith('villa')) {
     return {
-      subject: `Your reservation enquiry${l.villa ? ` — ${l.villa}` : ''} · Longevity Samui`,
+      subject: `Your reservation enquiry${l.villa ? ` — ${l.villa}` : ''}`,
       html: wrap(`
-        <p>Dear ${name},</p>
-        <p>Thank you for your reservation enquiry${l.villa ? ` for <b>${l.villa}</b>` : ''}. We've
-        received it and are preparing the details for you — availability, the exact pricing and
-        the simple 4-step payment schedule.</p>
-        <p>We'll be in touch personally within a few hours.</p>`),
+        <p>Hi ${name},</p>
+        <p>Thank you for your enquiry${l.villa ? ` about <b>${l.villa}</b>` : ''} — great choice.
+        I'm putting together the details for you now: current availability, exact pricing and
+        our simple 4-step payment schedule.</p>
+        <p>I'll get back to you personally within a few hours. If you'd rather talk sooner,
+        just reply to this e-mail${process.env.CRM_AGENT_PHONE ? ` or call me directly at ${process.env.CRM_AGENT_PHONE}` : ''}.</p>`),
     };
   }
   return {
-    subject: 'Thank you for your enquiry · Longevity Samui',
+    subject: 'Thanks for reaching out',
     html: wrap(`
-      <p>Dear ${name},</p>
-      <p>Thank you for reaching out about Longevity Wellness Resort. We've received your enquiry
-      and will get back to you personally shortly with everything you asked for.</p>
-      <p>In the meantime, feel free to browse the residences at
-      <a href="${SITE}" style="color:#9a7b3f">${SITE.replace('https://', '')}</a>.</p>`),
+      <p>Hi ${name},</p>
+      <p>Thanks for your interest in Longevity Wellness Resort — I've received your enquiry
+      and will get back to you personally shortly.</p>
+      <p>Meanwhile, feel free to browse the residences at
+      <a href="${SITE}" style="color:#9a7b3f">${SITE.replace('https://', '')}</a> — and if you
+      already have questions, just reply, this inbox comes straight to me.</p>`),
   };
 }
 
 export function reminderEmail(l: Lead): { subject: string; html: string } {
   return {
-    subject: `Still here to help${l.villa ? ` with ${l.villa}` : ''} · Longevity Samui`,
+    subject: `Re: your Longevity enquiry${l.villa ? ` — ${l.villa}` : ''}`,
     html: wrap(`
-      <p>Dear ${firstName(l)},</p>
-      <p>Just a gentle follow-up on the information we sent a few days ago — we know these
-      decisions take time.</p>
-      <p>If you have any questions about the residences, pricing or the reservation process,
-      simply reply to this e-mail; we're happy to help. And if now isn't the right moment,
-      that's perfectly fine too.</p>`),
+      <p>Hi ${firstName(l)},</p>
+      <p>Just following up on what I sent a few days ago — I know a decision like this
+      takes time, so no rush at all.</p>
+      <p>If any questions have come up about the residences, pricing or the reservation
+      process, just reply — I'm glad to help. And if the timing isn't right, a one-line
+      reply saying so is absolutely fine too.</p>`),
   };
 }
 
