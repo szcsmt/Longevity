@@ -1,10 +1,10 @@
-import { crmUser } from '@/lib/crm/auth';
+import { currentUser } from '@/lib/crm/auth';
 import { attentionCounts } from '@/lib/crm/store';
 import { WelcomeHero } from '@/components/crm/welcome-hero';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
-  const alerts = await attentionCounts();
-  return <WelcomeHero user={crmUser()} alerts={alerts} />;
+  const [alerts, user] = await Promise.all([attentionCounts(), currentUser()]);
+  return <WelcomeHero user={user || ''} alerts={alerts} />;
 }
