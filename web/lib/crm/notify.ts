@@ -55,10 +55,16 @@ export async function notifyNewLead(lead: Lead): Promise<void> {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<meta name="supported-color-schemes" content="light dark">
 <title>New lead — Longevity CRM</title>
 <style>
+  @media (prefers-color-scheme: dark){
+    body, .page{background-color:#060E08 !important;}
+    .panel{background-color:#0A140C !important;}
+    .gold{color:#D8B87C !important;}
+    .bodytext{color:#D6C7A8 !important;}
+  }
+  [data-ogsc] .gold{color:#D8B87C !important;}
+  [data-ogsb] .panel{background-color:#0A140C !important;}
   @media only screen and (max-width:620px){
     .container{width:100% !important;}
     .px{padding-left:24px !important;padding-right:24px !important;}
@@ -66,13 +72,13 @@ export async function notifyNewLead(lead: Lead): Promise<void> {
   }
 </style>
 </head>
-<body style="margin:0;padding:0;background-color:#060E08;">
+<body style="margin:0;padding:0;background-color:#060E08;background-image:linear-gradient(#060E08,#060E08);">
 <span style="display:none;font-size:1px;color:#060E08;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${esc(preheader)}</span>
 
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#060E08;margin:0;padding:0;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" class="page" style="background-color:#060E08;background-image:linear-gradient(#060E08,#060E08);margin:0;padding:0;">
 <tr><td align="center" style="padding:0;">
 
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px;max-width:600px;background-color:#0A140C;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container panel" style="width:600px;max-width:600px;background-color:#0A140C;background-image:linear-gradient(#0A140C,#0A140C);">
 
 <tr><td class="px" style="padding:44px 56px 0 56px;" align="center">
   <img src="${SITE}/email/logo.png" width="134" height="100" alt="Longevity Resort" style="display:block;width:134px;height:100px;border:0;outline:none;text-decoration:none;margin:0 auto;">
@@ -80,11 +86,11 @@ export async function notifyNewLead(lead: Lead): Promise<void> {
 </td></tr>
 
 <tr><td class="px" style="padding:34px 56px 0 56px;" align="center">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="60" style="width:60px;"><tr><td height="1" style="height:1px;line-height:1px;font-size:1px;background-color:#C9A46A;">&nbsp;</td></tr></table>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="60" style="width:60px;"><tr><td height="1" style="height:1px;line-height:1px;font-size:1px;background-color:#C9A46A;background-image:linear-gradient(#C9A46A,#C9A46A);">&nbsp;</td></tr></table>
 </td></tr>
 
 <tr><td class="px" style="padding:30px 56px 0 56px;" align="center">
-  <h1 class="h1" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:34px;line-height:44px;color:#D8B87C;">${esc(name)}${hot ? ' &#128293;' : ''}</h1>
+  <h1 class="h1 gold" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:34px;line-height:44px;color:#D8B87C;">${esc(name)}${hot ? ' &#128293;' : ''}</h1>
 </td></tr>
 
 <tr><td class="px" style="padding:18px 56px 0 56px;" align="center">
@@ -102,7 +108,7 @@ export async function notifyNewLead(lead: Lead): Promise<void> {
 <tr><td class="px" style="padding:34px 56px 0 56px;" align="center">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
     <tr>
-      <td align="center" bgcolor="#C9A46A" style="background-color:#C9A46A;border-radius:2px;">
+      <td align="center" bgcolor="#C9A46A" style="background-color:#C9A46A;background-image:linear-gradient(#C9A46A,#C9A46A);border-radius:2px;">
         <a href="${SITE}/admin/leads/${lead.id}" style="display:block;padding:16px 34px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:#0A140C;text-decoration:none;">Open in the CRM</a>
       </td>
     </tr>
@@ -110,7 +116,7 @@ export async function notifyNewLead(lead: Lead): Promise<void> {
 </td></tr>
 
 <tr><td class="px" style="padding:46px 56px 0 56px;" align="center">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="60" style="width:60px;"><tr><td height="1" style="height:1px;line-height:1px;font-size:1px;background-color:#C9A46A;">&nbsp;</td></tr></table>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="60" style="width:60px;"><tr><td height="1" style="height:1px;line-height:1px;font-size:1px;background-color:#C9A46A;background-image:linear-gradient(#C9A46A,#C9A46A);">&nbsp;</td></tr></table>
 </td></tr>
 
 <tr><td class="px" style="padding:24px 56px 44px 56px;" align="center">
