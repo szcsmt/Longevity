@@ -1,5 +1,5 @@
 import { isAuthed } from '@/lib/crm/auth';
-import { addNote, addTask, deleteLead, mergeLeads, setAwaitingReply, toggleTask, updateLead } from '@/lib/crm/store';
+import { addNote, addTask, blockContactOf, deleteLead, getLead, mergeLeads, setAwaitingReply, toggleTask, updateLead } from '@/lib/crm/store';
 import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
 import type { LeadPatch } from '@/lib/crm/types';
 
@@ -67,9 +67,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return Response.json({ ok: true, lead });
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
   const { id } = await params;
+  // ?block=1: also blocklist the contact so their next WhatsApp message never
+  // recreates the lead (for private/non-lead contacts).
+  if (new URL(req.url).searchParams.get('block') === '1') {
+    const lead = await getLead(id);
+    if (lead) await blockContactOf(lead);
+  }
   const ok = await deleteLead(id);
   return Response.json({ ok }, { status: ok ? 200 : 404 });
 }

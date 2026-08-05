@@ -39,6 +39,10 @@ function init(): Promise<void> {
         entry jsonb NOT NULL,
         at timestamptz NOT NULL DEFAULT now()
       )`;
+      await q`CREATE TABLE IF NOT EXISTS crm_blocklist (
+        key text PRIMARY KEY,
+        added_at timestamptz NOT NULL DEFAULT now()
+      )`;
     })().catch((e) => {
       ready = null; // allow retry on next call
       throw e;
@@ -127,5 +131,16 @@ export const pgBackend: Backend = {
     await sql()`INSERT INTO crm_villa_history (id, entry, at)
       VALUES (${entry.id}, ${JSON.stringify(entry)}::jsonb, ${entry.at})
       ON CONFLICT (id) DO NOTHING`;
+  },
+  async getBlocklist() {
+    await init();
+    const rows = await sql()`SELECT key FROM crm_blocklist`;
+    return rows.map((r) => r.key as string);
+  },
+  async addToBlocklist(keys) {
+    await init();
+    for (const key of keys) {
+      await sql()`INSERT INTO crm_blocklist (key) VALUES (${key}) ON CONFLICT (key) DO NOTHING`;
+    }
   },
 };

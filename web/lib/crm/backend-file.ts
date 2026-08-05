@@ -17,6 +17,7 @@ interface DB {
   events: CrmEvent[];
   villas: Record<string, VillaRecord>;
   villaHistory: VillaHistoryEntry[];
+  blocklist: string[];
 }
 
 /* All mutations are serialized through this promise chain. Without it, two
@@ -39,9 +40,10 @@ async function read(): Promise<DB> {
       events: Array.isArray(db.events) ? db.events : [],
       villas: db.villas && typeof db.villas === 'object' ? (db.villas as Record<string, VillaRecord>) : {},
       villaHistory: Array.isArray(db.villaHistory) ? db.villaHistory : [],
+      blocklist: Array.isArray(db.blocklist) ? db.blocklist : [],
     };
   } catch {
-    return { leads: [], events: [], villas: {}, villaHistory: [] };
+    return { leads: [], events: [], villas: {}, villaHistory: [], blocklist: [] };
   }
 }
 
@@ -124,6 +126,16 @@ export const fileBackend: Backend = {
       const db = await read();
       db.villaHistory.unshift(entry);
       if (db.villaHistory.length > 3000) db.villaHistory.length = 3000;
+      await write(db);
+    });
+  },
+  async getBlocklist() {
+    return (await read()).blocklist;
+  },
+  async addToBlocklist(keys) {
+    await locked(async () => {
+      const db = await read();
+      db.blocklist = [...new Set([...db.blocklist, ...keys])];
       await write(db);
     });
   },

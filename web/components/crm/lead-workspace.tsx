@@ -92,9 +92,12 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
     setEditing(false);
   }
 
-  async function remove() {
-    if (!confirm('Delete this lead permanently?')) return;
-    await fetch(`/api/crm/leads/${lead.id}`, { method: 'DELETE' });
+  async function remove(block = false) {
+    const msg = block
+      ? 'Delete this lead AND block the contact? Future WhatsApp messages from this number/e-mail will never create a lead again.'
+      : 'Delete this lead permanently?';
+    if (!confirm(msg)) return;
+    await fetch(`/api/crm/leads/${lead.id}${block ? '?block=1' : ''}`, { method: 'DELETE' });
     router.replace('/admin/leads');
     router.refresh();
   }
@@ -413,7 +416,13 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
         {/* Danger */}
         <div className="crm-card">
           <h3>Danger zone</h3>
-          <button className="crm-btn danger sm" onClick={remove}>Delete lead</button>
+          <div className="act-row">
+            <button className="crm-btn danger sm" onClick={() => remove(false)}>Delete lead</button>
+            <button className="crm-btn danger sm" onClick={() => remove(true)}
+              title="Delete and blocklist the contact — for private numbers that are not real leads">
+              Delete & block contact
+            </button>
+          </div>
         </div>
       </div>
 

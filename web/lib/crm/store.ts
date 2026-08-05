@@ -159,6 +159,30 @@ export async function findLeadByContact(email?: string, phone?: string, whatsapp
   return matches.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
 }
 
+/** Contact keys of a lead/payload, in blocklist format. */
+function contactKeys(email?: string, phone?: string, whatsapp?: string): string[] {
+  const e = (email || '').trim().toLowerCase();
+  return [
+    e && `e:${e}`,
+    phoneKey(phone) && `p:${phoneKey(phone)}`,
+    phoneKey(whatsapp) && `p:${phoneKey(whatsapp)}`,
+  ].filter(Boolean) as string[];
+}
+
+/** True when any contact key of this sender is on the blocklist. */
+export async function isBlockedContact(email?: string, phone?: string, whatsapp?: string): Promise<boolean> {
+  const keys = contactKeys(email, phone, whatsapp);
+  if (!keys.length) return false;
+  const blocked = new Set(await (await backend()).getBlocklist());
+  return keys.some((k) => blocked.has(k));
+}
+
+/** Put a lead's contact details on the blocklist (used by "Delete & block"). */
+export async function blockContactOf(lead: Lead): Promise<void> {
+  const keys = contactKeys(lead.email, lead.phone, lead.whatsapp);
+  if (keys.length) await (await backend()).addToBlocklist(keys);
+}
+
 export interface UpsertResult { lead: Lead; created: boolean }
 
 const SCORE_RANK: Record<Score, number> = { hot: 0, warm: 1, cold: 2 };

@@ -18,6 +18,10 @@ export interface Backend {
   setVilla(id: string, rec: VillaRecord | null): Promise<void>;
   getVillaHistory(limit: number): Promise<VillaHistoryEntry[]>;
   addVillaHistory(entry: VillaHistoryEntry): Promise<void>;
+  /** Blocked contact keys ("e:<email>" / "p:<phone-key>") — inbound WhatsApp
+      from these never creates a lead again. */
+  getBlocklist(): Promise<string[]>;
+  addToBlocklist(keys: string[]): Promise<void>;
 }
 
 export function hasDatabase(): boolean {

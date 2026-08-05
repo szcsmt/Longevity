@@ -3,7 +3,7 @@
    header (or `?key=`). We store it straight into the CRM and do NOT forward it
    back to make.com — that avoids a loop, unlike /api/lead. Flexible field
    mapping so Bigin/WhatsApp payloads map cleanly to our lead shape. */
-import { upsertLeadFromPayload } from '@/lib/crm/store';
+import { isBlockedContact, upsertLeadFromPayload } from '@/lib/crm/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +86,11 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Blocked contacts (private numbers deleted with "Delete & block") never
+    // re-enter through the WhatsApp channel. 200 keeps make.com green.
+    if (await isBlockedContact(payload.email, payload.phone, payload.whatsapp)) {
+      return Response.json({ ok: true, skipped: 'blocked' });
+    }
     // One person = one lead: a known contact's new message lands as a note on
     // their existing lead (and counts as their reply); only a genuinely new
     // contact creates a lead.
