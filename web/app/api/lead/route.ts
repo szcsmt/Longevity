@@ -43,8 +43,12 @@ export async function POST(request: Request) {
   // then still forward to make.com for any existing automations.
   try {
     if (body && typeof body === 'object') {
+      // Free-text message (e.g. the 3D twin's enquiry form) lands as a note on
+      // the lead's timeline.
+      const b = body as Record<string, unknown>;
+      const message = typeof b.message === 'string' && b.message.trim() ? b.message.trim() : undefined;
       // One person = one lead: a repeat enquiry appends to the existing lead.
-      const { lead, created } = await upsertLeadFromPayload(body as Record<string, unknown>);
+      const { lead, created } = await upsertLeadFromPayload(b, message);
       if (created) {
         // Instant e-mail alert (no-op unless RESEND_API_KEY + CRM_NOTIFY_TO are set).
         await notifyNewLead(lead).catch(() => {});
