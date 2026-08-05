@@ -158,7 +158,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
       <div className="crm-card" style={{ marginBottom: 24 }}>
         {a.agents.length === 0 ? (
           <div className="cx-empty" style={{ padding: '30px 16px' }}>
-            Még nincs értékesítőhöz kötött adat. Amint felvesszük az értékesítőket és nevükön rögzülnek a foglalások/eladások, itt automatikusan megjelenik a ranglista — ki hány villát hozott és mekkora bevételt.
+            Még nincs értékesítőhöz kötött eladás. Amint egy villa az értékesítő nevén kel el, itt automatikusan megjelenik a ranglista — ki hány villát adott el és mekkora bevétellel. (A foglalás még nem eredmény — csak a lezárt eladás számít.)
           </div>
         ) : (
           <div className="rank">
@@ -166,7 +166,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
               <div className="rank-row" key={ag.seller}>
                 <span className="rank-pos">{i + 1}</span>
                 <span className="rank-name">{ag.seller}</span>
-                <span className="rank-stat"><b>{ag.sold}</b> eladás · <b>{ag.reserved}</b> foglalás</span>
+                <span className="rank-stat"><b>{ag.sold}</b> eladás</span>
                 <span className="rank-rev tabnum">{fmtTHBshort(ag.revenue)}</span>
               </div>
             ))}

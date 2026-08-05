@@ -54,7 +54,7 @@ export interface AnalyticsData {
   funnel: { label: string; count: number }[];
   villaStatus: { free: number; reserved: number; sold: number; total: number };
   villaByBlock: { block: string; free: number; reserved: number; sold: number }[];
-  agents: { seller: string; sold: number; reserved: number; revenue: number }[];
+  agents: { seller: string; sold: number; revenue: number }[];
 }
 
 const DAY = 86_400_000;
@@ -153,7 +153,7 @@ export async function analytics(rangeInput?: string): Promise<AnalyticsData> {
   // ── Villa status over ALL villas (incl. A-block) ──
   let vFree = 0, vRes = 0, vSold = 0;
   const blockMap: Record<string, { free: number; reserved: number; sold: number }> = {};
-  const agentMap: Record<string, { sold: number; reserved: number; revenue: number }> = {};
+  const agentMap: Record<string, { sold: number; revenue: number }> = {};
   for (const g of GEO) {
     const rec = vdata.villas[g.id];
     const status = (rec?.status || 'free') as VillaStatus;
@@ -162,11 +162,14 @@ export async function analytics(rangeInput?: string): Promise<AnalyticsData> {
     if (status === 'sold') { vSold++; blockMap[block].sold++; }
     else if (status === 'reserved') { vRes++; blockMap[block].reserved++; }
     else { vFree++; blockMap[block].free++; }
-    // agent attribution from the seller recorded on sold/reserved villas
-    if ((status === 'sold' || status === 'reserved') && rec?.seller) {
-      const a = (agentMap[rec.seller] = agentMap[rec.seller] || { sold: 0, reserved: 0, revenue: 0 });
-      const price = SIZE_OF[g.id] && PRICE[SIZE_OF[g.id]!] ? PRICE[SIZE_OF[g.id]!] : 0;
-      if (status === 'sold') { a.sold++; a.revenue += price; } else a.reserved++;
+    // Agent attribution: the leaderboard counts CLOSED sales only — a
+    // reservation is not a result yet. Revenue prefers the actual contract
+    // value over the list price when the sale has one recorded.
+    if (status === 'sold' && rec?.seller) {
+      const a = (agentMap[rec.seller] = agentMap[rec.seller] || { sold: 0, revenue: 0 });
+      const listPrice = SIZE_OF[g.id] && PRICE[SIZE_OF[g.id]!] ? PRICE[SIZE_OF[g.id]!] : 0;
+      a.sold++;
+      a.revenue += rec.contractValue ?? listPrice;
     }
   }
 
