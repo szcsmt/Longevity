@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { Construction, VillaRecord, VillaHistoryEntry, VillaStatus } from '@/lib/crm/types';
 import { CONSTRUCTION, PHASES } from '@/lib/crm/types';
-import { EXTRA_PRESETS, fmtTHB, nextPhase, paidTotal, phaseAmount } from '@/lib/crm/villas';
+import { EXTRA_PRESETS, VILLAS, fmtTHB, nextPhase, paidTotal, phaseAmount } from '@/lib/crm/villas';
 
 type Status = VillaStatus;
 interface Villa {
@@ -33,6 +33,7 @@ export function Masterplan({
   const [form, setForm] = useState<{ status: Status; seller: string; note: string }>({ status: 'free', seller: '', note: '' });
   const [saving, setSaving] = useState(false);
   const [contractDraft, setContractDraft] = useState('');
+  const [editingValue, setEditingValue] = useState(false);
   const [extraLabel, setExtraLabel] = useState('');
   const [extraPrice, setExtraPrice] = useState('');
 
@@ -63,6 +64,7 @@ export function Masterplan({
     const r = records[id];
     setForm({ status: r?.status || 'free', seller: r?.seller || '', note: r?.note || '' });
     setContractDraft(r?.contractValue ? String(r.contractValue) : '');
+    setEditingValue(false);
     setExtraLabel(''); setExtraPrice('');
     setSel(id);
   }
@@ -177,6 +179,12 @@ export function Masterplan({
         .mp-extra button { background: none; border: none; color: var(--c-mut-2); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px; }
         .mp-extra button:hover { color: var(--c-hot); }
         .mp-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .mp-cv { display: flex; align-items: center; gap: 8px; min-height: 41px; padding: 9px 13px;
+          border: 1px dashed var(--c-line); border-radius: 9px; cursor: pointer; font-size: 14px; color: var(--c-cream); }
+        .mp-cv:hover { border-color: var(--c-gold); }
+        .mp-cv-hint { color: var(--c-mut-2); font-size: 11px; }
+        .mp-cv-edit { margin-left: auto; background: none; border: none; color: var(--c-mut); cursor: pointer; font-size: 14px; padding: 2px; }
+        .mp-cv-edit:hover { color: var(--c-gold); }
         @media (max-width: 460px) {
           .mp-2col { grid-template-columns: 1fr; }
           .mp-drawer { width: 100vw; }
@@ -307,14 +315,39 @@ export function Masterplan({
                 <div className="mp-2col" style={{ marginBottom: 4 }}>
                   <div>
                     <label className="crm-label">Szerződéses érték (THB)</label>
-                    <input className="crm-input" inputMode="numeric" placeholder="pl. 8050000"
-                      value={contractDraft} disabled={saving}
-                      onChange={(e) => setContractDraft(e.target.value)}
-                      onBlur={() => {
-                        const raw = contractDraft.replace(/[^\d]/g, '');
-                        const n = raw ? parseInt(raw, 10) : null;
-                        if ((n || undefined) !== rec?.contractValue) sale({ contractValue: n });
-                      }} />
+                    {editingValue ? (
+                      <input className="crm-input" inputMode="numeric" placeholder="pl. 8050000"
+                        value={contractDraft} disabled={saving} autoFocus
+                        onChange={(e) => setContractDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                          if (e.key === 'Escape') { setContractDraft(rec?.contractValue ? String(rec.contractValue) : ''); setEditingValue(false); }
+                        }}
+                        onBlur={() => {
+                          setEditingValue(false);
+                          const raw = contractDraft.replace(/[^\d]/g, '');
+                          const n = raw ? parseInt(raw, 10) : null;
+                          if ((n || undefined) !== rec?.contractValue) sale({ contractValue: n });
+                        }} />
+                    ) : (() => {
+                      const listPrice = villa.size ? VILLAS.find((x) => x.name === `Residence ${villa.size}`)?.price : undefined;
+                      const startEdit = () => {
+                        setContractDraft(String(rec?.contractValue ?? listPrice ?? ''));
+                        setEditingValue(true);
+                      };
+                      return (
+                        <div className="mp-cv" onDoubleClick={startEdit} title="Dupla kattintás a módosításhoz">
+                          <span className="tabnum">
+                            {rec?.contractValue
+                              ? fmtTHB(rec.contractValue)
+                              : listPrice
+                                ? <>{fmtTHB(listPrice)} <span className="mp-cv-hint">lista-ár, eladáskor magától rögzül</span></>
+                                : '— (nincs lista-ár, írd be kézzel)'}
+                          </span>
+                          <button type="button" className="mp-cv-edit" aria-label="Szerződéses érték módosítása" onClick={startEdit}>✎</button>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div>
                     <label className="crm-label">Ígért átadás</label>

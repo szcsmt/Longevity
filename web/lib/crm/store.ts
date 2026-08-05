@@ -6,7 +6,8 @@ import type {
 import { PHASES, SCORES, STAGES } from './types';
 import { scoreFor } from './scoring';
 import { STAGE_MAX_DAYS, hasNoNextStep, isStalled } from './rules';
-import { fmtTHB, phaseAmount, villaByName } from './villas';
+import { VILLAS, fmtTHB, phaseAmount, villaByName } from './villas';
+import unitCatalog from '../villas.json';
 export { STAGE_MAX_DAYS, stageAgeDays, stageEnteredAt, isStalled, hasNoNextStep } from './rules';
 import { hasDatabase, type Backend } from './backend';
 import { fileBackend } from './backend-file';
@@ -610,6 +611,28 @@ export async function getVillaData(): Promise<VillaData> {
   return { villas, history };
 }
 
+/* List price of a specific plot from its size (M/L/XL) in the unit catalogue —
+   the default contract value the moment a unit is reserved/sold, so nobody
+   has to type it. Stays editable on the masterplan (double-click). */
+const UNIT_SIZE: Record<string, string> = Object.fromEntries(
+  (unitCatalog.villas as { id: string; size?: string }[]).map((v) => [v.id, v.size || '']),
+);
+
+export function unitListPrice(id: string): number | undefined {
+  const size = UNIT_SIZE[id];
+  return size ? VILLAS.find((v) => v.name === `Residence ${size}`)?.price : undefined;
+}
+
+/** Fill the contract value from the list price when a deal starts and none is
+    set yet. Returns true when it defaulted (caller logs it). */
+function defaultContractValue(id: string, rec: VillaRecord): boolean {
+  if (rec.contractValue) return false;
+  const lp = unitListPrice(id);
+  if (!lp) return false;
+  rec.contractValue = lp;
+  return true;
+}
+
 /** True when the record carries sales data worth keeping even at status 'free'. */
 function hasSaleData(rec: VillaRecord): boolean {
   return Boolean(
@@ -667,6 +690,9 @@ export async function setVillaStatus(
     delete rec.promisedDate; delete rec.construction; delete rec.phases; delete rec.extras;
     await be.setVilla(id, null);
   } else {
+    // A deal just started — price it from the list automatically.
+    if (defaultContractValue(id, rec))
+      await logVilla(id, from, status, seller, `Contract value set from list price (${fmtTHB(rec.contractValue!)})`);
     await persistVilla(id, rec);
   }
   await logVilla(id, from, status, seller, note);
@@ -702,7 +728,7 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
           if (lead) {
             rec.buyerLeadId = lead.id;
             rec.buyerName = lead.name || lead.email || 'Unknown';
-            rec.contractValue ||= lead.value || villaByName(lead.villa)?.price;
+            rec.contractValue ||= lead.value || villaByName(lead.villa)?.price || unitListPrice(id);
             await logVilla(id, from, rec.status, undefined, `Buyer linked: ${rec.buyerName}`);
           }
         } else {
@@ -727,6 +753,10 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
     case 'phase': {
       const def = PHASES.find((ph) => ph.key === action.key);
       if (!def) return null;
+      // Money arriving without a price on record: default from the list so the
+      // 7/43/40/10 amounts compute immediately.
+      if (action.paid && defaultContractValue(id, rec))
+        await logVilla(id, from, rec.status, undefined, `Contract value set from list price (${fmtTHB(rec.contractValue!)})`);
       rec.phases ??= {};
       const amount = num(action.amount);
       rec.phases[action.key] = action.paid
