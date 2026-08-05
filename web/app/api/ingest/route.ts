@@ -4,6 +4,7 @@
    back to make.com — that avoids a loop, unlike /api/lead. Flexible field
    mapping so Bigin/WhatsApp payloads map cleanly to our lead shape. */
 import { isBlockedContact, upsertLeadFromPayload } from '@/lib/crm/store';
+import { notifyNewLead } from '@/lib/crm/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +96,9 @@ export async function POST(req: Request) {
     // their existing lead (and counts as their reply); only a genuinely new
     // contact creates a lead.
     const { lead, created } = await upsertLeadFromPayload(payload as Record<string, unknown>, message);
+    // Alert the operator about genuinely NEW contacts only — a known person's
+    // follow-up message must not ping every time. No-op until Resend is set.
+    if (created) await notifyNewLead(lead).catch(() => {});
     return Response.json({ ok: true, id: lead.id, created });
   } catch {
     return Response.json({ ok: false, error: 'store error' }, { status: 500 });
