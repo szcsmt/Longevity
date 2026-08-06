@@ -21,9 +21,11 @@ Postgres tables (created lazily by `backend-pg.ts`):
 Notes, tasks, activities and sent e-mails are **embedded in the Lead document** — they are not
 separate tables.
 
-All inbound strings pass through `cleanText()` (strips control characters, NUL and lone
-surrogates — things Postgres `jsonb` cannot store) and are length-capped: contact/attribution
-fields 300 chars, note bodies 4000, task titles 300, villa seller 120, villa note 500.
+Inbound lead strings (contact/attribution fields, note bodies, task titles) pass through
+`cleanText()` (strips control characters, NUL and lone surrogates — things Postgres `jsonb`
+cannot store); villa seller/note/extras and event fields are only trimmed/length-capped, not
+cleaned. Length caps: contact/attribution fields 300 chars, note bodies 4000, task titles 300,
+villa seller 120, villa note 500.
 
 ---
 
@@ -129,7 +131,9 @@ contact), then exactly **one** day-3 reminder per waiting period — sent by the
 when the lead has an e-mail address, `awaiting_reply_since` is older than 3 days, the stage is
 still `new`/`contacted`/`qualified`, and no reminder newer than `awaiting_reply_since` exists
 in the outbox (it does not check whether the welcome went out). `vercel.json` schedules `/api/crm/cron` at `0 7 * * *` (auth: `Bearer CRON_SECRET` or a
-signed-in operator).
+signed-in operator). A second cron, `/api/crm/backup` at `0 3 * * *` (auth: `Bearer
+CRON_SECRET` or a signed-in admin), mails a full JSON snapshot (leads, villas, events) to
+`CRM_NOTIFY_TO` as a daily off-site backup.
 
 ## CrmEvent (interaction events)
 
@@ -317,7 +321,9 @@ In `updateVillaSale` (`op: 'phase'`): marking any phase paid on a `free` unit mo
 `reserved`; when **all four** phases are paid the unit becomes `sold`. The transition is logged
 (`"Status advanced by payment"`) and mirrored to the Google Sheet (`sheetSync`, best-effort via
 `SHEET_WEBHOOK` + `SHEET_SECRET`; inbound sheet edits arrive through `/api/villa-sync` and are
-applied `silent` so they never loop back). Setting a unit back to `free` clears all sale data
+applied `silent` so they never loop back). Every status change is also pushed to the partner
+webhook (`partnerPush`, active only when `PARTNER_WEBHOOK_URL` is set — anonymized like the
+partner API, never buyer identity). Setting a unit back to `free` clears all sale data
 (buyer, contract value, promised date, construction, phases, extras) — the audit trail keeps
 the history.
 

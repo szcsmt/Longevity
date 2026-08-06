@@ -1,0 +1,249 @@
+# Longevity CRM — Kezelői kézikönyv
+
+Ez a kézikönyv az admin felület (`/admin`) napi használatát írja le. Minden, ami itt szerepel, a rendszer tényleges működése — nem terv, nem ígéret.
+
+---
+
+## 1. Belépés
+
+- Cím: `/admin/login`
+- Felhasználónév + jelszó. A munkamenet 30 napig érvényes (cookie), utána újra be kell lépni.
+- Kétféle fiók létezik:
+  - **admin** — mindent láthat és módosíthat,
+  - **viewer** (megfigyelő) — mindent lát, de semmit nem módosíthat. A bal oldalsáv alján „👁 View only" jelvény mutatja, és minden módosító gomb inaktív. Vendégnek, befektetőnek, auditornak való.
+- Kilépés: a bal oldalsáv alján a Logout gomb.
+
+A felület minden oldala kb. 6 másodpercenként magától frissül — nem kell F5-öt nyomni, a jelvények és a listák mindig az aktuális állapotot mutatják.
+
+---
+
+## 2. Dashboard — a nap kezdete
+
+A `/admin` nyitóoldal: logó, üdvözlés a bejelentkezett névvel, HU/EN nyelvváltó (a választás megmarad), és gyorslinkek (Leadek · Analitika · Masterplan).
+
+A lényeg az üdvözlés alatti **figyelmeztető kapszulák**. Csak akkor jelennek meg, ha tényleg van teendő — ha üres a sor, minden rendben:
+
+| Kapszula | Jelentése | Hová visz |
+|---|---|---|
+| ⚠ lejárt teendő | nyitott teendő, aminek a határideje elmúlt | Follow-ups |
+| érintetlen új lead | „New" fázisú lead, ami 1 napnál régebbi, és még se jegyzet, se teendő nincs rajta | Leads |
+| elakadt lead | a fázisában a megengedettnél régebb óta ül (lásd 11. fejezet) | Leads |
+| következő lépés nélkül | aktív lead, amin nincs nyitott teendő és nem fut válasz-időzítő sem | Leads |
+| válaszra vár | 3+ napja nem jött válasz a kiküldött e-mailre | Leads |
+
+**Ez a reggeli munkalistád.** A bal oldali menüben ugyanez piros jelvényként is látszik minden oldalon: a Leads mellett az érintett leadek száma, a Follow-ups mellett a lejárt teendők száma.
+
+A menü tetején gyorskereső van — beírod a nevet/e-mailt/telefont, és a Leads listára visz szűrve.
+
+---
+
+## 3. Leads — a lista
+
+`/admin/leads` — minden lead egy táblázatban, a legfrissebb elöl.
+
+**Szűrés** (a lista feletti sáv):
+- szabadszavas keresés (név, e-mail, telefon, villa),
+- fázis (New / Contacted / Qualified / Reserved / Won / Lost),
+- hőfok (Hot / Warm / Cold),
+- űrlaptípus (enquiry / reserve / brochure request / manual).
+
+**Rendezés**: a Name, Score, Stage, Received oszlopfejlécekre kattintva. Alapértelmezés: beérkezés szerint, legújabb elöl. A rendezés megtartja az aktív szűrőket.
+
+**Jelzések a sorokban** (a Received oszlopban):
+- `· stalled Xd` — a lead X napja ül a jelenlegi fázisában, a küszöbön túl,
+- `· no next step` — aktív lead, aminek senki nem gazdája: se nyitott teendő, se válasz-időzítő.
+
+Mindkettő azt jelenti: nyisd meg, és csinálj vele valamit.
+
+**Tömeges műveletek**: pipáld ki a sorokat (vagy a fejlécben mindet), majd a lista feletti sávban:
+- *Move to stage…* — a kijelöltek átrakása egy fázisba,
+- *Set score…* — hőfok beállítása,
+- *Delete* — végleges törlés (megerősítéssel).
+
+Ha egy-egy elem nem sikerül, a rendszer megmondja, hányat nem tudott frissíteni, és a lista a valós állapotot mutatja.
+
+**⧉ Tidy duplicates**: egy kattintással megkeresi azokat a kontaktokat, akiknek több leadjük van (azonos e-mail vagy telefonszám alapján, láncolva is). Először csak jelentést mutat — hány érintett kontakt, hány felesleges lead, példanevekkel — és csak megerősítés után von össze. Az összevonás mindig a kontakt **legrégebbi** leadjébe történik (az eredeti megkeresés őrzi az attribúciót); jegyzet, teendő, előzmény nem vész el.
+
+**Export CSV**: pontosan az éppen szűrt listát tölti le CSV-ben (név, elérhetőségek, űrlap, villa, fázis, hőfok, forrás, GDPR, beérkezés, jegyzet- és nyitott teendő-szám).
+
+**+ Add lead** (`/admin/leads/new`): kézi rögzítés — telefonos érdeklődő, walk-in, ajánlás. Legalább egy név, e-mail vagy telefonszám kell. Megadható a villa (a lista-ár placeholder-ként látszik), a forrás (phone / walk-in / referral / email / agent / other), a hőfok (alapból warm), az üzletérték és egy első jegyzet. Mentés után egyből a lead oldalára visz.
+
+---
+
+## 4. A lead oldala
+
+A listából egy sorra kattintva nyílik. Két oszlop:
+
+### Bal oldal
+
+**Contact** — név, e-mail, telefon, WhatsApp, megkeresés típusa, beérkezés ideje, GDPR-hozzájárulás. Az **Edit** gombbal mind az öt kontaktmező (név, e-mail, telefon, WhatsApp, villa) szerkeszthető; minden módosítás bekerül az előzményekbe.
+
+Alatta gyorsgombok: **✉ Email** (levelezőt nyit), **WhatsApp** (wa.me link), **Call** (tárcsázás).
+
+**Sablonok**: legördülőből választasz, majd *Draft email* vagy *Draft WhatsApp* — a levelező/WhatsApp előre kitöltve nyílik meg, a lead nevével és villájával személyre szabva. **Semmi nem megy ki magától** — te nézed át és te küldöd el. A négy sablon:
+
+| Sablon | Mikor |
+|---|---|
+| First response | első reakció az érdeklődésre |
+| Brochure follow-up | brossúra-letöltés után |
+| Viewing invite | személyes vagy videós bejárás felajánlása |
+| Reservation steps | foglalási szándéknál a következő lépések |
+
+**Same contact** — ha ugyanennek az embernek (azonos e-mail vagy telefonszám) más leadje is van, itt látszik. A **Merge in** gomb áthozza a másik lead jegyzeteit, teendőit és előzményeit ebbe a leadbe, majd törli a duplikátumot. Az elsődleges leaden semmi nem íródik felül — csak az üres mezők töltődnek ki, a GDPR-hozzájárulás pedig soha nem vész el.
+
+**Attribution** — forrás, medium, kampány, kulcsszó, landing oldal (UTM-adatokból).
+
+**Notes & activity** — egyetlen idővonal: a kézi jegyzeteid és az automatikus bejegyzések (lead érkezett, fázisváltás, hőfokváltás, kontakt módosítva, érték beállítva, e-mail ment ki, üzenet jött be, összevonás) együtt, legfrissebb elöl. Ide írd a hívások összefoglalóját — ami nincs leírva, az nem történt meg.
+
+### Jobb oldal
+
+**Status** — fázis és hőfok legördülőből, plusz az **üzletérték (THB)**. Az érték a villaválasztásból magától kitöltődik a lista-árral, de bármikor átírható.
+
+**Response tracking — a 3 napos szabály.** Ez a rendszer szíve:
+
+1. Kiküldtél egy e-mailt vagy ajánlatot? Kattints: **„✉ Email sent — awaiting reply"**. Elindul az időzítő, és a rendszer magától létrehoz egy teendőt („Follow up — no reply yet") 3 nappal későbbre.
+2. A panel mutatja, hány napja vársz. **3 nap után** a lead piros jelzést kap — és ha vevőként hozzá van kötve egy telekhez a Masterplanon, a telek is.
+3. **5 nap után** a panel már azt javasolja: válts csatornát — hívd fel vagy írj WhatsAppon.
+4. Ha az ügyfél válaszolt, kattints: **„Reply received"**. Az időzítő törlődik, a követő teendő magától kipipálódik. (Ha a válasz a rendszeren keresztül érkezik be — pl. WhatsApp-integráción —, ez automatikusan is megtörténik.)
+
+**Follow-up tasks** — teendők ehhez a leadhez, opcionális határidővel. A lejárt teendő pirosan jelölve (`· overdue`); a határidő naptári nap szerint számít, tehát a ma esedékes még nem lejárt.
+
+**Danger zone** (csak admin):
+- **Delete lead** — végleges törlés.
+- **Delete & block contact** — törlés ÉS a kontakt (e-mail + telefonszám) tiltólistára tétele. Ezután az erről a számról/címről az üzenet-csatornán (WhatsApp / make.com) beérkező megkeresés soha többé nem hoz létre leadet. Magánszámokra, nem valódi érdeklődőkre való.
+
+### Lost — elveszett üzlet
+
+Akár a lead oldalán, akár a Pipeline-on teszed Lost-ra, egy párbeszédablak **kötelezően** okot kér:
+
+| Ok | |
+|---|---|
+| Price | ár miatt |
+| Timing — not now | most nem aktuális |
+| Bought elsewhere | máshol vásárolt |
+| Went silent / unreachable | elhallgatott, elérhetetlen |
+| Other | egyéb |
+
+Opcionális szöveges részlet is megadható — ez „Lost: …" jegyzetként kerül az idővonalra, és a riportokat táplálja. **Elveszett üzlet ok nélkül = elpazarolt tanulság.**
+
+Ha egy Lost lead később újra ír, a rendszer magától visszaemeli New-ba („re-engaged"), és törli az okot — a második esély nem előzmény.
+
+---
+
+## 5. Pipeline — a tábla
+
+`/admin/pipeline` — hat oszlop: **New → Contacted → Qualified → Reserved → Won → Lost**.
+
+- Kártyát **húzd át** egyik oszlopból a másikba, vagy használd a kártya alján a **‹ ›** gombokat.
+- Kártyára kattintva a lead oldala nyílik.
+- Minden oszlop fejléce mutatja a darabszámot és külön a hot leadek számát.
+- Lost oszlopba húzáskor jön az ok-választó ablak — megerősítés nélkül a kártya nem mozdul.
+- Ha a mentés nem sikerül (pl. nincs net), a kártya visszaugrik a helyére, és a rendszer szól.
+
+---
+
+## 6. Masterplan — a telek-fiók
+
+`/admin/masterplan` — mind a 69 rezidencia a helyszínrajzon, színes pöttyökkel:
+
+| Szín | Státusz |
+|---|---|
+| zöld | Szabad |
+| sárga | Foglalt |
+| piros | Eladott |
+
+Rávisszed az egeret: gyorsinfó (azonosító, státusz, vevő, befizetett összeg). **Narancssárga pötty a jelölő sarkán** = a telekhez kötött vevő 3+ napja nem válaszol — ez a telek üldözést kér.
+
+Egy pöttyre kattintva jobbról kinyílik a **telek-fiók**:
+
+**Státusz** — Szabad / Foglalt / Eladott gombok. Foglaltnál és eladottnál **kötelező megadni, ki adta el / foglalta le** — ebből épül az értékesítői ranglista az Analitikában. Opcionális megjegyzés, majd „Státusz mentése". (Szabadra visszaállítás = az üzlet meghiúsult: a vevő- és fizetési adatok törlődnek a rekordról, de az előzményekben minden megmarad.)
+
+**Vevő és szerződés**:
+- **Vevő (CRM lead)** — legördülőből hozzákötöd a CRM-leadet; utána „→ Lead megnyitása" linkkel egy kattintás a lead oldala. A hozzákötés a szerződéses értéket is kitölti a lead értékéből vagy a lista-árból, ha még üres.
+- **Szerződéses érték (THB)** — **dupla kattintással** (vagy a ✎ ikonnal) szerkeszthető. Amíg nincs beírva, a méret szerinti lista-ár látszik halványan („lista-ár, eladáskor magától rögzül") — az első foglaláskor/fizetéskor automatikusan ez rögzül, nem kell gépelni.
+- **Ígért átadás** — dátum.
+- **Építkezés állása** — Not started / Foundation / Structure up / Furnishing / Completed. Minden váltás előzménybe kerül.
+
+**Fizetési ütem — 7 / 43 / 40 / 10** a szerződéses értékből:
+
+| Fázis | % | Feltétel |
+|---|---|---|
+| Slot deposit | 7% | a telek a vevő nevére kerül |
+| Foundation | 43% | alapozás kész |
+| Building | 40% | épület kész |
+| Furnishing | 10% | berendezés kész |
+
+Pipálod a beérkezett fizetést, az összegek maguktól számolódnak (a fizetés dátuma is rögzül). Sáv mutatja a befizetett/hátralévő összeget és a következő mérföldkövet. **A pénz mozgatja a státuszt**: az első fizetés a szabad telket magától Foglaltra teszi, mind a négy fázis kipipálva = Eladott.
+
+**Extra kérések** — vevői extrák opcionális árral. Előre beírt lehetőségek: Podcast studio, Office setup, Gym corner, Sauna, Outdoor kitchen, EV charger — de bármi szabadon beírható.
+
+**Előzmények** — a telek teljes története: státuszváltások, fizetések, vevőkötés, extrák, mikor és ki.
+
+A státuszváltozások a háttérben a Google Sheet-tel és a 3D-modellel (3DEstate) is szinkronizálódnak — ezzel nincs teendőd.
+
+---
+
+## 7. Follow-ups — teendők egyben
+
+`/admin/tasks` — az összes lead összes teendője négy csoportban:
+
+- **Overdue** — lejárt: ezekkel kezdd,
+- **Due today** — ma esedékes,
+- **Upcoming** — jövőbeli vagy határidő nélküli,
+- **Recently completed** — az utolsó 12 kész.
+
+Minden sorból link visz a leadre. Pipálással kész — átkerül a Done-ba.
+
+---
+
+## 8. Analytics — számok
+
+`/admin/analytics` — időablak-választó: 7 nap / 30 nap / 90 nap / Összes.
+
+- **KPI-k**: összes lead, új lead az időszakban (trend az előző azonos időszakhoz képest), forró leadek, foglalási arány.
+- **Pénzügyi áttekintés** (mindig aktuális pillanatkép): elért bevétel (eladott villák), foglalások értéke, átlag üzletméret, teljes készlet-érték; sáv az eladott/lefoglalt/szabad arányról; méretenkénti bontás (M · 7,65M / L · 8,05M / XL · 11,2M THB lista-áron).
+- **Leadek**: időbeli trend, forrás szerint, pipeline-fázisok, hőfok-megoszlás, űrlaptípus.
+- **Weboldal-forgalom**: látogatók időben és forrás szerint, interakciók típusonként.
+- **Konverziós tölcsér**: Lead → Kapcsolatba lépett → Kvalifikált → Foglalás → Eladás.
+- **Villák**: státusz-megoszlás és blokkonkénti bontás.
+- **Értékesítői ranglista**: ki hány villát adott el és mekkora bevétellel. **Csak a lezárt eladás számít — a foglalás még nem eredmény.** A név a Masterplanon megadott „Ki adta el / foglalta le?" mezőből jön; a bevételnél a tényleges szerződéses érték számít, ha van, különben a lista-ár.
+
+---
+
+## 9. Activity — mi történik a weboldalon
+
+`/admin/activity` — minden látogatói interakció a weboldalon, név nélkül: látogatás, kattintás, WhatsApp-gomb, hívás-gomb, e-mail, brossúra-letöltés, űrlap-megnyitás. Fent összesítők, alatta típus szerint szűrhető napló. Arra jó, hogy lásd: mozog-e az oldal, melyik csatorna él. A leadeket nem szennyezi — ez csak jelzés.
+
+---
+
+## 10. Hogyan kerülnek be a leadek — és mit csinál a rendszer magától
+
+- **Weboldal-űrlapok**: minden beküldés azonnal leadet csinál. A hőfokot a rendszer magától állítja: konkrét villára irányuló megkeresés vagy foglalási szándék = **hot**, általános érdeklődés = **warm** (befektetési/foglalási területről indítva hot), brossúra-kérés = **cold**.
+- **Egy ember = egy lead**: ha ugyanaz az e-mail/telefonszám ír újra (akár WhatsAppon), az üzenet a **meglévő** leadre kerül jegyzetként — nem születik duplikátum. Az üres mezők kitöltődnek, a hőfok csak felfelé módosul. A beérkező üzenet válasznak számít (törli a válasz-időzítőt), az elveszett leadet pedig újraéleszti.
+- **Riasztás**: új leadről azonnali e-mail értesítés megy az operátornak (ha a küldés be van kötve), benne link a lead oldalára; hot leadnél 🔥 a tárgyban.
+- **Automata ügyfél-e-mailek** (csak ha a küldő aktiválva van — addig semmi nem megy ki): a 0. percben köszönő levél (brossúra-kérésnél a letöltési linkkel), majd **pontosan egy** emlékeztető, ha a válasz-időzítő („Email sent — awaiting reply") 3+ napja fut válasz nélkül — az emlékeztető tehát csak akkor megy ki, ha az időzítő el lett indítva, és csak aktív (New / Contacted / Qualified) fázisú leadnek. Utána ember veszi át. Az emlékeztetőket a naponta 07:00-kor (UTC) futó időzített feladat küldi; hajnali 3-kor automata mentés fut. A kiment automata levelek a lead idővonalán is látszanak.
+
+---
+
+## 11. A napi rutin
+
+**Reggel:**
+1. Nyisd meg a Dashboardot. **A piros kapszulák és a menü jelvényei = a mai munkalista.** Ha nincs kapszula, minden kézben van.
+2. Sorrend: **lejárt teendők** → **érintetlen új leadek** → **3+ napja válaszra várók** (hívás vagy WhatsApp, ne harmadik e-mail) → **elakadtak** → **következő lépés nélküliek**.
+
+**Napközben, minden kontakt után egy kattintás:**
+- Kiment egy e-mail/ajánlat? → **„Email sent — awaiting reply"**. Kész — a rendszer számolja a napokat és időzíti a követést.
+- Beszéltetek? → rövid **jegyzet** (mit mondott, mi a következő lépés) + **teendő** határidővel.
+- Válaszolt? → **„Reply received"**.
+
+**A vasszabály: minden aktív leadnek legyen következő lépése.** Vagy nyitott teendő, vagy futó válasz-időzítő. Ha egyik sincs, a lead „no next step" jelzést kap, és reggel újra a listádon lesz. A rendszer ezen felül fázisonként is méri az időt:
+
+| Fázis | Maximum | Utána |
+|---|---|---|
+| New | 1 nap | „érintetlen" / „elakadt" jelzés |
+| Contacted | 3 nap | „elakadt" jelzés |
+| Qualified | 7 nap | „elakadt" jelzés |
+
+Reserved és Won fázisban nincs időkorlát — ott már a fizetési ütem a mérce, a Masterplanon.
+
+**A lényeg**: a rendszer mindent számon tart helyetted — de csak akkor, ha a két kattintást (válaszra vár / teendő) minden kontakt után megnyomod. Ami be van jelölve, azt a CRM soha nem felejti el; ami nincs, azt senki.

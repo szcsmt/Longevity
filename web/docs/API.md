@@ -10,12 +10,12 @@ All routes are declared `dynamic = 'force-dynamic'` — responses are never cach
 
 | Method | How it works | Used by |
 |---|---|---|
-| Public | No auth. Protected only by a per-IP rate limit. | `/api/lead`, `/api/event`, `/api/crm/login`, `/api/crm/logout` |
+| Public | No auth. `/api/lead` and `/api/event` are additionally protected by a per-IP rate limit; login/logout are not rate limited. | `/api/lead`, `/api/event`, `/api/crm/login`, `/api/crm/logout` |
 | Session cookie | `lr_crm` httpOnly cookie set by `/api/crm/login`. Value is `base64url(name).sha256(name:password:salt)`; verified against the env-configured accounts on every request (`lib/crm/auth.ts`). Password/token checks use constant-time comparison. | All `/api/crm/*` routes except login/logout |
 | `x-ingest-key` | Header (or `?key=` query param) compared to `INGEST_SECRET`. Fails closed: 401 when the env var is unset. | `/api/ingest` |
 | Body secret | `secret` field in the JSON body compared to `SHEET_SECRET`. Fails closed. | `/api/villa-sync` |
 | `x-api-key` | Header (preferred) or `?key=` query param compared to `ESTATE_API_KEY`. Fails closed. | `/api/3destate/units` |
-| `CRON_SECRET` bearer | `Authorization: Bearer <CRON_SECRET>`. A valid session cookie is accepted as an alternative (manual trigger by an operator). | `/api/crm/cron` |
+| `CRON_SECRET` bearer | `Authorization: Bearer <CRON_SECRET>`. A valid session cookie is accepted as an alternative (manual trigger by an operator) — any session for `/api/crm/cron`, an **admin** session for `/api/crm/backup`. | `/api/crm/cron`, `/api/crm/backup` |
 
 Two roles exist (`lib/crm/auth.ts`): **admin** (full access) and **viewer** (read-only —
 every mutating CRM endpoint rejects a viewer session with
@@ -169,7 +169,8 @@ Request body:
 | `note` | no | capped at 500 on store |
 
 Applies `setVillaStatus(..., { silent: true })` — the change is **not** pushed back to
-`SHEET_WEBHOOK` (no loop). Standard status-change side effects still apply: a villa-history
+`SHEET_WEBHOOK` (no loop); the partner webhook (`PARTNER_WEBHOOK_URL`, see Outbound
+webhooks) **is** still notified. Standard status-change side effects still apply: a villa-history
 entry is logged; moving to `free` clears all sales data (buyer, contract value, phases,
 extras — the audit trail keeps them); moving to `reserved`/`sold` with no contract value on
 record defaults it from the unit's list price. Response: `200 {"ok":true}`.
@@ -230,7 +231,7 @@ Deletes the `lr_crm` cookie. Always `200 {"ok":true}`.
 
 ### POST /api/crm/leads
 
-Create a lead by hand (phone enquiry, walk-in, broker referral). Requires a session.
+Create a lead by hand (phone enquiry, walk-in, broker referral). Requires an **admin** session.
 Body must be a JSON object (else `400 {"ok":false,"error":"invalid json"}`) and contain at
 least one of `name` / `email` / `phone` (else `400 {"ok":false,"error":"name, email or phone required"}`).
 
@@ -347,6 +348,23 @@ valid session cookie (manual trigger). Scheduled in `vercel.json`: `0 7 * * *` (
   period, exactly **one** polite day-3 reminder is sent and recorded on the lead's outbox.
   Response: `200 {"ok":true,"enabled":true,"checked":N,"sent":N}`.
 
+### GET /api/crm/backup
+
+Daily full backup, mailed as a JSON attachment. Auth: `Authorization: Bearer <CRON_SECRET>`
+(Vercel Cron) **or** a valid **admin** session (manual trigger). Scheduled in `vercel.json`:
+`0 3 * * *` (daily 03:00 UTC).
+
+Takes a snapshot of all leads, all villa records + history, and the last 500 events, and
+e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOTIFY_FROM`
+(default `Longevity CRM <onboarding@resend.dev>`) to `CRM_NOTIFY_TO`, subject
+`CRM backup — YYYY-MM-DD (<n> leads)`. Any one of these snapshots can restore the CRM.
+
+| Case | Response |
+|---|---|
+| `RESEND_API_KEY` or `CRM_NOTIFY_TO` unset | `503 {"ok":false,"error":"mailer not configured"}` |
+| Sent | `200 {"ok":true,"sent_to":"...","bytes":N,"counts":{"leads":N,"villas":N,"events":N}}` |
+| Resend rejected the send | `502 {"ok":false,"bytes":N,"counts":{...}}` |
+
 ---
 
 ## Outbound webhooks & external calls
@@ -355,11 +373,10 @@ valid session cookie (manual trigger). Scheduled in `vercel.json`: `0 7 * * *` (
 |---|---|---|---|
 | `MAKE_WEBHOOK` (make.com) | Every `POST /api/lead` after local store | The visitor's original JSON body, forwarded verbatim (`Content-Type: application/json`) | Unset → skipped with `forwarded:false`; fetch error → `502` to the caller. `/api/ingest` never forwards (loop avoidance). |
 | `SHEET_WEBHOOK` (Google Sheet Apps Script) | Villa status change from the CRM UI, or a payment-driven status advance | `{"secret": SHEET_SECRET, "id", "status", "seller", "note"}` | Requires both `SHEET_WEBHOOK` and `SHEET_SECRET`. Best-effort: 4 s timeout, errors swallowed, never blocks the save. Skipped for changes arriving **from** the sheet (`/api/villa-sync` applies silently — no loop). |
+| `PARTNER_WEBHOOK_URL` (3DEstate Smart Model push) | Every villa status change (CRM UI, sheet-originated via `/api/villa-sync`, or payment-driven) | `{"event":"unit.updated","id","status","price","at"}` — `status` maps `free` → `available`; `price` is the contract value or `null`; buyer identity is never exposed | Unset → skipped (the 3D twin falls back to polling `GET /api/3destate/units`). Best-effort: 4 s timeout, errors swallowed. |
 | Resend (`https://api.resend.com/emails`) — operator alert | New lead created via `/api/lead` or `/api/ingest` | Branded "New lead" HTML e-mail from `CRM_NOTIFY_FROM` (default `Longevity CRM <onboarding@resend.dev>`) to `CRM_NOTIFY_TO`, subject `New <kind> — <name>` (🔥 when hot) | No-op unless `RESEND_API_KEY` + `CRM_NOTIFY_TO` set; errors swallowed. |
 | Resend — customer auto e-mails | Welcome: new lead with e-mail via `/api/lead`. Reminder: `/api/crm/cron` | Plain-text-style HTML from `CRM_AUTO_FROM`, `reply_to` = `CRM_NOTIFY_TO`; welcome variant depends on `form_type` (brochure link inline for `brochure_request`; reservation copy for `reserve`/villa origins; generic thank-you otherwise), signed with `CRM_AGENT_NAME/TITLE/PHONE` or a neutral team signature | Dark by default — sends only when `RESEND_API_KEY` + `CRM_AUTO_FROM` set and `CRM_AUTO_EMAILS` ≠ `off`. 8 s timeout, never throws; only accepted sends are recorded on the lead's outbox. |
-
-No other outbound partner webhook exists in the code. The 3DEstate integration is inbound
-only (`GET /api/3destate/units`, polled by the 3D twin).
+| Resend — daily backup mail | `GET /api/crm/backup` (Vercel Cron 03:00 UTC, or manual admin trigger) | Full JSON snapshot (leads, villas, villa history, last 500 events) as an attachment, from `CRM_NOTIFY_FROM` to `CRM_NOTIFY_TO` | `503` when `RESEND_API_KEY`/`CRM_NOTIFY_TO` unset; `502` when Resend rejects the send. |
 
 ## Environment variables read by the API layer
 
@@ -370,12 +387,13 @@ only (`GET /api/3destate/units`, polled by the 3D twin).
 | `SHEET_SECRET` | Shared secret: validates inbound `/api/villa-sync` **and** is included in outbound sheet-sync payloads. |
 | `SHEET_WEBHOOK` | Apps Script URL that receives villa status changes made in the CRM. Both `SHEET_WEBHOOK` and `SHEET_SECRET` must be set for sync to run. |
 | `ESTATE_API_KEY` | API key for `GET /api/3destate/units` (`x-api-key` or `?key=`). Rotate by changing the env var. Unset → always 401. |
-| `CRON_SECRET` | Bearer token Vercel Cron sends to `GET /api/crm/cron`. |
+| `PARTNER_WEBHOOK_URL` | Partner (3DEstate) webhook URL — receives a `unit.updated` push on every villa status change. Unset → no push (the twin polls instead). |
+| `CRON_SECRET` | Bearer token Vercel Cron sends to `GET /api/crm/cron` and `GET /api/crm/backup`. |
 | `CRM_USER` | Primary CRM account name (default `admin`). |
 | `CRM_PASSWORD` | Primary CRM account password. Unset in production → primary account disabled (fails closed); dev fallback password is `longevity`. |
 | `CRM_USERS` | Extra accounts, comma-separated `name:password` or `name:password:viewer` — the `viewer` suffix makes the account read-only (403 on every mutating endpoint); default role is admin. |
 | `RESEND_API_KEY` | Resend API key — needed for both the operator alert and the customer auto e-mails. |
-| `CRM_NOTIFY_TO` | Operator alert recipient; also the `reply_to` of customer auto e-mails. |
+| `CRM_NOTIFY_TO` | Operator alert + daily backup recipient; also the `reply_to` of customer auto e-mails. |
 | `CRM_NOTIFY_FROM` | Operator alert sender (default `Longevity CRM <onboarding@resend.dev>`). |
 | `CRM_AUTO_FROM` | Sender of customer auto e-mails, e.g. `Longevity Samui <sales@longevitysamui.com>`. Unset → the whole auto-e-mail engine is inert. |
 | `CRM_AUTO_EMAILS` | Kill-switch: set to `off` to disable auto e-mails even when configured. |

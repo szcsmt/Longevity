@@ -65,8 +65,9 @@ as `name:password` (admin) or `name:password:viewer` entries — `lib/crm/auth.t
 There are two roles: `admin` (full access) and `viewer` (read-only — every mutating
 `/api/crm/*` endpoint rejects viewers with 403 via `isAdmin()`). The session cookie (`lr_crm`, 30 days,
 httpOnly, Secure in production, SameSite=Lax) contains the base64url username plus a
-SHA-256 token derived from name+password+salt. Staff usernames are therefore the only
-operator personal data the system holds, and only in env config and cookies.
+SHA-256 token derived from name+password+salt. Aside from seller names on villa
+records (see 1.2), staff usernames are the only operator personal data the system
+holds, and only in env config and cookies.
 
 ---
 
@@ -92,9 +93,10 @@ should not be copied into it.
 | 3 | Manual entry (phone call, walk-in, referral) → admin UI → `POST /api/crm/leads` | whatever the operator types | Vercel, Neon |
 | 4 | Site clicks → `POST /api/event` | none (anonymous events) | Vercel, Neon |
 | 5 | Villa status changes ↔ Google Sheet (outbound via the Apps Script webhook `SHEET_WEBHOOK`; inbound sheet edits arrive at `POST /api/villa-sync`; both directions authenticated by `SHEET_SECRET`) | villa id, status, **seller name, free-text note** | Google (Sheets / Apps Script) |
-| 6 | `GET /api/3destate/units` (key `ESTATE_API_KEY`) → 3DEstate Smart Model | **no personal data by design** — unit id, status, price, sizes, payment-progress %; the route comment states "without exposing buyer identity" and the response contains no buyer/seller fields | 3DEstate |
+| 6 | `GET /api/3destate/units` (key `ESTATE_API_KEY`) → 3DEstate Smart Model | **no personal data by design** — unit id, status, price, sizes, payment-progress %; the route comment states "without exposing buyer identity" and the response contains no buyer/seller fields; the CRM also pushes unit changes outbound to `PARTNER_WEBHOOK_URL` (`partnerPush` in `store.ts` — id, status, price only, same no-personal-data posture) | 3DEstate |
 | 7 | Daily cron (Vercel Cron, 07:00 UTC, `vercel.json`) → `GET /api/crm/cron` → day-3 reminder emails | lead name + email | Vercel, Resend |
 | 8 | CSV export → `GET /api/crm/export` (authenticated) → operator's device | full contact list of the filtered view | none beyond Vercel (download) |
+| 9 | Daily backup cron (Vercel Cron, 03:00 UTC, `vercel.json`) → `GET /api/crm/backup` → full CRM snapshot mailed as a JSON attachment to `CRM_NOTIFY_TO` | **every lead in full** (contacts, notes, tasks, history, outbox), all villa records incl. `buyerName`, last 400 villa-history entries, last 500 events | Vercel, Resend, Google Workspace |
 
 Email processor note: outbound email goes through the **Resend** HTTP API
 (`api.resend.com` in `lib/crm/notify.ts` and `lib/crm/mailer.ts`); the account's sending
@@ -112,8 +114,8 @@ Workspace mailbox. The one-click reply templates in `lib/crm/templates.ts` only 
 |---|---|---|
 | Vercel | Hosting, serverless functions, cron | All request payloads in transit; env secrets |
 | Neon | Postgres database (system of record) | Full lead / villa / blocklist data at rest |
-| Resend (eu-west-1) | Transactional email | Lead contact details in operator alerts; lead name+email in customer emails |
-| Google Workspace | Operator mailboxes (`CRM_NOTIFY_TO`, reply-to) | Alert emails, customer replies |
+| Resend (eu-west-1) | Transactional email | Lead contact details in operator alerts; lead name+email in customer emails; the **full daily backup snapshot** as a JSON attachment (`/api/crm/backup`) |
+| Google Workspace | Operator mailboxes (`CRM_NOTIFY_TO`, reply-to) | Alert emails, customer replies, daily full-database backup attachments |
 | Google Sheets / Apps Script | Villa availability mirror | Villa status, seller names, notes |
 | make.com | Automation hub (form forwarding out; WhatsApp/Bigin ingestion in) | Full form payloads; WhatsApp sender name, phone, message |
 | Zoho Bigin | Legacy CRM / customer email sender (being phased out) | Leads it originated; customer email until the CRM mailer is switched on |
@@ -157,7 +159,8 @@ Action item: confirm a DPA (or equivalent SCC coverage) exists with each of the 
 | Withdraw consent | No self-service; handled manually by an operator (edit or delete the lead) |
 
 Known gaps in erasure are listed in the TODO section (villa `buyerName`, villa history,
-copies held by make.com / Bigin / Google Sheet / mailboxes are outside this system).
+previously mailed daily backup snapshots, and copies held by make.com / Bigin /
+Google Sheet / mailboxes are outside this system).
 
 ---
 
@@ -170,6 +173,7 @@ copies held by make.com / Bigin / Google Sheet / mailboxes are outside this syst
 | Events, other types (clicks, WhatsApp, brochure, form opens) | Never deleted automatically ("Never drop actionable signals") | both backends |
 | Villa history | File backend caps at **3,000** entries; the Postgres backend has **no cap** (reads are limited to 400 via `getVillaData`) | `backend-file.ts` / `backend-pg.ts` |
 | Blocklist | Kept indefinitely (that is its purpose) | `crm_blocklist` |
+| Backup snapshots | Full-database JSON mailed **daily** to `CRM_NOTIFY_TO`; kept as long as the mailbox keeps them — an erased lead lives on in every older snapshot. No mailbox retention rule exists yet | `/api/crm/backup`, `vercel.json` (03:00 UTC) |
 | Session cookie | 30 days (`maxAge` in `/api/crm/login`) | browser |
 | Rate-limit IP map | In-memory only, per serverless instance, cleared at 5,000 entries / instance recycle | `/api/lead`, `/api/event` |
 
@@ -183,8 +187,10 @@ in the code implements this today.
 
 - All admin/API traffic over HTTPS (Vercel); DB access over HTTPS to Neon.
 - Admin routes and CRM APIs require the session cookie (`isAuthed()` on every
-  `/api/crm/*` route; `/api/crm/cron` alternatively accepts `Authorization: Bearer
-  CRON_SECRET` so Vercel Cron can call it); login uses constant-time comparison;
+  `/api/crm/*` route; `/api/crm/cron` and `/api/crm/backup` alternatively accept
+  `Authorization: Bearer CRON_SECRET` so Vercel Cron can call them — a manual
+  backup trigger requires an **admin** session, not just any session); login uses
+  constant-time comparison;
   production fails closed when `CRM_PASSWORD` is missing (the primary account is
   disabled; only accounts from `CRM_USERS` remain).
 - Role-based access: `viewer` accounts are read-only — every mutating `/api/crm/*`
@@ -204,7 +210,8 @@ in the code implements this today.
 
 1. **Contain:** rotate the affected secrets immediately — all are env vars on Vercel:
    `DATABASE_URL`, `CRM_PASSWORD` / `CRM_USERS`, `RESEND_API_KEY`, `INGEST_SECRET`,
-   `SHEET_SECRET`, `ESTATE_API_KEY`, `CRON_SECRET`, `MAKE_WEBHOOK`. Rotating
+   `SHEET_SECRET`, `ESTATE_API_KEY`, `CRON_SECRET`, `MAKE_WEBHOOK`,
+   `PARTNER_WEBHOOK_URL`. Rotating
    `CRM_PASSWORD`/`CRM_USERS` invalidates every session cookie (the token is derived
    from the password).
 2. **Assess scope:** query Neon directly (`SELECT count(*) FROM crm_leads`, audit
@@ -216,7 +223,8 @@ in the code implements this today.
 4. **Record:** keep an internal breach log regardless of whether notification was
    required.
 5. Remember the copies outside this system: make.com scenarios, Zoho Bigin, the Google
-   Sheet, Resend logs, and the operator mailboxes.
+   Sheet, Resend logs, and the operator mailboxes — including the daily
+   `crm-backup-*.json` attachments, each of which is the entire database.
 
 ---
 
@@ -248,3 +256,7 @@ in the code implements this today.
    brute force is unthrottled).
 10. **Privacy policy alignment** — the `/privacy` page the consent checkbox links to
     must actually name the processors in section 4 and the retention rules once decided.
+11. **Erasure does not reach the mailed backups** — a deleted lead survives in every
+    previously mailed daily snapshot (`/api/crm/backup` → `crm-backup-*.json` in the
+    `CRM_NOTIFY_TO` mailbox). Define a retention window for backup attachments and
+    purge older ones.
