@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { isAdmin } from '@/lib/crm/auth';
 import { allTasks, type GlobalTask } from '@/lib/crm/store';
 import { STAGES } from '@/lib/crm/types';
 import { TaskToggle } from '@/components/crm/task-toggle';
@@ -8,10 +9,10 @@ export const dynamic = 'force-dynamic';
 const fmtDay = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'short', day: 'numeric' }) : '';
 
-function Row({ t, overdue }: { t: GlobalTask; overdue?: boolean }) {
+function Row({ t, overdue, readOnly }: { t: GlobalTask; overdue?: boolean; readOnly?: boolean }) {
   return (
     <div className={`task${t.task.done ? ' done' : ''}`} style={{ alignItems: 'center' }}>
-      <TaskToggle leadId={t.leadId} taskId={t.task.id} done={t.task.done} title={t.task.title} />
+      <TaskToggle leadId={t.leadId} taskId={t.task.id} done={t.task.done} title={t.task.title} readOnly={readOnly} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="task-title" style={{ fontWeight: 500 }}>{t.task.title}</div>
         <div className="crm-meta">
@@ -28,17 +29,18 @@ function Row({ t, overdue }: { t: GlobalTask; overdue?: boolean }) {
   );
 }
 
-function Group({ title, items, overdue, empty }: { title: string; items: GlobalTask[]; overdue?: boolean; empty: string }) {
+function Group({ title, items, overdue, empty, readOnly }: { title: string; items: GlobalTask[]; overdue?: boolean; empty: string; readOnly?: boolean }) {
   return (
     <div className="crm-card">
       <h3>{title}{items.length ? ` · ${items.length}` : ''}</h3>
-      {items.length === 0 ? <div className="empty">{empty}</div> : items.map((t) => <Row key={t.task.id} t={t} overdue={overdue} />)}
+      {items.length === 0 ? <div className="empty">{empty}</div> : items.map((t) => <Row key={t.task.id} t={t} overdue={overdue} readOnly={readOnly} />)}
     </div>
   );
 }
 
 export default async function TasksPage() {
   const tasks = await allTasks();
+  const readOnly = !(await isAdmin());
   // Compare CALENDAR DATES, not instants: a due date is stored as midnight UTC,
   // so an instant comparison would flag today's tasks as overdue all day.
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -66,12 +68,12 @@ export default async function TasksPage() {
       </div>
       <div className="crm-grid crm-cols-2">
         <div className="stack">
-          <Group title="Overdue" items={overdue} overdue empty="Nothing overdue — good." />
-          <Group title="Due today" items={today} empty="Nothing due today." />
+          <Group title="Overdue" items={overdue} overdue empty="Nothing overdue — good." readOnly={readOnly} />
+          <Group title="Due today" items={today} empty="Nothing due today." readOnly={readOnly} />
         </div>
         <div className="stack">
-          <Group title="Upcoming" items={upcoming} empty="Nothing scheduled." />
-          <Group title="Recently completed" items={done} empty="Nothing completed yet." />
+          <Group title="Upcoming" items={upcoming} empty="Nothing scheduled." readOnly={readOnly} />
+          <Group title="Recently completed" items={done} empty="Nothing completed yet." readOnly={readOnly} />
         </div>
       </div>
     </>

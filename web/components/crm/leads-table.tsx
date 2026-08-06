@@ -11,10 +11,11 @@ import { hasNoNextStep, isStalled, stageAgeDays } from '@/lib/crm/rules';
 const fmtDay = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
-export function LeadsTable({ leads, sortHrefs, sort }: {
+export function LeadsTable({ leads, sortHrefs, sort, readOnly = false }: {
   leads: Lead[];
   sortHrefs: Record<string, string>; // column id -> href with that sort applied
   sort: string;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -70,7 +71,7 @@ export function LeadsTable({ leads, sortHrefs, sort }: {
     <>
       {/* Always rendered (disabled at zero selection) so ticking the first
           checkbox never shifts the table under the pointer. */}
-      {leads.length > 0 && (
+      {leads.length > 0 && !readOnly && (
         <div className={`bulk-bar${any ? '' : ' idle'}`}>
           <span className="tabnum" style={{ fontWeight: 600 }}>
             {any ? `${sel.size} selected` : 'Select leads for bulk actions'}
@@ -97,14 +98,14 @@ export function LeadsTable({ leads, sortHrefs, sort }: {
           <table className="crm-table">
             <thead>
               <tr>
-                <th style={{ width: 34 }}>
-                  <input
+                <th style={{ width: readOnly ? 0 : 34 }}>
+                  {!readOnly && <input
                     type="checkbox"
                     className="bulk-check"
                     checked={allSelected}
                     onChange={() => setSel(allSelected ? new Set() : new Set(leads.map((l) => l.id)))}
                     aria-label="Select all"
-                  />
+                  />}
                 </th>
                 <TH id="name" label="Name" />
                 <th>Enquiry</th>
@@ -119,13 +120,15 @@ export function LeadsTable({ leads, sortHrefs, sort }: {
               {leads.map((l) => (
                 <tr key={l.id} className={sel.has(l.id) ? 'row-sel' : undefined}>
                   <td>
-                    <input
-                      type="checkbox"
-                      className="bulk-check"
-                      checked={sel.has(l.id)}
-                      onChange={() => toggle(l.id)}
-                      aria-label={`Select ${l.name || 'lead'}`}
-                    />
+                    {!readOnly && (
+                      <input
+                        type="checkbox"
+                        className="bulk-check"
+                        checked={sel.has(l.id)}
+                        onChange={() => toggle(l.id)}
+                        aria-label={`Select ${l.name || 'lead'}`}
+                      />
+                    )}
                   </td>
                   <td>
                     <Link href={`/admin/leads/${l.id}`} className="crm-row">

@@ -22,16 +22,17 @@ const fmtDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-GB'
 const daysSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 
 export function Masterplan({
-  image, villas, initial, history: initHistory, leads,
+  image, villas, initial, history: initHistory, leads, readOnly = false,
 }: {
   image: string; villas: Villa[]; initial: Record<string, VillaRecord>;
-  history: VillaHistoryEntry[]; leads: LeadOption[];
+  history: VillaHistoryEntry[]; leads: LeadOption[]; readOnly?: boolean;
 }) {
   const [records, setRecords] = useState<Record<string, VillaRecord>>(initial);
   const [history, setHistory] = useState<VillaHistoryEntry[]>(initHistory);
   const [sel, setSel] = useState<string | null>(null);
   const [form, setForm] = useState<{ status: Status; seller: string; note: string }>({ status: 'free', seller: '', note: '' });
-  const [saving, setSaving] = useState(false);
+  const [savingState, setSaving] = useState(false);
+  const saving = savingState || readOnly; // readOnly locks every control
   const [contractDraft, setContractDraft] = useState('');
   const [editingValue, setEditingValue] = useState(false);
   const [extraLabel, setExtraLabel] = useState('');
@@ -70,6 +71,7 @@ export function Masterplan({
   }
 
   async function api(body: Record<string, unknown>) {
+    if (readOnly) { alert('Read-only account — changes are disabled.'); return false; }
     setSaving(true);
     try {
       const res = await fetch('/api/crm/villas', {

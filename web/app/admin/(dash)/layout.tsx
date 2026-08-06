@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { isAuthed } from '@/lib/crm/auth';
+import { currentAccount, isAuthed } from '@/lib/crm/auth';
 import { attentionCounts } from '@/lib/crm/store';
 import { CrmNav } from '@/components/crm/crm-nav';
 import { LogoutButton } from '@/components/crm/logout-button';
@@ -12,6 +12,7 @@ export default async function DashLayout({ children }: { children: React.ReactNo
   // Re-read on every render — AutoRefresh re-runs this layout every few
   // seconds, so the badges are always current.
   const att = await attentionCounts();
+  const account = await currentAccount();
 
   return (
     <div className="crm-root">
@@ -24,6 +25,11 @@ export default async function DashLayout({ children }: { children: React.ReactNo
           </div>
           <CrmNav alerts={{ leads: att.actionable, followups: att.overdue }} />
           <div className="crm-side-foot">
+            {account?.role === 'viewer' && (
+              <div className="viewer-chip" title="Read-only account — changes are disabled">
+                👁 View only · {account.name}
+              </div>
+            )}
             <LogoutButton />
           </div>
         </aside>

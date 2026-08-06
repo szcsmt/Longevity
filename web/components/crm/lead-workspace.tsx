@@ -28,13 +28,14 @@ const CONTACT_FIELDS = [
   { key: 'villa', label: 'Villa' },
 ] as const;
 
-export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; related?: Lead[] }) {
+export function LeadWorkspace({ lead: initial, related = [], readOnly = false }: { lead: Lead; related?: Lead[]; readOnly?: boolean }) {
   const router = useRouter();
   const [lead, setLead] = useState<Lead>(initial);
   const [note, setNote] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDue, setTaskDue] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busyState, setBusy] = useState(false);
+  const busy = busyState || readOnly; // readOnly locks every mutating control
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [valueDraft, setValueDraft] = useState(initial.value ? String(initial.value) : '');
@@ -150,7 +151,7 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
         <div className="crm-card">
           <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             Contact
-            {!editing && (
+            {!editing && !readOnly && (
               <button className="crm-btn ghost sm" onClick={startEdit} style={{ textTransform: 'none', letterSpacing: 0 }}>
                 Edit
               </button>
@@ -237,9 +238,11 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
                 </Link>
                 <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
                   <span className="badge stage">{STAGES.find((s) => s.id === r.stage)?.label}</span>
-                  <button className="crm-btn ghost sm" disabled={busy} onClick={() => merge(r.id)} title="Pull its notes and history into this lead, then delete it">
-                    Merge in
-                  </button>
+                  {!readOnly && (
+                    <button className="crm-btn ghost sm" disabled={busy} onClick={() => merge(r.id)} title="Pull its notes and history into this lead, then delete it">
+                      Merge in
+                    </button>
+                  )}
                 </span>
               </div>
             ))}
@@ -296,6 +299,7 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
           <select
             className="crm-select"
             value={lead.stage}
+            disabled={busy}
             onChange={(e) => setStage(e.target.value as Stage)}
             style={{ marginBottom: 16 }}
           >
@@ -305,6 +309,7 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
           <select
             className="crm-select"
             value={lead.score}
+            disabled={busy}
             onChange={(e) => patch({ op: 'update', patch: { score: e.target.value as Score } })}
           >
             {SCORES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
@@ -314,6 +319,7 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
             className="crm-input"
             inputMode="numeric"
             value={valueDraft}
+            disabled={busy}
             onChange={(e) => { setValueDraft(e.target.value); setValueDirty(true); }}
             onBlur={saveValue}
             placeholder="e.g. 8050000"
@@ -414,16 +420,18 @@ export function LeadWorkspace({ lead: initial, related = [] }: { lead: Lead; rel
         </div>
 
         {/* Danger */}
-        <div className="crm-card">
-          <h3>Danger zone</h3>
-          <div className="act-row">
-            <button className="crm-btn danger sm" onClick={() => remove(false)}>Delete lead</button>
-            <button className="crm-btn danger sm" onClick={() => remove(true)}
-              title="Delete and blocklist the contact — for private numbers that are not real leads">
-              Delete & block contact
-            </button>
+        {!readOnly && (
+          <div className="crm-card">
+            <h3>Danger zone</h3>
+            <div className="act-row">
+              <button className="crm-btn danger sm" onClick={() => remove(false)}>Delete lead</button>
+              <button className="crm-btn danger sm" onClick={() => remove(true)}
+                title="Delete and blocklist the contact — for private numbers that are not real leads">
+                Delete & block contact
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {losing && (

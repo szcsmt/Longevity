@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { isAdmin } from '@/lib/crm/auth';
 import { listLeads } from '@/lib/crm/store';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
@@ -36,6 +37,7 @@ export default async function LeadsPage({
   // otherwise pass the check and hand Array.sort a non-function comparator.
   const sort = Object.hasOwn(SORTS, str(sp.sort)) ? str(sp.sort) : 'received';
   const leads = (await listLeads(filter as never)).sort(SORTS[sort]);
+  const admin = await isAdmin();
 
   // Preserve the current view in links (sorting keeps filters, export keeps both).
   const qs = (over: Record<string, string>) => {
@@ -56,8 +58,8 @@ export default async function LeadsPage({
           <p className="crm-sub">{leads.length} {leads.length === 1 ? 'lead' : 'leads'} matching your view.</p>
         </div>
         <div className="act-row">
-          <Link className="crm-btn gold" href="/admin/leads/new">+ Add lead</Link>
-          <DedupeButton />
+          {admin && <Link className="crm-btn gold" href="/admin/leads/new">+ Add lead</Link>}
+          {admin && <DedupeButton />}
           <a className="crm-btn" href={`/api/crm/export${qs({ sort: '' })}`}>Export CSV</a>
           <Link className="crm-btn" href="/admin/pipeline">Pipeline view →</Link>
         </div>
@@ -90,7 +92,7 @@ export default async function LeadsPage({
         <Link className="crm-btn ghost" href="/admin/leads">Reset</Link>
       </form>
 
-      <LeadsTable leads={leads} sortHrefs={sortHrefs} sort={sort} />
+      <LeadsTable leads={leads} sortHrefs={sortHrefs} sort={sort} readOnly={!admin} />
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { isAuthed } from '@/lib/crm/auth';
+import { isAdmin, isAuthed } from '@/lib/crm/auth';
 import { createManualLead } from '@/lib/crm/store';
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
    which is the public form intake). */
 export async function POST(req: Request) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
+  if (!(await isAdmin())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== 'object') {
     return Response.json({ ok: false, error: 'invalid json' }, { status: 400 });

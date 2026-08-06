@@ -1,4 +1,4 @@
-import { isAuthed } from '@/lib/crm/auth';
+import { isAdmin, isAuthed } from '@/lib/crm/auth';
 import {
   getVillaData, setVillaStatus, updateVillaSale,
   type VillaSaleOp, type VillaStatus,
@@ -13,6 +13,7 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
+  if (!(await isAdmin())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
   const b = await req.json().catch(() => ({} as Record<string, unknown>));
   const id = String(b.id || '').trim();
   if (!id) return Response.json({ ok: false, error: 'missing id' }, { status: 400 });

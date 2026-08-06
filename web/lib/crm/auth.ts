@@ -13,19 +13,25 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 export const CRM_COOKIE = 'lr_crm';
 const SECRET_SUFFIX = 'lr-crm-session-v2';
 
-interface CrmAccount { name: string; password: string }
+/* Roles: an "admin" can do everything; a "viewer" sees everything but every
+   mutating API rejects them (403) — for guests, investors, auditors.
+   CRM_USERS format: "name:password" (admin) or "name:password:viewer". */
+export type CrmRole = 'admin' | 'viewer';
+
+interface CrmAccount { name: string; password: string; role: CrmRole }
 
 function accounts(): CrmAccount[] {
   const list: CrmAccount[] = [];
   const primaryPw = process.env.CRM_PASSWORD ||
     (process.env.NODE_ENV === 'production' ? null : 'longevity');
-  if (primaryPw) list.push({ name: process.env.CRM_USER || 'admin', password: primaryPw });
-  for (const pair of (process.env.CRM_USERS || '').split(',')) {
-    const i = pair.indexOf(':');
-    if (i > 0) {
-      const name = pair.slice(0, i).trim();
-      const password = pair.slice(i + 1).trim();
-      if (name && password) list.push({ name, password });
+  if (primaryPw) list.push({ name: process.env.CRM_USER || 'admin', password: primaryPw, role: 'admin' });
+  for (const entry of (process.env.CRM_USERS || '').split(',')) {
+    const parts = entry.split(':');
+    if (parts.length >= 2) {
+      const name = parts[0].trim();
+      const password = parts[1].trim();
+      const role: CrmRole = parts[2]?.trim().toLowerCase() === 'viewer' ? 'viewer' : 'admin';
+      if (name && password) list.push({ name, password, role });
     }
   }
   return list;
@@ -68,18 +74,31 @@ function parseCookie(value: string | undefined): { name: string; token: string }
 
 /** True if the current request carries a valid CRM session cookie. */
 export async function isAuthed(): Promise<boolean> {
-  return (await currentUser()) !== null;
+  return (await currentAccount()) !== null;
 }
 
-/** The signed-in account name, or null. */
-export async function currentUser(): Promise<string | null> {
+/** The signed-in account (name + role), or null. Role comes from env at
+    check time, so an env edit takes effect without re-login. */
+export async function currentAccount(): Promise<{ name: string; role: CrmRole } | null> {
   const jar = await cookies();
   const parsed = parseCookie(jar.get(CRM_COOKIE)?.value);
   if (!parsed) return null;
   for (const acc of accounts()) {
     if (acc.name.trim().toLowerCase() === parsed.name.trim().toLowerCase()) {
-      if (equal(Buffer.from(parsed.token), Buffer.from(tokenFor(acc)))) return acc.name;
+      if (equal(Buffer.from(parsed.token), Buffer.from(tokenFor(acc)))) {
+        return { name: acc.name, role: acc.role };
+      }
     }
   }
   return null;
+}
+
+/** The signed-in account name, or null. */
+export async function currentUser(): Promise<string | null> {
+  return (await currentAccount())?.name ?? null;
+}
+
+/** True when the session may MUTATE data. Every write endpoint checks this. */
+export async function isAdmin(): Promise<boolean> {
+  return (await currentAccount())?.role === 'admin';
 }

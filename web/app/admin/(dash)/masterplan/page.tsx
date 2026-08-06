@@ -1,4 +1,5 @@
 import villaData from '@/lib/villas.json';
+import { isAdmin } from '@/lib/crm/auth';
 import { getVillaData, listLeads } from '@/lib/crm/store';
 import { Masterplan, type LeadOption } from '@/components/crm/masterplan';
 
@@ -10,7 +11,7 @@ type Villa = {
 };
 
 export default async function MasterplanPage() {
-  const [{ villas: records, history }, leads] = await Promise.all([getVillaData(), listLeads()]);
+  const [{ villas: records, history }, leads, admin] = await Promise.all([getVillaData(), listLeads(), isAdmin()]);
   const villas = villaData.villas as Villa[];
 
   // Light projection for the buyer picker + the awaiting-reply flag on plots.
@@ -34,7 +35,7 @@ export default async function MasterplanPage() {
         </div>
       </div>
       <div className="crm-card" style={{ padding: 'clamp(16px,2vw,24px)' }}>
-        <Masterplan image={villaData.image} villas={villas} initial={records} history={history} leads={leadOptions} />
+        <Masterplan image={villaData.image} villas={villas} initial={records} history={history} leads={leadOptions} readOnly={!admin} />
       </div>
     </>
   );

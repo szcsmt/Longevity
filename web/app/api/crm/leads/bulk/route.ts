@@ -1,4 +1,4 @@
-import { isAuthed } from '@/lib/crm/auth';
+import { isAdmin, isAuthed } from '@/lib/crm/auth';
 import { bulkDelete, bulkUpdate } from '@/lib/crm/store';
 import { SCORES, STAGES } from '@/lib/crm/types';
 import type { Score, Stage } from '@/lib/crm/types';
@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
    mistaken for full success. */
 export async function POST(req: Request) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
+  if (!(await isAdmin())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
   const body = (await req.json().catch(() => ({}))) as {
     ids?: unknown;
     action?: unknown;

@@ -1,4 +1,4 @@
-import { isAuthed } from '@/lib/crm/auth';
+import { isAdmin, isAuthed } from '@/lib/crm/auth';
 import { addNote, addTask, blockContactOf, deleteLead, getLead, mergeLeads, setAwaitingReply, toggleTask, updateLead } from '@/lib/crm/store';
 import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
 import type { LeadPatch } from '@/lib/crm/types';
@@ -34,6 +34,7 @@ function sanitizePatch(raw: unknown): LeadPatch {
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
+  if (!(await isAdmin())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
   const { id } = await params;
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
 
@@ -69,6 +70,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
+  if (!(await isAdmin())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
   const { id } = await params;
   // ?block=1: also blocklist the contact so their next WhatsApp message never
   // recreates the lead (for private/non-lead contacts).

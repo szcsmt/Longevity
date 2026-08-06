@@ -670,6 +670,31 @@ async function sheetSync(id: string, status: VillaStatus, seller?: string, note?
   } catch { /* sheet sync is best-effort */ }
 }
 
+/* Push a unit change to the integration partner (3DEstate Smart Model), so
+   the 3D twin updates instantly instead of waiting for its next poll. Only
+   active when PARTNER_WEBHOOK_URL is set; never exposes buyer identity. */
+async function partnerPush(id: string, status: VillaStatus, rec?: VillaRecord) {
+  const url = process.env.PARTNER_WEBHOOK_URL;
+  if (!url) return;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: 'unit.updated',
+        id,
+        status: status === 'free' ? 'available' : status,
+        price: rec?.contractValue ?? null,
+        at: now(),
+      }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+  } catch { /* partner push is best-effort */ }
+}
+
 export async function setVillaStatus(
   id: string,
   status: VillaStatus,
@@ -697,6 +722,7 @@ export async function setVillaStatus(
   }
   await logVilla(id, from, status, seller, note);
   if (!opts?.silent) await sheetSync(id, status, seller, note);
+  await partnerPush(id, status, rec);
   return getVillaData();
 }
 
@@ -771,6 +797,7 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
       if (rec.status !== from) {
         await logVilla(id, from, rec.status, rec.seller, 'Status advanced by payment');
         await sheetSync(id, rec.status, rec.seller, rec.note);
+        await partnerPush(id, rec.status, rec);
       }
       break;
     }

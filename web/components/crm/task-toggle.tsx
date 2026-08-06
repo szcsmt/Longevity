@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 
 /* Checkbox that toggles a task on its lead, then soft-refreshes the page so
    the item moves between the Tasks page groups. */
-export function TaskToggle({ leadId, taskId, done, title }: { leadId: string; taskId: string; done: boolean; title?: string }) {
+export function TaskToggle({ leadId, taskId, done, title, readOnly = false }: { leadId: string; taskId: string; done: boolean; title?: string; readOnly?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   return (
     <input
       type="checkbox"
       checked={done}
-      disabled={busy}
+      disabled={busy || readOnly}
       aria-label={title ? `Mark "${title}" ${done ? 'open' : 'done'}` : 'Toggle task'}
       onChange={async () => {
         setBusy(true);

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { isAdmin } from '@/lib/crm/auth';
 import { getLead, relatedLeads } from '@/lib/crm/store';
 import { LeadWorkspace } from '@/components/crm/lead-workspace';
 
@@ -23,7 +24,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           </p>
         </div>
       </div>
-      <LeadWorkspace lead={lead} related={related} />
+      <LeadWorkspace lead={lead} related={related} readOnly={!(await isAdmin())} />
     </>
   );
 }
