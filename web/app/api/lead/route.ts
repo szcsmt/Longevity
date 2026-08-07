@@ -62,20 +62,7 @@ export async function POST(request: Request) {
     /* store failure must not affect the visitor's submit */
   }
 
-  const webhook = process.env.MAKE_WEBHOOK;
-  if (!webhook) {
-    // Not wired yet — accept the lead so the UX works; nothing to forward to.
-    return Response.json({ ok: true, forwarded: false });
-  }
-
-  try {
-    const res = await fetch(webhook, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    return Response.json({ ok: res.ok, forwarded: true });
-  } catch {
-    return Response.json({ ok: false, forwarded: false }, { status: 502 });
-  }
+  // The make.com/Bigin forwarding was removed 2026-08-07 when the agency
+  // relationship ended — the CRM is the sole destination for leads.
+  return Response.json({ ok: true });
 }
