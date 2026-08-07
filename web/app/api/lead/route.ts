@@ -1,7 +1,7 @@
-/* Receives a lead from the site's forms and forwards it to the make.com webhook
-   server-side, so the webhook URL never appears in client code (can't be scraped or
-   spammed). Set MAKE_WEBHOOK in the Vercel project env to activate; until then leads
-   are accepted (the form still shows its thank-you) but not forwarded. */
+/* Public intake for the site's forms: stores the lead in the CRM, alerts the
+   operator, and sends the minute-0 thank-you that starts the follow-up
+   sequence. A store failure never breaks the visitor's submit — the form still
+   shows its thank-you. */
 
 import { upsertLeadFromPayload } from '@/lib/crm/store';
 import { notifyNewLead } from '@/lib/crm/notify';

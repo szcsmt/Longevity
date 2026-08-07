@@ -44,9 +44,12 @@ WhatsApp/Bigin via make.com), or manually from the admin UI (`/api/crm/leads`).
 | `villa` | string? | Free-text villa interest, matched to the catalogue by `villaByName()` |
 | `gdpr_consent` | boolean? | Consent checkbox; treated as evidence — a merge never loses it |
 | `value` | number? | Expected deal value in THB. Defaults from the villa list price (`villaByName(lead.villa)?.price`) at creation and on upsert when still empty |
+| `owner` | string? | The agent who owns the lead. Assigned at intake by `pickOwner()` (`agents.ts`) from the `CRM_AGENTS` roster; signs every automated e-mail. Empty when no roster is configured |
+| `first_response_at` | string? | ISO instant of the first **human** action on the lead (note, task, stage/score move, arming the reply timer). Automated e-mails deliberately don't count — this is the speed-to-lead measurement on the analytics page |
 | `awaiting_reply_since` | string? | ISO instant set when an e-mail/offer went out and we wait on the customer. Cleared by an inbound message or by the operator. After `REPLY_FLAG_DAYS = 3` quiet days the lead (and its linked plot) shows a red flag |
 | `lost_reason` | string? | One of the `LOST_REASONS` ids (below). Feeds reporting; the free-text detail lives in a `"Lost: …"` note. Cleared when the lead leaves `lost` |
-| `outbox` | SentEmail[]? | Automated e-mails actually sent (welcome, reminder). Drives the sequence logic and renders on the timeline |
+| `outbox` | SentEmail[]? | Automated e-mails actually sent. Drives the sequence logic and renders on the timeline |
+| `unsubscribed` | boolean? | The customer used the opt-out link at the foot of an automated e-mail (`GET /api/unsubscribe?l=<id>`). Ends the sequence for good; e-mail a person writes by hand is unaffected |
 | `utm_source/_medium/_campaign/_term/_content` | string? | Attribution |
 | `source` | string? | Campaign/channel source (`?source=`, `WhatsApp`, manual source, …) |
 | `page_url` | string? | Page the form was submitted from |
@@ -111,8 +114,9 @@ timeline.
 | `contact` | Contact details edited (lists the changed keys) |
 | `value` | Deal value set or cleared |
 | `merged` | A duplicate lead was folded in |
-| `email` | Auto-email sent, "Email sent — awaiting reply", "Reply received" |
+| `email` | Auto-email sent, "Email sent — awaiting reply", "Reply received", "Customer opted out of the automated e-mails" |
 | `message` | New inbound form/WhatsApp message landed on the lead |
+| `assigned` | The lead got an owner (at intake, on a later contact, or by hand) |
 
 Fields: `id`, `kind`, `detail` (human line), `at`.
 
@@ -121,16 +125,38 @@ Fields: `id`, `kind`, `detail` (human line), `at`.
 | Field | Type | Meaning |
 |---|---|---|
 | `id` | string | UUID |
-| `step` | `'welcome'` \| `'reminder'` | Sequence step |
+| `step` | `EmailStep` | `welcome` \| `reminder` \| `story` \| `viewing` \| `terms` \| `closing` |
 | `subject` | string | As sent |
 | `at` | string | ISO |
 
-The sequence (`automation.ts`, dark until `RESEND_API_KEY` + `CRM_AUTO_FROM` are set and
-`CRM_AUTO_EMAILS !== 'off'`): minute-0 welcome on lead creation (never for a returning
-contact), then exactly **one** day-3 reminder per waiting period — sent by the daily cron only
-when the lead has an e-mail address, `awaiting_reply_since` is older than 3 days, the stage is
-still `new`/`contacted`/`qualified`, and no reminder newer than `awaiting_reply_since` exists
-in the outbox (it does not check whether the welcome went out). `vercel.json` schedules `/api/crm/cron` at `0 7 * * *` (auth: `Bearer CRON_SECRET` or a
+### The sequence
+
+Dark until `RESEND_API_KEY` + `CRM_AUTO_FROM` are set and `CRM_AUTO_EMAILS !== 'off'`.
+Three modules split the work: `sequence.ts` holds the timetable and the "is this lead still
+in the sequence?" decision (pure — the admin UI renders the same call the engine obeys, so
+the screen and the engine cannot disagree), `letters.ts` holds the copy, `automation.ts` is
+the engine.
+
+| Step | Day | What it is |
+|---|---|---|
+| `welcome` | 0 | Thank-you, personalised to the form type (brochure / reservation / general). Sent by the **intake**, not the cron; never for a returning contact |
+| `reminder` | 3 | One gentle nudge |
+| `story` | 10 | What Longevity is — a reason to care again |
+| `viewing` | 24 | Invitation to visit, in person or by video |
+| `terms` | 45 | Pricing and the 7/43/40/10 payment schedule |
+| `closing` | 60 | A graceful last word — then the engine stops |
+
+Each letter is signed by the lead's `owner` (name, title, phone, WhatsApp link) and carries
+an opt-out link. The daily sweep advances a lead by **at most one step per run** — several
+steps coming due at once (after a cron outage) sends only the latest, never a burst.
+
+A lead drops out of the sequence when any of these is true: it has no e-mail, `unsubscribed`
+is set, the stage left `new`/`contacted`/`qualified`, the customer said anything (an inbound
+`message` activity or a logged reply), or — importantly — **the lead never received the
+minute-0 welcome**. That last rule means switching the engine on cannot mail the back
+catalogue: only leads that entered after activation are ever swept.
+
+`vercel.json` schedules `/api/crm/cron` at `0 7 * * *` (auth: `Bearer CRON_SECRET` or a
 signed-in operator). A second cron, `/api/crm/backup` at `0 3 * * *` (auth: `Bearer
 CRON_SECRET` or a signed-in admin), mails a full JSON snapshot (leads, villas, events) to
 `CRM_NOTIFY_TO` as a daily off-site backup.

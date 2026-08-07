@@ -88,13 +88,14 @@ should not be copied into it.
 
 | # | Flow | Personal data | Processors touched |
 |---|---|---|---|
-| 1 | Website forms (enquiry / reserve / brochure) → `POST /api/lead` → CRM store | name, email, phone, message, consent, UTM | Vercel → Neon; payload also **forwarded verbatim to make.com** (`MAKE_WEBHOOK`); new-lead alert email with full contact details via **Resend** to `CRM_NOTIFY_TO` (a Google Workspace mailbox, e.g. crm@longevitysamui.com); optional auto welcome email to the lead via Resend |
+| 1 | Website forms (enquiry / reserve / brochure) → `POST /api/lead` → CRM store | name, email, phone, message, consent, UTM | Vercel → Neon; new-lead alert email with full contact details via **Resend** to `CRM_NOTIFY_TO` (a Google Workspace mailbox, e.g. crm@longevitysamui.com); minute-0 welcome email to the lead via Resend. The make.com forwarding was removed on 2026-08-07 — the CRM is the sole destination |
 | 2 | WhatsApp / Zoho Bigin (legacy) → make.com → `POST /api/ingest` (secret in the `x-ingest-key` header or `?key=` query param) → CRM store | name, phone, WhatsApp message body (base64-decoded) | make.com, Zoho Bigin, Vercel, Neon; alert email via Resend for new contacts only |
 | 3 | Manual entry (phone call, walk-in, referral) → admin UI → `POST /api/crm/leads` | whatever the operator types | Vercel, Neon |
 | 4 | Site clicks → `POST /api/event` | none (anonymous events) | Vercel, Neon |
 | 5 | Villa status changes ↔ Google Sheet (outbound via the Apps Script webhook `SHEET_WEBHOOK`; inbound sheet edits arrive at `POST /api/villa-sync`; both directions authenticated by `SHEET_SECRET`) | villa id, status, **seller name, free-text note** | Google (Sheets / Apps Script) |
 | 6 | `GET /api/3destate/units` (key `ESTATE_API_KEY`) → 3DEstate Smart Model | **no personal data by design** — unit id, status, price, sizes, payment-progress %; the route comment states "without exposing buyer identity" and the response contains no buyer/seller fields; the CRM also pushes unit changes outbound to `PARTNER_WEBHOOK_URL` (`partnerPush` in `store.ts` — id, status, price only, same no-personal-data posture) | 3DEstate |
-| 7 | Daily cron (Vercel Cron, 07:00 UTC, `vercel.json`) → `GET /api/crm/cron` → day-3 reminder emails | lead name + email | Vercel, Resend |
+| 7 | Daily cron (Vercel Cron, 07:00 UTC, `vercel.json`) → `GET /api/crm/cron` → the follow-up sequence (day 3 / 10 / 24 / 45 / 60), at most one mail per lead per run | lead name + email | Vercel, Resend |
+| 7b | Customer clicks the opt-out link in an automated email → `GET /api/unsubscribe?l=<lead id>` | lead id only (the id is the token; no login, no other data in the URL) | Vercel, Neon |
 | 8 | CSV export → `GET /api/crm/export` (authenticated) → operator's device | full contact list of the filtered view | none beyond Vercel (download) |
 | 9 | Daily backup cron (Vercel Cron, 03:00 UTC, `vercel.json`) → `GET /api/crm/backup` → full CRM snapshot mailed as a JSON attachment to `CRM_NOTIFY_TO` | **every lead in full** (contacts, notes, tasks, history, outbox), all villa records incl. `buyerName`, last 400 villa-history entries, last 500 events | Vercel, Resend, Google Workspace |
 
@@ -103,7 +104,10 @@ Email processor note: outbound email goes through the **Resend** HTTP API
 region is eu-west-1. Automated customer emails are **dark by default** — nothing sends
 unless `RESEND_API_KEY` + `CRM_AUTO_FROM` are set and `CRM_AUTO_EMAILS` is not `off`
 (`mailer.ts`). Reply-to is `CRM_NOTIFY_TO`, so customer replies land in a Google
-Workspace mailbox. The one-click reply templates in `lib/crm/templates.ts` only build
+Workspace mailbox. Every automated customer email carries a one-click opt-out link
+(`/api/unsubscribe`), and the sequence stops on its own as soon as the customer replies,
+the deal moves on, or the sixth letter (day 60) has gone out — it never runs indefinitely.
+The engine also refuses to mail any lead that predates its activation. The one-click reply templates in `lib/crm/templates.ts` only build
 `mailto:`/`wa.me` links — nothing is sent by the server from those.
 
 ---
@@ -154,7 +158,7 @@ Action item: confirm a DPA (or equivalent SCC coverage) exists with each of the 
 | Rectification (Art. 16) | `PATCH /api/crm/leads/[id]` op `update` — name/email/phone/whatsapp/villa editable; edits are logged in the lead history |
 | Erasure (Art. 17) | `DELETE /api/crm/leads/[id]` (single), bulk delete via `POST /api/crm/leads/bulk`. Row is physically deleted from `crm_leads` |
 | Erasure + stop future processing | `DELETE …?block=1` ("Delete & block"): deletes the lead **and** adds `e:`/`p:` keys to the suppression blocklist so inbound WhatsApp can never recreate it |
-| Objection (Art. 21) | Same blocklist; automated customer emails also stop when the lead is deleted (the reminder loop iterates stored leads only) |
+| Objection (Art. 21) | **Self-service**: the opt-out link at the foot of every automated email (`GET /api/unsubscribe?l=<id>`) sets `unsubscribed` and ends the sequence immediately. Plus the blocklist (`?block=1`) for a full stop, and automated email stops anyway when the lead is deleted (the sweep iterates stored leads only) |
 | Portability (Art. 20) | CSV export (machine-readable). See TODO: no per-lead JSON export, and the CSV contains note *counts*, not note bodies |
 | Withdraw consent | No self-service; handled manually by an operator (edit or delete the lead) |
 

@@ -99,12 +99,16 @@ Alatta gyorsgombok: **✉ Email** (levelezőt nyit), **WhatsApp** (wa.me link), 
 
 **Status** — fázis és hőfok legördülőből, plusz az **üzletérték (THB)**. Az érték a villaválasztásból magától kitöltődik a lista-árral, de bármikor átírható.
 
+**Owner — kié a lead.** Minden lead a beérkezés pillanatában kap gazdát, és **az ő nevével, telefonszámával megy ki minden automata levél** — az ügyfél nem „a csapattól", hanem egy embertől kap választ. Egy értékesítő esetén ez mindig te vagy. Ha többen lesztek, a rendszer körbeosztja az új leadeket: mindig az kapja, akinél éppen a **legkevesebb nyitott** lead van (a lezárt üzletek nem számítanak terhelésnek), és a legördülőből bármikor átadható másnak.
+
 **Response tracking — a 3 napos szabály.** Ez a rendszer szíve:
 
 1. Kiküldtél egy e-mailt vagy ajánlatot? Kattints: **„✉ Email sent — awaiting reply"**. Elindul az időzítő, és a rendszer magától létrehoz egy teendőt („Follow up — no reply yet") 3 nappal későbbre.
 2. A panel mutatja, hány napja vársz. **3 nap után** a lead piros jelzést kap — és ha vevőként hozzá van kötve egy telekhez a Masterplanon, a telek is.
 3. **5 nap után** a panel már azt javasolja: válts csatornát — hívd fel vagy írj WhatsAppon.
 4. Ha az ügyfél válaszolt, kattints: **„Reply received"**. Az időzítő törlődik, a követő teendő magától kipipálódik. (Ha a válasz a rendszeren keresztül érkezik be — pl. WhatsApp-integráción —, ez automatikusan is megtörténik.)
+
+**Automatic sequence — hol tart az automata levelezés.** Ez a doboz mutatja, hány levél ment ki ehhez a leadhez a hatból, mi a következő és mikor esedékes — alatta felsorolva a már kiment levelek tárgya és időpontja. Ha a szekvencia leállt, itt az okát is látod („az ügyfél válaszolt", „leiratkozott", „az üzlet továbblépett"). **Sosem érhet meglepetés**: pontosan azt látod itt, amit a rendszer tenni fog.
 
 **Follow-up tasks** — teendők ehhez a leadhez, opcionális határidővel. A lejárt teendő pirosan jelölve (`· overdue`); a határidő naptári nap szerint számít, tehát a ma esedékes még nem lejárt.
 
@@ -202,6 +206,11 @@ Minden sorból link visz a leadre. Pipálással kész — átkerül a Done-ba.
 
 - **KPI-k**: összes lead, új lead az időszakban (trend az előző azonos időszakhoz képest), forró leadek, foglalási arány.
 - **Pénzügyi áttekintés** (mindig aktuális pillanatkép): elért bevétel (eladott villák), foglalások értéke, átlag üzletméret, teljes készlet-érték; sáv az eladott/lefoglalt/szabad arányról; méretenkénti bontás (M · 7,65M / L · 8,05M / XL · 11,2M THB lista-áron).
+- **Reakcióidő** — a speed-to-lead mérőszáma, négy csempén:
+  - *Automata válasz*: az e-mail címmel érkező leadek hány százaléka kapott azonnali köszönő levelet. Ha ez nem 100%, vagy a levélmotor nem volt bekapcsolva a beérkezéskor, vagy hibás az e-mail cím (a csempe alatt figyelmeztetés is megjelenik).
+  - *Emberi reakció (medián)*: mennyi idő telt el a beérkezéstől az **első emberi** lépésig — jegyzet, teendő, fázisváltás vagy a válasz-időzítő indítása. Az automata levél ebbe **nem** számít bele: ez azt méri, te milyen gyorsan kapcsolódtál be.
+  - *1 órán belül*: az érdemi válaszok hány százaléka fért bele egy órába.
+  - *Kiment automata levél*: a teljes szekvenciából hány levél ment ki az időszakban.
 - **Leadek**: időbeli trend, forrás szerint, pipeline-fázisok, hőfok-megoszlás, űrlaptípus.
 - **Weboldal-forgalom**: látogatók időben és forrás szerint, interakciók típusonként.
 - **Konverziós tölcsér**: Lead → Kapcsolatba lépett → Kvalifikált → Foglalás → Eladás.
@@ -221,7 +230,25 @@ Minden sorból link visz a leadre. Pipálással kész — átkerül a Done-ba.
 - **Weboldal-űrlapok**: minden beküldés azonnal leadet csinál. A hőfokot a rendszer magától állítja: konkrét villára irányuló megkeresés vagy foglalási szándék = **hot**, általános érdeklődés = **warm** (befektetési/foglalási területről indítva hot), brossúra-kérés = **cold**.
 - **Egy ember = egy lead**: ha ugyanaz az e-mail/telefonszám ír újra (akár WhatsAppon), az üzenet a **meglévő** leadre kerül jegyzetként — nem születik duplikátum. Az üres mezők kitöltődnek, a hőfok csak felfelé módosul. A beérkező üzenet válasznak számít (törli a válasz-időzítőt), az elveszett leadet pedig újraéleszti.
 - **Riasztás**: új leadről azonnali e-mail értesítés megy az operátornak (ha a küldés be van kötve), benne link a lead oldalára; hot leadnél 🔥 a tárgyban.
-- **Automata ügyfél-e-mailek** (csak ha a küldő aktiválva van — addig semmi nem megy ki): a 0. percben köszönő levél (brossúra-kérésnél a letöltési linkkel), majd **pontosan egy** emlékeztető, ha a válasz-időzítő („Email sent — awaiting reply") 3+ napja fut válasz nélkül — az emlékeztető tehát csak akkor megy ki, ha az időzítő el lett indítva, és csak aktív (New / Contacted / Qualified) fázisú leadnek. Utána ember veszi át. Az emlékeztetőket a naponta 07:00-kor (UTC) futó időzített feladat küldi; hajnali 3-kor automata mentés fut. A kiment automata levelek a lead idővonalán is látszanak.
+- **Gazda-kiosztás**: minden új lead azonnal kap felelőst (lásd 4. fejezet, *Owner*) — nincs olyan lead, amiért senki nem felel.
+- **Automata ügyfél-levelezés — a 0. perctől 2 hónapig.** Csak akkor működik, ha a küldő aktiválva van; addig semmi nem megy ki. A lead gazdájának nevével, telefonszámával és WhatsApp-linkjével aláírva:
+
+| Mikor | Levél | Miről szól |
+|---|---|---|
+| **0. perc** | köszönő | személyre szabva az űrlap szerint (brossúra-kérésnél a letöltési linkkel, villára irányuló megkeresésnél a foglalás menetével) |
+| 3. nap | emlékeztető | egyetlen finom rákérdezés |
+| 10. nap | a történet | mit építünk valójában Samuin — ok, hogy újra foglalkozzon vele |
+| 24. nap | meghívó | személyes vagy videós bejárás |
+| 45. nap | feltételek | árazás és a 7 / 43 / 40 / 10 fizetési ütemterv |
+| 60. nap | lezárás | elegáns búcsú — utána a rendszer magától elhallgat |
+
+  **Négy védőkorlát:**
+  1. A szekvencia **azonnal leáll**, amint az ügyfél megszólal (bármilyen csatornán), leiratkozik, vagy az üzlet Reserved / Won / Lost fázisba lép. Innentől ember viszi.
+  2. **Futásonként legfeljebb egy** levél megy ki leadenként — ha az időzített feladat kimarad néhány napot, nem zúdul rá négy levél egyszerre, csak a legutolsó esedékes.
+  3. **Az élesítés előtti leadeket a rendszer nem szólítja meg** — a bekapcsolás nem küld semmit a régi listára, csak az azóta érkezőket kíséri végig.
+  4. Minden levél alján **leiratkozó link** van. Aki rákattint, többé nem kap automata levelet (a személyes, kézzel írt leveleidet ez nem érinti) — a lead idővonalán is megjelenik, hogy leiratkozott.
+
+  A leveleket a naponta 07:00-kor (UTC) futó időzített feladat küldi; hajnali 3-kor automata mentés fut. A kiment levelek a lead idővonalán és az *Automatic sequence* dobozban is látszanak.
 
 ---
 

@@ -110,6 +110,19 @@ Request body:
 
 Response: `200 {"ok":true}`.
 
+### GET /api/unsubscribe?l=&lt;lead id&gt;
+
+One-click opt-out from the automated e-mail sequence, linked at the foot of every automated
+mail. Public and unauthenticated: the lead id **is** the token — a random UUID that only ever
+appears in that person's own inbox — so no extra signature is needed, and the worst case
+(someone unsubscribing themselves twice) is harmless.
+
+Sets `unsubscribed` on the lead, logs "Customer opted out of the automated e-mails" to the
+timeline, and ends the sequence for good. E-mail a person writes by hand is unaffected.
+
+Idempotent, and always answers `200` with a friendly HTML page — even for an unknown or
+missing id, so a customer never sees an error for doing what we asked them to do.
+
 ---
 
 ## Inbound integration endpoints
@@ -255,7 +268,7 @@ All writes go through optimistic concurrency (per-lead `rev`; up to 4 retries on
 
 | `op` | Body fields | Behaviour |
 |---|---|---|
-| `update` | `patch` object | Only these keys are accepted, everything else is silently dropped (attribution/history/timestamps can never be overwritten): `name`, `email`, `phone`, `whatsapp`, `villa` (strings, capped 300); `stage` (must be `new`/`contacted`/`qualified`/`reserved`/`won`/`lost`); `score` (`hot`/`warm`/`cold`); `value` (`null`/`''` clears; non-negative finite number → rounded); `lost_reason` (`price`/`timing`/`competitor`/`unreachable`/`other`, `null`/`''` clears). Stage/score/contact/value changes are logged to the timeline; moving to any stage other than `lost` clears `lost_reason`. |
+| `update` | `patch` object | Only these keys are accepted, everything else is silently dropped (attribution/history/timestamps can never be overwritten): `name`, `email`, `phone`, `whatsapp`, `villa` (strings, capped 300); `stage` (must be `new`/`contacted`/`qualified`/`reserved`/`won`/`lost`); `score` (`hot`/`warm`/`cold`); `value` (`null`/`''` clears; non-negative finite number → rounded); `lost_reason` (`price`/`timing`/`competitor`/`unreachable`/`other`, `null`/`''` clears); `owner` (must be a name on the `CRM_AGENTS` roster — anything else is dropped; `null`/`''` unassigns). Stage/score/contact/value changes are logged to the timeline; moving to any stage other than `lost` clears `lost_reason`. A stage, score or contact edit also stamps `first_response_at` if it is still empty. |
 | `addNote` | `body` (required, non-empty → else `400`) | Prepends a note (capped 4000). |
 | `addTask` | `title` (required → else `400`), `due` (optional ISO) | Appends an open task (title capped 300). |
 | `toggleTask` | `taskId` | Flips `done`; unknown task id → `404`. |
@@ -342,11 +355,11 @@ Daily follow-up sweep. Auth: `Authorization: Bearer <CRON_SECRET>` (Vercel Cron)
 valid session cookie (manual trigger). Scheduled in `vercel.json`: `0 7 * * *` (daily 07:00 UTC).
 
 - Mailer dark (env not configured) → `200 {"ok":true,"enabled":false,"sent":0,"note":"auto-emails are dark (env not configured)"}` — fully inert.
-- Mailer enabled → runs `runReminders`: for every lead that (a) has an e-mail, (b) is in
-  stage `new`/`contacted`/`qualified`, (c) has `awaiting_reply_since` older than **3 days**
-  (`REPLY_FLAG_DAYS`), and (d) has no `reminder` in its outbox newer than the current waiting
-  period, exactly **one** polite day-3 reminder is sent and recorded on the lead's outbox.
-  Response: `200 {"ok":true,"enabled":true,"checked":N,"sent":N}`.
+- Mailer enabled → runs `runSequence`: advances every still-quiet lead by **at most one
+  step** of the minute-0 → day-60 sequence (day 3 nudge, day 10 story, day 24 viewing
+  invite, day 45 terms, day 60 closing note — see DATA-MODEL.md for the drop-out rules).
+  Each mail sent is recorded on the lead's outbox.
+  Response: `200 {"ok":true,"enabled":true,"checked":N,"sent":N,"steps":{"reminder":2,…}}`.
 
 ### GET /api/crm/backup
 
@@ -382,7 +395,6 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 
 | Variable | Purpose |
 |---|---|
-| `MAKE_WEBHOOK` | make.com webhook URL; `/api/lead` forwards every form body there. Unset → leads are stored but not forwarded. |
 | `INGEST_SECRET` | Shared secret for `POST /api/ingest` (`x-ingest-key` header or `?key=`). Unset → the endpoint always 401s. |
 | `SHEET_SECRET` | Shared secret: validates inbound `/api/villa-sync` **and** is included in outbound sheet-sync payloads. |
 | `SHEET_WEBHOOK` | Apps Script URL that receives villa status changes made in the CRM. Both `SHEET_WEBHOOK` and `SHEET_SECRET` must be set for sync to run. |
@@ -397,7 +409,9 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 | `CRM_NOTIFY_FROM` | Operator alert sender (default `Longevity CRM <onboarding@resend.dev>`). |
 | `CRM_AUTO_FROM` | Sender of customer auto e-mails, e.g. `Longevity Samui <sales@longevitysamui.com>`. Unset → the whole auto-e-mail engine is inert. |
 | `CRM_AUTO_EMAILS` | Kill-switch: set to `off` to disable auto e-mails even when configured. |
-| `CRM_AGENT_NAME`, `CRM_AGENT_TITLE`, `CRM_AGENT_PHONE` | Signature of the auto e-mails (name, title, phone/WhatsApp link). No name → neutral team signature. |
+| `CRM_AGENTS` | The sales roster that leads are assigned to, `;`-separated, each entry `name\|email\|phone` — e.g. `Máté Szűcs\|sales@longevitysamui.com\|+36 30 851 5927`. The owner's name and phone sign that lead's automated e-mails. |
+| `CRM_AGENT_TITLE` | Job title printed under the name in the signature (applies to the whole roster). |
+| `CRM_AGENT_NAME`, `CRM_AGENT_PHONE` | One-person fallback used only when `CRM_AGENTS` is empty. With neither set: no owner assignment, and a neutral team signature. |
 | `DATABASE_URL` / `POSTGRES_URL` | Neon Postgres connection (either works). Present → the Postgres backend is used; absent → local JSON file backend. |
 | `CRM_DATA_DIR` | Directory of the local dev JSON store (default `~/.longevity-crm`, file `db.json`). |
 | `NODE_ENV` | `production` toggles the `Secure` cookie flag and disables the dev login fallback. |
