@@ -18,38 +18,72 @@ function signer(l: Lead): Agent | undefined {
   return agentByName(l.owner) || agents()[0];
 }
 
+/* Name, title and (when there is one) phone. No website link here — the brand
+   footer already carries it, and a signature repeating it reads like a
+   template rather than a person. */
 function signature(l: Lead): string {
   const me = signer(l);
   if (!me) {
-    return `<p style="margin:26px 0 0">Warm regards,<br/>The Longevity Samui team<br/>
-      <a href="${SITE}" style="color:#666">${SITE.replace('https://', '')}</a></p>`;
+    return `<p style="margin:26px 0 0">Warm regards,<br/>The Longevity Samui team</p>`;
   }
   const wa = me.phone ? `https://wa.me/${me.phone.replace(/[^\d]/g, '')}` : null;
   return `
     <p style="margin:26px 0 0">Warm regards,</p>
     <p style="margin:14px 0 0"><b>${me.name}</b><br/>
-      <span style="color:#555">${me.title || 'Longevity Samui'}</span><br/>
-      ${me.phone ? `${me.phone}${wa ? ` · <a href="${wa}" style="color:#555">WhatsApp</a>` : ''}<br/>` : ''}
-      <a href="${SITE}" style="color:#555">${SITE.replace('https://', '')}</a></p>`;
+      <span style="color:#555555">${me.title || 'Longevity Samui'}</span>
+      ${me.phone ? `<br/>${me.phone}${wa ? ` · <a href="${wa}" style="color:#555555">WhatsApp</a>` : ''}` : ''}</p>`;
 }
 
-/* One line, small and grey: the customer can stop the automatic follow-ups at
-   any time. Required for a sequence this long — and it keeps the list clean. */
-const optOut = (l: Lead) => `
-  <p style="margin:28px 0 0;font-size:12px;color:#999">
-    Prefer not to get these follow-ups? <a href="${SITE}/api/unsubscribe?l=${l.id}" style="color:#999">Unsubscribe</a> —
-    it only stops the automatic mails, not a personal reply.
-  </p>`;
+/* The brand frame: logo, a gold hairline, and a quiet footer — the letter
+   itself stays a plain first-person note in a readable serif-free face. A
+   hand-written-looking note gets replies; a designed newsletter gets skimmed,
+   archived, and filed under Gmail's Promotions tab. This keeps the brand
+   present without turning the letter into marketing.
 
-/* Deliberately plain: system font, no banners, no marketing chrome. A short
-   first-person note that looks hand-written converts; a designed newsletter
-   gets skimmed and archived. */
+   Table-based and inline-styled on purpose: Outlook ignores <div> widths and
+   external CSS, so every mail client has to be handed the layout explicitly. */
+
+const BODY_FONT = '-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif';
+const CREAM = '#FBF9F5';   // page behind the letter, warm rather than stark white
+const GOLD = '#C9A46A';
+const INK = '#222222';
+const MUTED = '#8A8478';
+
+/** A short centred gold hairline — the brand's own divider. */
+const rule = `
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="48" style="width:48px;">
+    <tr><td height="1" style="height:1px;line-height:1px;font-size:1px;background-color:${GOLD};">&nbsp;</td></tr>
+  </table>`;
+
 const wrap = (l: Lead, body: string) => `
-  <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#222;font-size:15px;line-height:1.6;max-width:540px">
-    ${body}
-    ${signature(l)}
-    ${optOut(l)}
-  </div>`;
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0;padding:0;background-color:${CREAM};">
+  <tr><td align="center" style="padding:0;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;">
+
+      <tr><td align="center" style="padding:36px 40px 0 40px;">
+        <img src="${SITE}/email/logo.png" width="116" height="87" alt="Longevity Resort"
+             style="display:block;width:116px;height:87px;border:0;outline:none;text-decoration:none;">
+      </td></tr>
+
+      <tr><td align="center" style="padding:18px 40px 0 40px;">${rule}</td></tr>
+
+      <tr><td style="padding:30px 40px 0 40px;font-family:${BODY_FONT};color:${INK};font-size:15px;line-height:1.6;">
+        ${body}
+        ${signature(l)}
+      </td></tr>
+
+      <tr><td align="center" style="padding:36px 40px 0 40px;">${rule}</td></tr>
+
+      <tr><td align="center" style="padding:16px 40px 40px 40px;font-family:${BODY_FONT};font-size:12px;line-height:1.7;color:${MUTED};">
+        <a href="${SITE}" style="color:${MUTED};text-decoration:none;">longevitysamui.com</a><br/>
+        Prefer not to get these follow-ups?
+        <a href="${SITE}/api/unsubscribe?l=${l.id}" style="color:${MUTED};">Unsubscribe</a> ·
+        it only stops the automatic mails, never a personal reply.
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>`;
 
 /** The phone line to offer, only when the signing agent actually has one. */
 const callLine = (l: Lead) => {
