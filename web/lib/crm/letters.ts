@@ -1,143 +1,298 @@
 import type { Lead } from './types';
 import { type Agent, agentByName, agents } from './agents';
+import { VILLAS } from './villas';
 
 /* ── The letters the automatic sequence sends ──
-   Content only: no store, no mailer, no Node APIs, so the wording can be read,
-   rendered and reviewed on its own. automation.ts decides WHEN each goes out
-   (the timetable lives in sequence.ts); this file decides WHAT it says. */
+
+   Built to the approved brand hand-off ("Direction A, Editorial"): a 600px
+   centred column on #060E08, the letter on a #0A140C panel, gold scale type,
+   Georgia headings, hairline rules, 2px-radius gold buttons, legal footer
+   outside the panel. Pure white text is prohibited by the brand — everything
+   comes from the warm gold scale.
+
+   Content only: no store, no mailer, no Node APIs, so the wording and markup
+   can be rendered and reviewed on their own. automation.ts decides WHEN each
+   letter goes out (the timetable lives in sequence.ts); this file decides what
+   it says and how it looks. */
 
 const SITE = 'https://longevitysamui.com';
 const BROCHURE_URL = `${SITE}/brochure/longevity-brochure-2026.pdf`;
 
+/* Design tokens, straight from the hand-off. */
+const PAGE = '#060E08';
+const PANEL = '#0A140C';
+const GOLD = '#C9A46A';        // rules, buttons, links, figures
+const GOLD_HI = '#D8B87C';     // headings, highlights
+const EYEBROW = '#E4C48F';
+const BODY = '#D6C7A8';
+const BODY_2 = '#C9BFAC';
+const MUTED = '#94896F';
+const LEGAL = '#6E6555';
+const HAIR = 'rgba(201,164,106,0.26)';
+const SERIF = "Georgia,'Times New Roman',serif";
+const SANS = 'Helvetica,Arial,sans-serif';
+
+/* Gmail's dark mode repaints a flat dark background into sand — it did exactly
+   that to the first version of this design. A background-image that resolves to
+   the same colour survives the repaint, so every dark surface sets both. */
+const bg = (c: string) => `background-color:${c};background-image:linear-gradient(${c},${c});`;
+
 const firstName = (l: Lead) => (l.name || '').trim().split(/\s+/)[0] || 'there';
+
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** Cheapest residence in the catalogue, for the price line. */
+const fromPrice = () => {
+  const low = Math.min(...VILLAS.map((v) => v.price));
+  return `THB ${(low / 1_000_000).toFixed(2).replace(/0$/, '')} M`;
+};
 
 /* Who signs the letter: the agent who owns the lead, falling back to the first
    person on the roster (CRM_AGENTS / CRM_AGENT_NAME). Until a roster exists,
-   a neutral team signature is used. */
+   the letter is signed by the sales office, as in the hand-off. */
 function signer(l: Lead): Agent | undefined {
   return agentByName(l.owner) || agents()[0];
 }
 
-/* Name, title and (when there is one) phone. No website link here — the brand
-   footer already carries it, and a signature repeating it reads like a
-   template rather than a person. */
-function signature(l: Lead): string {
-  const me = signer(l);
-  if (!me) {
-    return `<p style="margin:26px 0 0">Warm regards,<br/>The Longevity Samui team</p>`;
-  }
-  const wa = me.phone ? `https://wa.me/${me.phone.replace(/[^\d]/g, '')}` : null;
-  return `
-    <p style="margin:26px 0 0">Warm regards,</p>
-    <p style="margin:14px 0 0"><b>${me.name}</b><br/>
-      <span style="color:#555555">${me.title || 'Longevity Samui'}</span>
-      ${me.phone ? `<br/>${me.phone}${wa ? ` · <a href="${wa}" style="color:#555555">WhatsApp</a>` : ''}` : ''}</p>`;
-}
-
-/* The brand frame: logo, a gold hairline, and a quiet footer — the letter
-   itself stays a plain first-person note in a readable serif-free face. A
-   hand-written-looking note gets replies; a designed newsletter gets skimmed,
-   archived, and filed under Gmail's Promotions tab. This keeps the brand
-   present without turning the letter into marketing.
-
-   Table-based and inline-styled on purpose: Outlook ignores <div> widths and
-   external CSS, so every mail client has to be handed the layout explicitly. */
-
-const BODY_FONT = '-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif';
-const CREAM = '#FBF9F5';   // page behind the letter, warm rather than stark white
-const GOLD = '#C9A46A';
-const INK = '#222222';
-const MUTED = '#8A8478';
-
-/** A short centred gold hairline — the brand's own divider. */
+/** The 60px gold hairline the design uses as its only divider. */
 const rule = `
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="48" style="width:48px;">
-    <tr><td height="1" style="height:1px;line-height:1px;font-size:1px;background-color:${GOLD};">&nbsp;</td></tr>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="60" style="width:60px;">
+    <tr><td height="1" style="height:1px;line-height:1px;font-size:1px;${bg(GOLD)}">&nbsp;</td></tr>
   </table>`;
 
-const wrap = (l: Lead, body: string) => `
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0;padding:0;background-color:${CREAM};">
-  <tr><td align="center" style="padding:0;">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;">
+/** A body paragraph inside the panel. Left-aligned: these letters run to
+    several paragraphs, and centred prose that long is hard to read. */
+const p = (html: string) => `
+  <tr><td class="px" style="padding:20px 56px 0 56px;">
+    <p style="margin:0;font-family:${SANS};font-size:16px;line-height:28px;color:${BODY};">${html}</p>
+  </td></tr>`;
 
-      <tr><td align="center" style="padding:36px 40px 0 40px;">
-        <img src="${SITE}/email/logo.png" width="116" height="87" alt="Longevity Resort"
-             style="display:block;width:116px;height:87px;border:0;outline:none;text-decoration:none;">
+/** The opening line, centred under the headline, as in the hand-off. */
+const intro = (html: string) => `
+  <tr><td class="px" style="padding:20px 56px 0 56px;" align="center">
+    <p style="margin:0;font-family:${SANS};font-size:16px;line-height:28px;color:${BODY};">${html}</p>
+  </td></tr>`;
+
+/** THE ESSENTIALS — the four-figure table from the hand-off. */
+const essentials = () => {
+  const rows: [string, string][] = [
+    ['10%', 'Fixed annual ROI, contracted'],
+    ['100%', 'Buyback guaranteed'],
+    ['1&ndash;2 BR', 'Residences with a private pool'],
+    ['5 min', 'To the beach, 24/7 gated security'],
+  ];
+  return `
+  <tr><td class="px" style="padding:36px 56px 0 56px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border-top:1px solid ${HAIR};border-bottom:1px solid ${HAIR};">
+      <tr><td style="padding:22px 0 6px 0;font-family:${SANS};font-size:10px;line-height:14px;letter-spacing:0.30em;text-transform:uppercase;color:${EYEBROW};">The essentials</td></tr>
+      <tr><td style="padding:0 0 22px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
+          ${rows.map(([k, v]) => `
+          <tr><td width="120" style="width:120px;padding:12px 0 0 0;font-family:${SERIF};font-size:22px;line-height:26px;color:${GOLD};">${k}</td>
+              <td style="padding:12px 0 0 0;font-family:${SANS};font-size:15px;line-height:26px;color:${BODY};">${v}</td></tr>`).join('')}
+        </table>
       </td></tr>
-
-      <tr><td align="center" style="padding:18px 40px 0 40px;">${rule}</td></tr>
-
-      <tr><td style="padding:30px 40px 0 40px;font-family:${BODY_FONT};color:${INK};font-size:15px;line-height:1.6;">
-        ${body}
-        ${signature(l)}
-      </td></tr>
-
-      <tr><td align="center" style="padding:36px 40px 0 40px;">${rule}</td></tr>
-
-      <tr><td align="center" style="padding:16px 40px 40px 40px;font-family:${BODY_FONT};font-size:12px;line-height:1.7;color:${MUTED};">
-        <a href="${SITE}" style="color:${MUTED};text-decoration:none;">longevitysamui.com</a><br/>
-        Prefer not to get these follow-ups?
-        <a href="${SITE}/api/unsubscribe?l=${l.id}" style="color:${MUTED};">Unsubscribe</a> ·
-        it only stops the automatic mails, never a personal reply.
-      </td></tr>
-
     </table>
-  </td></tr>
-</table>`;
-
-/** The phone line to offer, only when the signing agent actually has one. */
-const callLine = (l: Lead) => {
-  const phone = signer(l)?.phone;
-  return phone ? ` or call me directly at ${phone}` : '';
+  </td></tr>`;
 };
+
+/** The price line, with the figure picked out in the highlight gold. */
+const priceLine = () => `
+  <tr><td class="px" style="padding:26px 56px 0 56px;" align="center">
+    <p style="margin:0;font-family:${SANS};font-size:15px;line-height:26px;color:${BODY_2};">
+      Residences from <span style="color:${GOLD_HI};">${fromPrice()}</span>, fully managed.
+      Wellness access is included with ownership.</p>
+  </td></tr>`;
+
+interface Button { label: string; href: string }
+
+/** Primary (solid gold) and optional secondary (outlined) button, side by side. */
+const buttons = (primary: Button, secondary?: Button) => `
+  <tr><td class="px" style="padding:34px 56px 0 56px;" align="center">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+      <tr>
+        <td align="center" bgcolor="${GOLD}" style="${bg(GOLD)}border-radius:2px;">
+          <a href="${primary.href}" style="display:block;padding:16px 34px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${PANEL};text-decoration:none;">${primary.label}</a>
+        </td>
+        ${secondary ? `
+        <td width="14" style="width:14px;">&nbsp;</td>
+        <td align="center" style="border:1px solid rgba(201,164,106,0.5);border-radius:2px;">
+          <a href="${secondary.href}" style="display:block;padding:15px 30px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${GOLD};text-decoration:none;">${secondary.label}</a>
+        </td>` : ''}
+      </tr>
+    </table>
+  </td></tr>`;
+
+/* Sign-off: the hand-off ends on "Longevity Resort Sales Office", but a lead
+   that has an owner gets that person's name instead — the whole point of the
+   sequence is that a human is writing. */
+const signOff = (l: Lead) => {
+  const me = signer(l);
+  const name = me?.name || 'Longevity Resort Sales Office';
+  const title = me ? (me.title || 'Longevity Samui') : 'Plai Laem, Koh Samui, Thailand';
+  const wa = me?.phone ? `https://wa.me/${me.phone.replace(/[^\d]/g, '')}` : null;
+  const mail = me?.email;
+  return `
+  <tr><td class="px" style="padding:46px 56px 0 56px;" align="center">${rule}</td></tr>
+  <tr><td class="px" style="padding:26px 56px 44px 56px;" align="center">
+    <div style="font-family:${SERIF};font-size:20px;line-height:28px;color:${GOLD_HI};">${esc(name)}</div>
+    <div style="font-family:${SANS};font-size:13px;line-height:24px;color:${MUTED};padding-top:8px;">${esc(title)}<br>
+      <a href="${SITE}" style="color:${GOLD};text-decoration:none;">longevitysamui.com</a>${mail ? ` &middot;
+      <a href="mailto:${mail}" style="color:${GOLD};text-decoration:none;">${mail}</a>` : ''}${me?.phone ? `<br>${esc(me.phone)}${wa ? ` &middot; <a href="${wa}" style="color:${GOLD};text-decoration:none;">WhatsApp</a>` : ''}` : ''}
+    </div>
+  </td></tr>`;
+};
+
+interface Letter {
+  preheader: string;   // inbox preview text
+  headline: string;    // Georgia, gold, centred
+  body: string;        // rows built with intro()/p()/essentials()/buttons()
+}
+
+/** The full document: page, panel, logo, letter, sign-off, legal footer. */
+function shell(l: Lead, letter: Letter): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Longevity Resort, Koh Samui</title>
+<style>
+  @media (prefers-color-scheme: dark){
+    body, .page{background-color:${PAGE} !important;}
+    .panel{background-color:${PANEL} !important;}
+  }
+  @media only screen and (max-width:620px){
+    .container{width:100% !important;}
+    .px{padding-left:24px !important;padding-right:24px !important;}
+    .h1{font-size:30px !important;line-height:38px !important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;${bg(PAGE)}">
+<span style="display:none;font-size:1px;color:${PAGE};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${esc(letter.preheader)}</span>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" class="page" style="${bg(PAGE)}margin:0;padding:0;">
+<tr><td align="center" style="padding:0;">
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container panel" style="width:600px;max-width:600px;${bg(PANEL)}">
+
+  <tr><td class="px" style="padding:44px 56px 0 56px;" align="center">
+    <img src="${SITE}/email/logo.png" width="134" height="100" alt="Longevity Resort" style="display:block;width:134px;height:100px;border:0;outline:none;text-decoration:none;margin:0 auto;">
+    <div style="font-family:${SANS};font-size:10px;line-height:16px;letter-spacing:0.30em;text-transform:uppercase;color:${MUTED};padding-top:16px;">Plai Laem &middot; Koh Samui &middot; Thailand</div>
+  </td></tr>
+
+  <tr><td class="px" style="padding:34px 56px 0 56px;" align="center">${rule}</td></tr>
+
+  <tr><td class="px" style="padding:30px 56px 0 56px;" align="center">
+    <h1 class="h1" style="margin:0;font-family:${SERIF};font-weight:400;font-size:36px;line-height:46px;color:${GOLD_HI};">${letter.headline}</h1>
+  </td></tr>
+
+  ${letter.body}
+  ${signOff(l)}
+
+</table>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px;max-width:600px;">
+<tr><td class="px" align="center" style="padding:20px 56px 40px 56px;font-family:${SANS};font-size:11px;line-height:20px;color:${LEGAL};">
+  You are receiving this because you asked us about Longevity Resort.<br>
+  Longevity Resort Sales Office, Plai Laem, Koh Samui 84320, Thailand.<br>
+  <a href="${SITE}/api/unsubscribe?l=${l.id}" style="color:${MUTED};text-decoration:underline;">Unsubscribe</a>
+</td></tr>
+</table>
+
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
+/** "Book a call" has no calendar behind it yet, so it opens a reply to the
+    person who owns the lead — which is what a call request turns into anyway. */
+const callHref = (l: Lead) => {
+  const to = signer(l)?.email || 'info@longevitysamui.com';
+  const subject = encodeURIComponent(`Call about Longevity Resort${l.villa ? ` — ${l.villa}` : ''}`);
+  return `mailto:${to}?subject=${subject}`;
+};
+
+/* ── The six letters ── */
 
 export function welcomeEmail(l: Lead): { subject: string; html: string } {
   const name = firstName(l);
+
   if (l.form_type === 'brochure_request') {
     return {
-      subject: 'Your Longevity Samui brochure',
-      html: wrap(l, `
-        <p>Hi ${name},</p>
-        <p>Thanks for your interest in Longevity — here's the brochure you asked for:</p>
-        <p><a href="${BROCHURE_URL}" style="color:#9a7b3f;font-weight:bold">Download the brochure (PDF)</a></p>
-        <p>Have a look, and if any of the residences catches your eye, just hit reply —
-        I'm happy to walk you through availability, pricing and how reservation works.</p>`),
+      subject: 'Your Longevity Resort brochure, Koh Samui',
+      html: shell(l, {
+        preheader: 'Your brochure is inside. Managed residences with a private pool, five minutes from the beach.',
+        headline: 'Your brochure',
+        body:
+          intro(`Hi ${esc(name)}, here is the brochure you asked for. Longevity Resort is a managed
+            residence community at Plai Laem, Koh Samui, built around a physician-led longevity centre.
+            Owners receive a fixed return and full management; guests receive the medical programme.`) +
+          essentials() +
+          priceLine() +
+          buttons({ label: 'Download brochure', href: BROCHURE_URL }, { label: 'Book a call', href: callHref(l) }) +
+          p(`If any of the residences catches your eye, just reply to this e-mail. I am happy to walk
+            you through availability, pricing and how reservation works.`),
+      }),
     };
   }
+
   if (l.form_type === 'reserve' || (l.form_origin || '').startsWith('villa')) {
     return {
-      subject: `Your reservation enquiry${l.villa ? ` — ${l.villa}` : ''}`,
-      html: wrap(l, `
-        <p>Hi ${name},</p>
-        <p>Thank you for your enquiry${l.villa ? ` about <b>${l.villa}</b>` : ''} — great choice.
-        I'm putting together the details for you now: current availability, exact pricing and
-        our simple 4-step payment schedule.</p>
-        <p>I'll get back to you personally within a few hours. If you'd rather talk sooner,
-        just reply to this e-mail${callLine(l)}.</p>`),
+      subject: `Your reservation enquiry${l.villa ? `, ${l.villa}` : ''}`,
+      html: shell(l, {
+        preheader: `Thank you for your enquiry${l.villa ? ` about ${l.villa}` : ''}. I am putting the details together now.`,
+        headline: 'Thank you for your enquiry',
+        body:
+          intro(`Hi ${esc(name)}, thank you for your interest${l.villa ? ` in <span style="color:${GOLD_HI};">${esc(l.villa)}</span>` : ''} —
+            a very good choice. I am putting the details together for you now: current availability,
+            exact pricing and our four-step payment schedule.`) +
+          essentials() +
+          priceLine() +
+          buttons({ label: 'Book a call', href: callHref(l) }, { label: 'Download brochure', href: BROCHURE_URL }) +
+          p(`I will come back to you personally within a few hours. If you would rather talk sooner,
+            simply reply to this e-mail.`),
+      }),
     };
   }
+
   return {
-    subject: 'Thanks for reaching out',
-    html: wrap(l, `
-      <p>Hi ${name},</p>
-      <p>Thanks for your interest in Longevity Wellness Resort — I've received your enquiry
-      and will get back to you personally shortly.</p>
-      <p>Meanwhile, feel free to browse the residences at
-      <a href="${SITE}" style="color:#9a7b3f">${SITE.replace('https://', '')}</a> — and if you
-      already have questions, just reply, this inbox comes straight to me.</p>`),
+    subject: 'Thank you for your interest',
+    html: shell(l, {
+      preheader: 'Managed residences with a private pool at Plai Laem, five minutes from the beach.',
+      headline: 'Thank you for your interest',
+      body:
+        intro(`Hi ${esc(name)}, I have your enquiry and will come back to you personally shortly.
+          Longevity Resort is a managed residence community at Plai Laem, Koh Samui, built around a
+          physician-led longevity centre.`) +
+        essentials() +
+        priceLine() +
+        buttons({ label: 'Book a call', href: callHref(l) }, { label: 'Download brochure', href: BROCHURE_URL }) +
+        p(`In the meantime, feel free to reply with anything you would like to know. This inbox comes
+          straight to me.`),
+    }),
   };
 }
 
 export function reminderEmail(l: Lead): { subject: string; html: string } {
   return {
-    subject: `Re: your Longevity enquiry${l.villa ? ` — ${l.villa}` : ''}`,
-    html: wrap(l, `
-      <p>Hi ${firstName(l)},</p>
-      <p>Just following up on what I sent a few days ago — I know a decision like this
-      takes time, so no rush at all.</p>
-      <p>If any questions have come up about the residences, pricing or the reservation
-      process, just reply — I'm glad to help. And if the timing isn't right, a one-line
-      reply saying so is absolutely fine too.</p>`),
+    subject: `Your Longevity enquiry${l.villa ? `, ${l.villa}` : ''}`,
+    html: shell(l, {
+      preheader: 'Just following up on what I sent a few days ago. No rush at all.',
+      headline: 'Following up',
+      body:
+        intro(`Hi ${esc(firstName(l))}, just following up on what I sent a few days ago. A decision
+          like this takes time, so there is no rush at all.`) +
+        p(`If any questions have come up about the residences, the pricing or the reservation process,
+          simply reply and I will answer them. And if the timing is not right, a one-line reply saying
+          so is absolutely fine too.`) +
+        buttons({ label: 'Book a call', href: callHref(l) }),
+    }),
   };
 }
 
@@ -145,60 +300,82 @@ export function reminderEmail(l: Lead): { subject: string; html: string } {
    went quiet needs a reason to care again, not another nudge. */
 export function storyEmail(l: Lead): { subject: string; html: string } {
   return {
-    subject: 'What we are actually building on Samui',
-    html: wrap(l, `
-      <p>Hi ${firstName(l)},</p>
-      <p>I thought you might like the fuller picture, beyond the floor plans.</p>
-      <p>Longevity isn't a villa development with a spa attached. It's a wellness resort
-      built around one idea: that where you live should add years to your life, not take
-      them. Private residences, a longevity and diagnostics centre, daily movement and
-      recovery — on one of the calmest parts of Koh Samui.</p>
-      <p>Owners use their residence part of the year and let us take care of it — and of
-      guests — the rest. That's the part most people ask about second, once the place
-      itself has done its work.</p>
-      <p>If you'd like, reply with what matters most to you — the lifestyle, the returns,
-      or simply the timing — and I'll send you exactly that, nothing else.</p>`),
+    subject: 'What we are building on Samui',
+    html: shell(l, {
+      preheader: 'Not a villa development with a spa attached. A resort built around living longer.',
+      headline: 'What we are building',
+      body:
+        intro(`Hi ${esc(firstName(l))}, I thought you might like the fuller picture, beyond the floor plans.`) +
+        p(`Longevity is not a villa development with a spa attached. It is a wellness resort built
+          around one idea: that where you live should add years to your life rather than take them.
+          Private residences, a longevity and diagnostics centre, daily movement and recovery, on one
+          of the calmest parts of Koh Samui.`) +
+        p(`Owners use their residence part of the year and let us take care of it, and of guests, the
+          rest. That is the part most people ask about second, once the place itself has done its work.`) +
+        p(`If you would like, reply with what matters most to you: the lifestyle, the returns, or
+          simply the timing. I will send you exactly that and nothing else.`),
+    }),
   };
 }
 
 /* Day 24 — the invitation. The single strongest step in the sequence: people
-   who see it (even by video) decide; people who only read never do. */
+   who see it, even by video, decide; people who only read never do. */
 export function viewingEmail(l: Lead): { subject: string; html: string } {
   return {
-    subject: `Come and see it${l.villa ? ` — ${l.villa}` : ''}`,
-    html: wrap(l, `
-      <p>Hi ${firstName(l)},</p>
-      <p>An offer that stands whenever you're ready: come and see
-      ${l.villa ? `<b>${l.villa}</b>` : 'the resort'} in person. We arrange private viewings on
-      Koh Samui — the site, the beach, the plans — and I'll block out the time properly,
-      not a rushed walk-through.</p>
-      <p>If travelling isn't practical right now, I'll do a live video tour with you
-      instead: same thing, from your sofa, and you can ask anything as we go.</p>
-      <p>Just reply with a couple of dates that could work${callLine(l)}, and I'll take
-      care of the rest.</p>`),
+    subject: `Come and see it${l.villa ? `, ${l.villa}` : ''}`,
+    html: shell(l, {
+      preheader: 'A private viewing on Koh Samui, or a live video tour if travelling is not practical.',
+      headline: 'Come and see it',
+      body:
+        intro(`Hi ${esc(firstName(l))}, an offer that stands whenever you are ready: come and see
+          ${l.villa ? `<span style="color:${GOLD_HI};">${esc(l.villa)}</span>` : 'the resort'} in person.`) +
+        p(`We arrange private viewings on Koh Samui: the site, the beach, the plans. I block out the
+          time properly, so it is never a rushed walk-through.`) +
+        p(`If travelling is not practical right now, I will do a live video tour with you instead. The
+          same thing from your sofa, and you can ask anything as we go.`) +
+        buttons({ label: 'Arrange a viewing', href: callHref(l) }, { label: 'Download brochure', href: BROCHURE_URL }),
+    }),
   };
 }
 
 /* Day 45 — the numbers, plainly. By now they either want the commercials or
    they don't; hiding the payment schedule only wastes everyone's time. */
 export function termsEmail(l: Lead): { subject: string; html: string } {
+  const steps: [string, string][] = [
+    ['7%', 'Reserves the plot, transferred into your name'],
+    ['43%', 'On completed foundation'],
+    ['40%', 'On completed building'],
+    ['10%', 'On furnishing, at handover'],
+  ];
+  const schedule = `
+  <tr><td class="px" style="padding:36px 56px 0 56px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border-top:1px solid ${HAIR};border-bottom:1px solid ${HAIR};">
+      <tr><td style="padding:22px 0 6px 0;font-family:${SANS};font-size:10px;line-height:14px;letter-spacing:0.30em;text-transform:uppercase;color:${EYEBROW};">The payment schedule</td></tr>
+      <tr><td style="padding:0 0 22px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
+          ${steps.map(([k, v]) => `
+          <tr><td width="120" style="width:120px;padding:12px 0 0 0;font-family:${SERIF};font-size:22px;line-height:26px;color:${GOLD};">${k}</td>
+              <td style="padding:12px 0 0 0;font-family:${SANS};font-size:15px;line-height:26px;color:${BODY};">${v}</td></tr>`).join('')}
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>`;
+
   return {
     subject: 'How reserving a residence works',
-    html: wrap(l, `
-      <p>Hi ${firstName(l)},</p>
-      <p>In case it's useful, here is the commercial side in plain terms — no small print.</p>
-      <p>Reservation is a four-step schedule, each step tied to real progress on your
-      residence:</p>
-      <ul style="margin:12px 0 0;padding-left:20px">
-        <li><b>7%</b> — reserves the plot, transferred into your name</li>
-        <li><b>43%</b> — on completed foundation</li>
-        <li><b>40%</b> — on completed building</li>
-        <li><b>10%</b> — on furnishing, at handover</li>
-      </ul>
-      <p style="margin-top:16px">Nothing moves until the step before it is genuinely finished,
-      which is the whole point of doing it this way.</p>
-      <p>Reply and I'll send the current availability${l.villa ? ` and the exact figures for ${l.villa}` : ' and the exact figures'},
-      plus the reservation agreement to read at your own pace.</p>`),
+    html: shell(l, {
+      preheader: 'The commercial side in plain terms: four steps, each tied to real progress on site.',
+      headline: 'How reserving works',
+      body:
+        intro(`Hi ${esc(firstName(l))}, in case it is useful, here is the commercial side in plain
+          terms. No small print.`) +
+        schedule +
+        p(`Nothing moves until the step before it is genuinely finished, which is the whole point of
+          doing it this way.`) +
+        buttons({ label: 'Ask for the figures', href: callHref(l) }) +
+        p(`Reply and I will send the current availability${l.villa ? ` and the exact figures for ${esc(l.villa)}` : ' and the exact figures'},
+          plus the reservation agreement to read at your own pace.`),
+    }),
   };
 }
 
@@ -207,14 +384,16 @@ export function termsEmail(l: Lead): { subject: string; html: string } {
 export function closingEmail(l: Lead): { subject: string; html: string } {
   return {
     subject: 'Closing the loop',
-    html: wrap(l, `
-      <p>Hi ${firstName(l)},</p>
-      <p>I don't want to keep landing in your inbox uninvited, so this is my last automatic
-      note — I'll leave the next move to you.</p>
-      <p>Your enquiry stays on file with me. If Longevity comes back to mind in a month or
-      in a year, one line to this address is all it takes and I'll pick it up exactly where
-      we left off.${signer(l)?.phone ? ` My direct line is ${signer(l)!.phone} if you'd rather talk.` : ''}</p>
-      <p>Either way, thank you for the interest — and if you ever find yourself on Samui,
-      the invitation to visit stands.</p>`),
+    html: shell(l, {
+      preheader: 'My last automatic note. Your enquiry stays on file whenever you are ready.',
+      headline: 'Closing the loop',
+      body:
+        intro(`Hi ${esc(firstName(l))}, I do not want to keep landing in your inbox uninvited, so this
+          is my last automatic note. I will leave the next move to you.`) +
+        p(`Your enquiry stays on file with me. If Longevity comes back to mind in a month or in a year,
+          one line to this address is all it takes and I will pick it up exactly where we left off.`) +
+        p(`Either way, thank you for the interest. And if you ever find yourself on Samui, the
+          invitation to visit stands.`),
+    }),
   };
 }
