@@ -21,6 +21,8 @@ export default async function MasterplanPage() {
       id: l.id,
       name: l.name || l.email || 'Unknown',
       awaitingSince: l.awaiting_reply_since || null,
+      villa: (l.villa || '').trim(),
+      stage: l.stage,
     }));
 
   return (

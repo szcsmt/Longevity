@@ -11,7 +11,7 @@ interface Villa {
   id: string; block: string; n: number; x: number; y: number;
   type?: string; size?: string; area?: number; plotArea?: number;
 }
-export interface LeadOption { id: string; name: string; awaitingSince: string | null }
+export interface LeadOption { id: string; name: string; awaitingSince: string | null; villa?: string; stage?: string }
 
 const ORDER: Status[] = ['free', 'reserved', 'sold'];
 const COLORS: Record<Status, string> = { free: '#2FA968', reserved: '#E0A63A', sold: '#D8483B' };
@@ -47,6 +47,18 @@ export function Masterplan({
 
   const byId = useMemo(() => Object.fromEntries(villas.map((v) => [v.id, v])), [villas]);
   const leadById = useMemo(() => Object.fromEntries(leads.map((l) => [l.id, l])), [leads]);
+
+  // Active enquiries per unit: a lead whose villa field IS this unit's code
+  // (the 3D twin sends e.g. "B5") and whose deal is still open.
+  const enquiries = useMemo(() => {
+    const m: Record<string, LeadOption[]> = {};
+    for (const l of leads) {
+      const unit = (l.villa || '').trim().toUpperCase();
+      if (!unit || !['new', 'contacted', 'qualified'].includes(l.stage || '')) continue;
+      if (byId[unit]) (m[unit] ??= []).push(l);
+    }
+    return m;
+  }, [leads, byId]);
   const statusOf = (id: string): Status => records[id]?.status || 'free';
 
   const counts = useMemo(() => {
@@ -136,6 +148,8 @@ export function Masterplan({
         .mp-dot.on { outline: 2px solid #0b140d; outline-offset: 2px; z-index: 6; }
         .mp-dot.wait::after { content: ''; position: absolute; top: -3px; right: -3px; width: 9px; height: 9px;
           border-radius: 50%; background: #E0774E; border: 1.5px solid #fff; }
+        .mp-dot.enq::before { content: ''; position: absolute; bottom: -3px; right: -3px; width: 9px; height: 9px;
+          border-radius: 50%; background: #C9A46A; border: 1.5px solid #fff; }
         .mp-dot:hover .mp-tip { opacity: 1; transform: translate(-50%, -6px); }
         .mp-tip { position: absolute; bottom: 100%; left: 50%; transform: translate(-50%, 2px);
           background: #0b140d; color: #fff; border: 1px solid rgba(201,169,110,0.4);
@@ -215,17 +229,19 @@ export function Masterplan({
             const st = statusOf(v.id);
             const r = records[v.id];
             const w = waiting(r) >= REPLY_FLAG_DAYS;
+            const enq = enquiries[v.id]?.length || 0;
             const tipBits = [
               `${v.id} · ${LABELS[st]}`,
               r?.buyerName ? r.buyerName : null,
               r && paidTotal(r) > 0 ? `${fmtTHB(paidTotal(r))} fizetve` : null,
+              enq ? `${enq} érdeklődő` : null,
               w ? 'válaszra vár!' : null,
             ].filter(Boolean);
             return (
               <button
                 key={v.id}
                 type="button"
-                className={`mp-dot${sel === v.id ? ' on' : ''}${w ? ' wait' : ''}`}
+                className={`mp-dot${sel === v.id ? ' on' : ''}${w ? ' wait' : ''}${enq ? ' enq' : ''}`}
                 onClick={() => open(v.id)}
                 aria-label={`${v.id} — ${LABELS[st]}`}
                 style={{ left: `${v.x}%`, top: `${v.y}%`, background: COLORS[st] }}
@@ -406,6 +422,24 @@ export function Masterplan({
                   </>
                 ) : null}
               </div>
+
+              {/* ── Érdeklődők ── */}
+              {(enquiries[villa.id]?.length || 0) > 0 && (
+                <div className="mp-sec">
+                  <h3>Érdeklődők erre a telekre · {enquiries[villa.id].length}</h3>
+                  {enquiries[villa.id].map((l) => (
+                    <div className="mp-extra" key={l.id}>
+                      <Link href={`/admin/leads/${l.id}`} style={{ color: 'var(--c-cream)', textDecoration: 'none' }}>
+                        {l.name}
+                      </Link>
+                      <span className="px" style={{ textTransform: 'capitalize' }}>{l.stage}</span>
+                    </div>
+                  ))}
+                  <div className="crm-meta" style={{ marginTop: 8, fontSize: 11.5 }}>
+                    Ha vevő lesz, a fenti „Vevő (CRM lead)" választóval kösd a telekhez.
+                  </div>
+                </div>
+              )}
 
               {/* ── Extrák ── */}
               <div className="mp-sec">
