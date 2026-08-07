@@ -16,6 +16,15 @@ const EVENT_LABEL: Record<string, string> = {
 };
 const pretty = (s: string) => EVENT_LABEL[s] || s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
 
+/** A delay in minutes, read the way a person would say it. */
+function fmtDelay(min: number | null): string {
+  if (min == null) return '—';
+  if (min < 1) return 'azonnal';
+  if (min < 60) return `${Math.round(min)} perc`;
+  if (min < 48 * 60) return `${Math.round(min / 60)} óra`;
+  return `${Math.round(min / 1440)} nap`;
+}
+
 function Trend({ pct }: { pct: number | null }) {
   if (pct == null) return null;
   const up = pct >= 0;
@@ -96,6 +105,38 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           ))}
           <div className="fin-size-key">eladva / foglalt / összes</div>
         </div>
+      </div>
+
+      {/* ── Speed to lead ── */}
+      <div className="crm-card" style={{ marginBottom: 16 }}>
+        <h3>Reakcióidő <span className="h3-note">· automata és emberi válasz</span></h3>
+        <div className="fin-grid">
+          <div className="fin-tile">
+            <div className="k">Automata válasz</div>
+            <div className="v">{a.speed.autoPct != null ? `${a.speed.autoPct}%` : '—'}</div>
+            <div className="s">{a.speed.autoAnswered} / {a.speed.withEmail} e-mailes lead · azonnal</div>
+          </div>
+          <div className="fin-tile">
+            <div className="k">Emberi reakció (medián)</div>
+            <div className="v">{fmtDelay(a.speed.medianHumanMin)}</div>
+            <div className="s">{a.speed.humanTouched} lead, amivel valaki foglalkozott</div>
+          </div>
+          <div className="fin-tile">
+            <div className="k">1 órán belül</div>
+            <div className="v">{a.speed.within1hPct != null ? `${a.speed.within1hPct}%` : '—'}</div>
+            <div className="s">az érdemi válaszok aránya</div>
+          </div>
+          <div className="fin-tile">
+            <div className="k">Kiment automata levél</div>
+            <div className="v">{fmtInt(a.speed.sequenceSent)}</div>
+            <div className="s">a teljes szekvenciából · {a.rangeLabel.toLowerCase()}</div>
+          </div>
+        </div>
+        {a.speed.autoPct != null && a.speed.autoPct < 100 && (
+          <div className="crm-meta" style={{ marginTop: 12 }}>
+            Az automata köszönőlevél nem minden leadhez jutott el — vagy a levélmotor nem volt bekapcsolva, amikor beérkeztek, vagy az e-mail cím hibás.
+          </div>
+        )}
       </div>
 
       {/* ── Leads ── */}

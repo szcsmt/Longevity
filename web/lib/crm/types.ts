@@ -83,9 +83,13 @@ export interface Note {
   at: string; // ISO
 }
 
+/* The automated customer sequence, minute 0 → day 60. Each step goes out at
+   most once per lead and only while the conversation is still one-sided. */
+export type EmailStep = 'welcome' | 'reminder' | 'story' | 'viewing' | 'terms' | 'closing';
+
 export interface SentEmail {
   id: string;
-  step: 'welcome' | 'reminder';
+  step: EmailStep;
   subject: string;
   at: string; // ISO
 }
@@ -111,7 +115,7 @@ export interface Task {
    with notes in the lead timeline, so the full history reads in one place. */
 export interface Activity {
   id: string;
-  kind: 'created' | 'stage' | 'score' | 'contact' | 'value' | 'merged' | 'email' | 'message';
+  kind: 'created' | 'stage' | 'score' | 'contact' | 'value' | 'merged' | 'email' | 'message' | 'assigned';
   detail: string; // human line, e.g. "New → Contacted"
   at: string;     // ISO
 }
@@ -134,6 +138,11 @@ export interface Lead {
   // Deal
   value?: number; // expected deal value in THB — defaults from the villa list price
 
+  /* Speed-to-lead: which agent owns this lead, and when a human first acted
+     on it (note, reply-timer, or a stage move). */
+  owner?: string;
+  first_response_at?: string;
+
   /* Set when an email/offer went out and we're waiting on the customer.
      Cleared when they reply (or the operator clears it). After 3 days the
      CRM flags the lead and the linked plot. */
@@ -146,6 +155,10 @@ export interface Lead {
   /* Automated e-mails actually sent to this lead (welcome, reminder…).
      Drives the sequence logic and renders on the timeline. */
   outbox?: SentEmail[];
+
+  /* The customer used the opt-out link in an automated e-mail. Stops the
+     sequence for good; e-mails a person writes by hand are unaffected. */
+  unsubscribed?: boolean;
 
   // Attribution
   utm_source?: string;
@@ -174,7 +187,7 @@ export interface Lead {
 }
 
 export type LeadPatch = Partial<
-  Pick<Lead, 'name' | 'email' | 'phone' | 'whatsapp' | 'villa' | 'stage' | 'score' | 'value' | 'lost_reason'>
+  Pick<Lead, 'name' | 'email' | 'phone' | 'whatsapp' | 'villa' | 'stage' | 'score' | 'value' | 'lost_reason' | 'owner'>
 >;
 
 /* A lightweight interaction event — a real click on the live site (open a form,

@@ -55,6 +55,18 @@ export interface AnalyticsData {
   villaStatus: { free: number; reserved: number; sold: number; total: number };
   villaByBlock: { block: string; free: number; reserved: number; sold: number }[];
   agents: { seller: string; sold: number; revenue: number }[];
+  /* Speed to lead — how fast the enquiry gets answered, by the machine and by
+     a human. The automatic half should always be 100%; the human half is the
+     number that actually decides whether the deal happens. */
+  speed: {
+    withEmail: number;          // leads in range we could write to
+    autoAnswered: number;       // of those, how many got the minute-0 welcome
+    autoPct: number | null;     // % — null while there is nothing to measure
+    humanTouched: number;       // leads a person has acted on
+    medianHumanMin: number | null;  // median minutes to the first human action
+    within1hPct: number | null; // % of touched leads answered inside an hour
+    sequenceSent: number;       // automated e-mails sent in the range, all steps
+  };
 }
 
 const DAY = 86_400_000;
@@ -207,6 +219,22 @@ export async function analytics(rangeInput?: string): Promise<AnalyticsData> {
     { label: 'Eladás', count: atLeast(4) },
   ];
 
+  // ── Speed to lead ──
+  const withEmail = rangedLeads.filter((l) => l.email);
+  const autoAnswered = withEmail.filter((l) => (l.outbox || []).some((e) => e.step === 'welcome')).length;
+  const humanMinutes = rangedLeads
+    .filter((l) => l.first_response_at)
+    .map((l) => (parse(l.first_response_at) - parse(l.created_at)) / 60_000)
+    .filter((m) => isFinite(m) && m >= 0)
+    .sort((a, b) => a - b);
+  const medianHumanMin = humanMinutes.length
+    ? Math.round(humanMinutes[Math.floor(humanMinutes.length / 2)])
+    : null;
+  const within1hPct = humanMinutes.length
+    ? Math.round((humanMinutes.filter((m) => m <= 60).length / humanMinutes.length) * 100)
+    : null;
+  const sequenceSent = leads.reduce((s, l) => s + (l.outbox || []).filter((e) => inRange(e.at)).length, 0);
+
   return {
     range,
     rangeLabel: RANGE_LABEL[String(range)],
@@ -228,5 +256,14 @@ export async function analytics(rangeInput?: string): Promise<AnalyticsData> {
     villaByBlock: Object.entries(blockMap).sort((a, b) => a[0].localeCompare(b[0]))
       .map(([block, v]) => ({ block, ...v })),
     agents: Object.entries(agentMap).map(([seller, v]) => ({ seller, ...v })).sort((a, b) => b.revenue - a.revenue),
+    speed: {
+      withEmail: withEmail.length,
+      autoAnswered,
+      autoPct: withEmail.length ? Math.round((autoAnswered / withEmail.length) * 100) : null,
+      humanTouched: humanMinutes.length,
+      medianHumanMin,
+      within1hPct,
+      sequenceSent,
+    },
   };
 }

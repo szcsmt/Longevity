@@ -1,0 +1,69 @@
+import type { EmailStep, Lead } from './types';
+
+/* The sequence timetable — pure data, no Node APIs, so the admin UI can show
+   an operator exactly where a lead stands without importing the mail engine.
+   automation.ts attaches the actual letters to these steps. */
+
+export interface SequenceStepMeta {
+  step: EmailStep;
+  day: number;
+  label: string;
+  note: string; // what this letter is for, in one line
+}
+
+export const SEQUENCE_STEPS: SequenceStepMeta[] = [
+  { step: 'welcome',  day: 0,  label: 'Welcome',        note: 'Instant thank-you, personalised to the form' },
+  { step: 'reminder', day: 3,  label: 'Gentle nudge',   note: 'One follow-up if they never replied' },
+  { step: 'story',    day: 10, label: 'The story',      note: 'What Longevity is — a reason to care again' },
+  { step: 'viewing',  day: 24, label: 'Viewing invite', note: 'Come and see it, in person or by video' },
+  { step: 'terms',    day: 45, label: 'Terms',          note: 'Pricing and the 4-step payment schedule' },
+  { step: 'closing',  day: 60, label: 'Closing note',   note: 'A graceful last word — then we stop' },
+];
+
+export const stepLabel = (s: EmailStep) => SEQUENCE_STEPS.find((x) => x.step === s)?.label || s;
+
+/* Why a lead is not (or no longer) in the sequence — the same conditions the
+   engine applies, so what the operator reads is what actually happens. */
+export type SequenceState =
+  | { active: true; sent: number; next?: SequenceStepMeta; nextDate?: string }
+  | { active: false; sent: number; reason: string };
+
+export function sequenceState(l: Lead): SequenceState {
+  const box = l.outbox || [];
+  const sent = box.length;
+  const started = box.find((e) => e.step === 'welcome');
+
+  if (l.unsubscribed) return { active: false, sent, reason: 'The customer opted out' };
+  if (!l.email) return { active: false, sent, reason: 'No e-mail address on file' };
+  if (!['new', 'contacted', 'qualified'].includes(l.stage))
+    return { active: false, sent, reason: 'The deal has moved on — a person is handling it' };
+  const engaged = (l.history || []).some(
+    (h) => h.kind === 'message' || (h.kind === 'email' && h.detail.startsWith('Reply received')),
+  );
+  if (engaged) return { active: false, sent, reason: 'The customer replied — over to you' };
+  if (!started) return { active: false, sent, reason: 'Predates the automatic sequence' };
+
+  const done = new Set(box.map((e) => e.step));
+  const next = SEQUENCE_STEPS.find((s) => !done.has(s.step));
+  if (!next) return { active: false, sent, reason: 'Sequence finished — all six sent' };
+
+  const nextDate = new Date(new Date(started.at).getTime() + next.day * 86_400_000).toISOString();
+  return { active: true, sent, next, nextDate };
+}
+
+/* The engine's decision for one lead, in pure form: which letter (if any) goes
+   out right now. Day 0 is sent by the intake, never by the sweep. When several
+   steps have come due — after a cron outage, say — only the LATEST one is
+   returned, so a lead never wakes up to four e-mails in one morning. */
+export function dueStep(l: Lead, now = Date.now()): SequenceStepMeta | null {
+  if (!sequenceState(l).active) return null;
+  const box = l.outbox || [];
+  const started = box.find((e) => e.step === 'welcome')!; // guaranteed by the active check
+  const day = Math.floor((now - new Date(started.at).getTime()) / 86_400_000);
+  const sent = new Set(box.map((e) => e.step));
+  let due: SequenceStepMeta | null = null;
+  for (const s of SEQUENCE_STEPS) {
+    if (s.step !== 'welcome' && s.day <= day && !sent.has(s.step)) due = s;
+  }
+  return due;
+}

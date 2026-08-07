@@ -5,6 +5,7 @@ import type {
 } from './types';
 import { PHASES, SCORES, STAGES } from './types';
 import { scoreFor } from './scoring';
+import { pickOwner } from './agents';
 import { STAGE_MAX_DAYS, hasNoNextStep, isStalled } from './rules';
 import { VILLAS, fmtTHB, phaseAmount, villaByName } from './villas';
 import unitCatalog from '../villas.json';
@@ -100,6 +101,16 @@ export async function relatedLeads(lead: Lead): Promise<Lead[]> {
 
 // ── Lead mutations ──
 
+/* Speed-to-lead: every lead gets a human owner the second it lands, so the
+   automatic reply can be signed by a real person and there is never a lead
+   nobody is responsible for. Silent no-op while no roster is configured. */
+async function assignOwner(lead: Lead): Promise<void> {
+  const owner = pickOwner(await (await backend()).allLeads());
+  if (!owner) return;
+  lead.owner = owner;
+  logActivity(lead, 'assigned', `Assigned to ${owner}`);
+}
+
 export async function createLeadFromPayload(p: Record<string, unknown>): Promise<Lead> {
   // Cap and clean every incoming string — same defensive posture as addEvent.
   const s = (k: string) =>
@@ -132,6 +143,7 @@ export async function createLeadFromPayload(p: Record<string, unknown>): Promise
     rev: 0,
   };
   lead.value = villaByName(lead.villa)?.price;
+  await assignOwner(lead);
   await (await backend()).insertLead(lead);
   return lead;
 }
@@ -209,7 +221,13 @@ export async function upsertLeadFromPayload(
   const channel = (s('form_type') || 'message').replace('_', ' ');
   const source = s('source');
   const newScore = scoreFor(s('form_type'), s('form_origin'));
+  // A lead from before the roster existed picks up an owner on its next contact.
+  const missingOwner = existing.owner ? undefined : pickOwner(await (await backend()).allLeads());
   const updated = await mutate(existing.id, (lead) => {
+    if (!lead.owner && missingOwner) {
+      lead.owner = missingOwner;
+      logActivity(lead, 'assigned', `Assigned to ${missingOwner}`);
+    }
     // Fill blanks only — never overwrite what the operator curated.
     for (const k of ['name', 'email', 'phone', 'whatsapp', 'villa'] as const) {
       const v = s(k);
@@ -287,6 +305,7 @@ export async function createManualLead(input: ManualLeadInput): Promise<Lead> {
   };
   const note = t(input.note);
   if (note) lead.notes.push({ id: randomUUID(), body: note, at: now() });
+  await assignOwner(lead);
   await (await backend()).insertLead(lead);
   return lead;
 }
@@ -296,6 +315,13 @@ const cap = (s?: string) => (s ? s[0].toUpperCase() + s.slice(1) : '?');
 
 function logActivity(lead: Lead, kind: Activity['kind'], detail: string) {
   (lead.history ??= []).push({ id: randomUUID(), kind, detail, at: now() });
+}
+
+/* Speed-to-lead measurement: the first moment a HUMAN acted on this lead — a
+   note, a task, a stage move, or arming the reply timer. Automatic e-mails
+   deliberately don't count; the point is how fast a person got involved. */
+function markFirstResponse(lead: Lead) {
+  if (!lead.first_response_at) lead.first_response_at = now();
 }
 
 /* Read-modify-write with optimistic concurrency: if another request saved the
@@ -326,6 +352,9 @@ export async function updateLead(id: string, patch: LeadPatch): Promise<Lead | n
     if (edited.length) logActivity(lead, 'contact', `Contact details updated (${edited.join(', ')})`);
     if ('value' in patch && patch.value !== lead.value)
       logActivity(lead, 'value', patch.value ? `Deal value set to ${fmtTHB(patch.value)}` : 'Deal value cleared');
+    if (patch.owner && patch.owner !== lead.owner)
+      logActivity(lead, 'assigned', `Assigned to ${patch.owner}`);
+    if (patch.stage || patch.score || edited.length) markFirstResponse(lead);
     Object.assign(lead, patch);
     // A revived deal is no longer lost — drop the stale reason.
     if (patch.stage && patch.stage !== 'lost') lead.lost_reason = undefined;
@@ -498,12 +527,18 @@ export async function allTasks(): Promise<GlobalTask[]> {
 
 export async function addNote(id: string, body: string): Promise<Lead | null> {
   const note: Note = { id: randomUUID(), body: cleanText(body).trim().slice(0, 4000), at: now() };
-  return mutate(id, (lead) => lead.notes.unshift(note));
+  return mutate(id, (lead) => {
+    lead.notes.unshift(note);
+    markFirstResponse(lead);
+  });
 }
 
 export async function addTask(id: string, title: string, due?: string): Promise<Lead | null> {
   const task: Task = { id: randomUUID(), title: cleanText(title).trim().slice(0, 300), due, done: false, at: now() };
-  return mutate(id, (lead) => lead.tasks.push(task));
+  return mutate(id, (lead) => {
+    lead.tasks.push(task);
+    markFirstResponse(lead);
+  });
 }
 
 export async function toggleTask(id: string, taskId: string): Promise<Lead | null> {
@@ -531,6 +566,17 @@ export async function recordSentEmail(id: string, email: import('./types').SentE
   });
 }
 
+/* The opt-out link at the foot of every automated e-mail. Ends the sequence
+   for good; a person writing to them by hand is unaffected. Idempotent, so a
+   double click (or a mail client prefetching the link) is harmless. */
+export async function unsubscribeLead(id: string): Promise<Lead | null> {
+  return mutate(id, (lead) => {
+    if (lead.unsubscribed) return;
+    lead.unsubscribed = true;
+    logActivity(lead, 'email', 'Customer opted out of the automated e-mails');
+  });
+}
+
 /* ── Awaiting-reply tracking ──
    The operator marks "email sent" on a lead; after 3 quiet days the lead (and
    its plot, if linked) shows a red flag. Marking it also drops a follow-up
@@ -543,6 +589,7 @@ export async function setAwaitingReply(id: string, on: boolean): Promise<Lead | 
   return mutate(id, (lead) => {
     if (on) {
       lead.awaiting_reply_since = now();
+      markFirstResponse(lead);
       logActivity(lead, 'email', 'Email sent — awaiting reply');
       const due = new Date(Date.now() + REPLY_FLAG_DAYS * 86_400_000).toISOString().slice(0, 10);
       if (!lead.tasks.some((t) => t.title === REPLY_TASK_TITLE && !t.done)) {

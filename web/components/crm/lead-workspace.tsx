@@ -7,6 +7,7 @@ import type { Lead, Score, Stage } from '@/lib/crm/types';
 import { LOST_REASONS, STAGES, SCORES } from '@/lib/crm/types';
 import { fmtTHB } from '@/lib/crm/villas';
 import { messageTemplates } from '@/lib/crm/templates';
+import { SEQUENCE_STEPS, sequenceState, stepLabel } from '@/lib/crm/sequence';
 import { LostReasonDialog } from '@/components/crm/lost-reason-dialog';
 
 /* Fixed locale + UTC: the server prerender and the browser must produce the
@@ -28,7 +29,7 @@ const CONTACT_FIELDS = [
   { key: 'villa', label: 'Villa' },
 ] as const;
 
-export function LeadWorkspace({ lead: initial, related = [], readOnly = false }: { lead: Lead; related?: Lead[]; readOnly?: boolean }) {
+export function LeadWorkspace({ lead: initial, related = [], roster = [], readOnly = false }: { lead: Lead; related?: Lead[]; roster?: string[]; readOnly?: boolean }) {
   const router = useRouter();
   const [lead, setLead] = useState<Lead>(initial);
   const [note, setNote] = useState('');
@@ -314,6 +315,27 @@ export function LeadWorkspace({ lead: initial, related = [], readOnly = false }:
           >
             {SCORES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
           </select>
+          {/* Owner — who this lead belongs to. Every automatic e-mail goes out
+              signed by this person, so it is never an anonymous "team" mail. */}
+          {(roster.length > 0 || lead.owner) && (
+            <>
+              <label className="crm-label" style={{ marginTop: 16 }}>Owner</label>
+              {roster.length > 1 || (lead.owner && !roster.includes(lead.owner)) ? (
+                <select
+                  className="crm-select"
+                  value={lead.owner || ''}
+                  disabled={busy}
+                  onChange={(e) => patch({ op: 'update', patch: { owner: e.target.value } })}
+                >
+                  <option value="">Unassigned</option>
+                  {lead.owner && !roster.includes(lead.owner) && <option value={lead.owner}>{lead.owner}</option>}
+                  {roster.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              ) : (
+                <div className="crm-meta">{lead.owner || roster[0] || '—'}</div>
+              )}
+            </>
+          )}
           <label className="crm-label" style={{ marginTop: 16 }}>Deal value (THB)</label>
           <input
             className="crm-input"
@@ -367,6 +389,44 @@ export function LeadWorkspace({ lead: initial, related = [], readOnly = false }:
             </>
           )}
         </div>
+
+        {/* Automatic sequence — what the engine has sent and what comes next,
+            so the operator is never surprised by a mail going out. */}
+        {(() => {
+          const seq = sequenceState(lead);
+          const sent = lead.outbox || [];
+          return (
+            <div className="crm-card">
+              <h3>Automatic sequence</h3>
+              {seq.active ? (
+                <div style={{ marginBottom: sent.length ? 12 : 0 }}>
+                  <div style={{ fontWeight: 600 }}>{seq.sent} of {SEQUENCE_STEPS.length} sent</div>
+                  {seq.next && (
+                    <div className="crm-meta" style={{ marginTop: 4 }}>
+                      Next: <b>{seq.next.label}</b> · {seq.next.note.toLowerCase()}
+                      <br />due {fmtDay(seq.nextDate)}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="crm-meta" style={{ marginBottom: sent.length ? 12 : 0 }}>
+                  Not running — {seq.reason.toLowerCase()}.
+                </div>
+              )}
+              {sent.length > 0 && (
+                <ul className="timeline">
+                  {sent.map((e) => (
+                    <li key={e.id} className="auto">
+                      <span className="badge stage tl-badge">{stepLabel(e.step)}</span>
+                      {e.subject}
+                      <div className="t">{fmtDate(e.at)}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Tasks */}
         <div className="crm-card">
