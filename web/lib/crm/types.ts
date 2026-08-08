@@ -115,7 +115,7 @@ export interface Task {
    with notes in the lead timeline, so the full history reads in one place. */
 export interface Activity {
   id: string;
-  kind: 'created' | 'stage' | 'score' | 'contact' | 'value' | 'merged' | 'email' | 'message' | 'assigned';
+  kind: 'created' | 'stage' | 'score' | 'contact' | 'value' | 'merged' | 'email' | 'message' | 'assigned' | 'download';
   detail: string; // human line, e.g. "New → Contacted"
   at: string;     // ISO
 }

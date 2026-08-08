@@ -8,6 +8,7 @@ import { LOST_REASONS, STAGES, SCORES } from '@/lib/crm/types';
 import { fmtTHB } from '@/lib/crm/villas';
 import { messageTemplates } from '@/lib/crm/templates';
 import { SEQUENCE_STEPS, sequenceState, stepLabel } from '@/lib/crm/sequence';
+import { DOCUMENTS } from '@/lib/crm/documents';
 import { LostReasonDialog } from '@/components/crm/lost-reason-dialog';
 
 /* Fixed locale + UTC: the server prerender and the browser must produce the
@@ -42,6 +43,7 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
   const [valueDraft, setValueDraft] = useState(initial.value ? String(initial.value) : '');
   const [valueDirty, setValueDirty] = useState(false);
   const [tpl, setTpl] = useState(0);
+  const [copied, setCopied] = useState('');
   const [losing, setLosing] = useState(false);
 
   async function patch(payload: Record<string, unknown>) {
@@ -388,6 +390,44 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
               </button>
             </>
           )}
+        </div>
+
+        {/* Documents — a tracked link per document, for sending by hand over
+            WhatsApp or a personal e-mail. Every open lands on the timeline, so
+            "did they actually read it?" stops being guesswork. */}
+        <div className="crm-card">
+          <h3>Documents</h3>
+          {DOCUMENTS.map((d) => {
+            const opens = (lead.history || []).filter((h) => h.kind === 'download' && h.detail === `Opened: ${d.title}`);
+            const last = opens[opens.length - 1];
+            return (
+              <div key={d.id} style={{ marginBottom: 14 }}>
+                <div style={{ fontWeight: 600 }}>{d.title}</div>
+                <div className="crm-meta" style={{ marginTop: 2 }}>{d.note}</div>
+                <div className="crm-meta" style={{ marginTop: 6, color: last ? 'var(--c-cream)' : undefined }}>
+                  {last
+                    ? `Opened ${opens.length}× · last ${fmtDate(last.at)}`
+                    : 'Not opened yet'}
+                </div>
+                <button
+                  className="crm-btn sm"
+                  style={{ marginTop: 8 }}
+                  onClick={async () => {
+                    const url = `${window.location.origin}/d/${d.id}?l=${lead.id}`;
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      setCopied(d.id);
+                      setTimeout(() => setCopied(''), 2000);
+                    } catch {
+                      window.prompt('Copy this link:', url); // clipboard blocked (http, old browser)
+                    }
+                  }}
+                >
+                  {copied === d.id ? '✓ Link copied' : 'Copy tracked link'}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {/* Automatic sequence — what the engine has sent and what comes next,

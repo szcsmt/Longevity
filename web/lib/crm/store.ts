@@ -566,6 +566,24 @@ export async function recordSentEmail(id: string, email: import('./types').SentE
   });
 }
 
+/* A lead opened one of our documents (the tracked /d/<id> link). Recorded on
+   the timeline, which is the whole point: an operator can see that the person
+   who went quiet did in fact read the brochure twice.
+
+   Deduped within the hour, because a PDF viewer commonly re-requests the file
+   (range requests, reload, a second tab) and three identical lines in a row
+   would say less than one. */
+export async function recordDownload(id: string, title: string): Promise<void> {
+  const cut = new Date(Date.now() - 3_600_000).toISOString();
+  await mutate(id, (lead) => {
+    const detail = `Opened: ${title}`;
+    const repeat = (lead.history || []).some(
+      (h) => h.kind === 'download' && h.detail === detail && h.at > cut,
+    );
+    if (!repeat) logActivity(lead, 'download', detail);
+  });
+}
+
 /* The opt-out link at the foot of every automated e-mail. Ends the sequence
    for good; a person writing to them by hand is unaffected. Idempotent, so a
    double click (or a mail client prefetching the link) is harmless. */

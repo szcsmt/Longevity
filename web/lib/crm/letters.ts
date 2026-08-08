@@ -1,5 +1,6 @@
 import type { Lead } from './types';
 import { type Agent, agentByName, agents } from './agents';
+import { docHref } from './documents';
 import { VILLAS } from './villas';
 
 /* ── The letters the automatic sequence sends ──
@@ -16,7 +17,11 @@ import { VILLAS } from './villas';
    it says and how it looks. */
 
 const SITE = 'https://longevitysamui.com';
-const BROCHURE_URL = `${SITE}/brochure/longevity-brochure-2026.pdf`;
+
+/* Documents are linked through the tracked /d/<id> route, so the CRM records
+   who opened what — and so the file behind a link can be replaced without
+   breaking the letters already sitting in people's inboxes. */
+const brochureUrl = (l: Lead) => `${SITE}${docHref('brochure', l.id)}`;
 
 /* Design tokens, straight from the hand-off. */
 const PAGE = '#060E08';
@@ -260,7 +265,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
             Owners receive a fixed return and full management; guests receive the medical programme.`) +
           essentials() +
           priceLine() +
-          buttons({ label: 'Download brochure', href: BROCHURE_URL }, { label: 'Book a call', href: callHref(l) }) +
+          buttons({ label: 'Download brochure', href: brochureUrl(l) }, { label: 'Book a call', href: callHref(l) }) +
           p(`If any of the residences catches your eye, just reply to this e-mail. I am happy to walk
             you through availability, pricing and how reservation works.`),
       }),
@@ -279,7 +284,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
             exact pricing and our four-step payment schedule.`) +
           essentials() +
           priceLine() +
-          buttons({ label: 'Book a call', href: callHref(l) }, { label: 'Download brochure', href: BROCHURE_URL }) +
+          buttons({ label: 'Book a call', href: callHref(l) }, { label: 'Download brochure', href: brochureUrl(l) }) +
           p(`I will come back to you personally within a few hours. If you would rather talk sooner,
             simply reply to this e-mail.`),
       }),
@@ -297,7 +302,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
           physician-led longevity centre.`) +
         essentials() +
         priceLine() +
-        buttons({ label: 'Book a call', href: callHref(l) }, { label: 'Download brochure', href: BROCHURE_URL }) +
+        buttons({ label: 'Book a call', href: callHref(l) }, { label: 'Download brochure', href: brochureUrl(l) }) +
         p(`In the meantime, feel free to reply with anything you would like to know. This inbox comes
           straight to me.`),
     }),
@@ -358,7 +363,7 @@ export function viewingEmail(l: Lead): { subject: string; html: string } {
           time properly, so it is never a rushed walk-through.`) +
         p(`If travelling is not practical right now, I will do a live video tour with you instead. The
           same thing from your sofa, and you can ask anything as we go.`) +
-        buttons({ label: 'Arrange a viewing', href: callHref(l) }, { label: 'Download brochure', href: BROCHURE_URL }),
+        buttons({ label: 'Arrange a viewing', href: callHref(l) }, { label: 'Download brochure', href: brochureUrl(l) }),
     }),
   };
 }
