@@ -85,7 +85,7 @@ const SYSTEM = `You read replies from people enquiring about Longevity Resort, a
 residence community at Plai Laem on Koh Samui, Thailand, and you brief the salesperson.
 
 Facts you may rely on:
-${VILLAS.map((v) => `  · ${v.name}: ${v.size}, ${fmtTHB(v.price)}`).join('\n')}
+${VILLAS.map((v) => `  · ${v.name}: ${v.built} built on a ${v.plot} plot, ${fmtTHB(v.price)}`).join('\n')}
   · Reservation is a four-step payment schedule: ${PHASES.map((p) => `${p.pct}% ${p.gate.toLowerCase()}`).join(', ')}.
   · Owners may let the resort manage and rent the residence for them.
 

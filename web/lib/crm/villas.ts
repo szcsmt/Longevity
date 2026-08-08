@@ -4,14 +4,15 @@
 
 export interface Villa {
   name: string;
-  size: string;
-  price: number; // THB
+  built: string;  // the residence itself
+  plot: string;   // the land it sits on
+  price: number;  // THB
 }
 
 export const VILLAS: Villa[] = [
-  { name: 'Residence M', size: '76.46 m²', price: 7_650_000 },
-  { name: 'Residence L', size: '79.19 m²', price: 8_050_000 },
-  { name: 'Residence XL', size: '126.65 m²', price: 11_200_000 },
+  { name: 'Residence M',  built: '80.5 m²',  plot: '105 m²',   price: 7_650_000 },
+  { name: 'Residence L',  built: '83.72 m²', plot: '116 m²',   price: 8_050_000 },
+  { name: 'Residence XL', built: '110.1 m²', plot: '144.9 m²', price: 11_200_000 },
 ];
 
 /** Match a lead's free-text villa field to the catalogue (case-insensitive). */

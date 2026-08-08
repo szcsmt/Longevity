@@ -31,7 +31,6 @@ export default function Home() {
       {process.env.NODE_ENV === 'development' && <KeyFactsBand />}
       <IntroSection />
       <StorySection />
-      <SolutionSection />
       {/* Preview only (localhost/dev) until the owner approves it — kept out of production. */}
       {process.env.NODE_ENV === 'development' && <CentreSection />}
       <EstateSection />
@@ -40,6 +39,9 @@ export default function Home() {
       <AmenitiesSection />
       <VillasSection />
       <InteriorSection />
+      {/* "Where it belongs — Koh Samui": the island sits between the residence and the
+          map, so the story zooms out from the interior to the island, then to the pin. */}
+      <SolutionSection />
       <MapSection />
       <CtaSection />
       <FooterSection />

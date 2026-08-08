@@ -67,6 +67,38 @@ function justTheReply(text: string): string {
   return text.slice(0, cut).trim() || text.trim();
 }
 
+/** Pass the reply on to the operator's mailbox, brief first. Best-effort. */
+async function forwardToOperator(
+  lead: { id: string; name?: string; email?: string },
+  subject: string | undefined,
+  body: string,
+  brief: string | null,
+) {
+  const key = process.env.RESEND_API_KEY;
+  const to = process.env.CRM_NOTIFY_TO;
+  const from = process.env.CRM_NOTIFY_FROM || process.env.CRM_AUTO_FROM;
+  if (!key || !to || !from) return;
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = `
+    <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#222">
+      <p style="margin:0 0 4px"><b>${esc(lead.name || lead.email || 'Someone')}</b> replied${subject ? ` — ${esc(subject)}` : ''}</p>
+      <p style="margin:0 0 16px"><a href="https://longevitysamui.com/admin/leads/${lead.id}">Open the lead in the CRM</a></p>
+      ${brief ? `<pre style="white-space:pre-wrap;background:#F6F4EF;padding:14px;border-radius:4px;margin:0 0 16px">${esc(brief)}</pre>` : ''}
+      <hr style="border:none;border-top:1px solid #E4DED2;margin:16px 0">
+      <pre style="white-space:pre-wrap;margin:0">${esc(body)}</pre>
+    </div>`;
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from, to: [to], subject: `Reply — ${lead.name || lead.email || 'lead'}`,
+        reply_to: lead.email || undefined, html,
+      }),
+    });
+  } catch { /* the reply is already filed; forwarding is a convenience */ }
+}
+
 export async function POST(request: Request) {
   const secret = process.env.INBOUND_SECRET;
   const key = new URL(request.url).searchParams.get('key');
@@ -98,6 +130,11 @@ export async function POST(request: Request) {
         ? { score: reading.score, note: readingAsNote(reading), urgency: reading.urgency }
         : null,
     });
+
+    // The operator still wants the reply in their own inbox — reading it in the
+    // CRM is not the same as being able to answer it from the phone. Forwarded
+    // with the reading on top, so the brief arrives with the message.
+    await forwardToOperator(lead, mail?.subject, body, reading ? readingAsNote(reading) : null);
 
     return Response.json({ ok: true, lead: lead.id, read: Boolean(reading) });
   } catch {

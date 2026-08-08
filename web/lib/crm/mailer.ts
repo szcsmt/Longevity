@@ -32,7 +32,11 @@ export async function sendEmail(mail: OutgoingEmail): Promise<boolean> {
       body: JSON.stringify({
         from: process.env.CRM_AUTO_FROM,
         to: [mail.to],
-        reply_to: process.env.CRM_NOTIFY_TO || undefined, // replies land with the operator
+        /* Where replies go. With Resend inbound configured, set CRM_REPLY_TO to
+           that inbound address so the CRM sees answers and can stop the sequence;
+           the inbound route forwards a copy to the operator's mailbox either way.
+           Unset, replies go straight to the operator and the CRM stays blind. */
+        reply_to: process.env.CRM_REPLY_TO || process.env.CRM_NOTIFY_TO || undefined,
         subject: mail.subject,
         html: mail.html,
       }),
