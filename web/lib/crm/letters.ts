@@ -104,7 +104,7 @@ const intro = (html: string) => `
 /** THE ESSENTIALS — the four-figure table from the hand-off. */
 const essentials = () => {
   const rows: [string, string][] = [
-    ['10%', 'Fixed annual ROI, contracted'],
+    ['10%', 'Fixed annual ROI'],
     ['100%', 'Buyback guaranteed'],
     ['1 &amp; 2 BR', 'Residences with a private pool'],
     ['5 min', 'To the beach, 24/7 gated security'],

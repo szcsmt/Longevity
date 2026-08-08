@@ -146,7 +146,7 @@ export function offerHtml({ lead, value, validDays = 14 }: OfferInput): string {
   <h2>Included with ownership</h2>
   <ul style="margin:0;padding-left:20px;">
     <li>Full management of the residence, including letting it on the owner's behalf</li>
-    <li>10% fixed annual return, contracted</li>
+    <li>10% fixed annual return</li>
     <li>100% buyback guarantee</li>
     <li>Access to the longevity and diagnostics centre</li>
     <li>24/7 gated security, five minutes from the beach</li>
