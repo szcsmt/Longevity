@@ -566,6 +566,64 @@ export async function recordSentEmail(id: string, email: import('./types').SentE
   });
 }
 
+/* ── A customer replied ──
+
+   The single most important event in the whole system: it means a human is on
+   the other end. Filing it does four things, and the first three need no
+   intelligence at all:
+
+     1. the message lands on the timeline as a note, in full;
+     2. a `message` activity is logged, which is what stops the automated
+        sequence — from here a person owns the conversation;
+     3. the reply timer is cleared and its chase task ticked off;
+     4. if the reading engine is configured, its brief is filed as a second
+        note and the score is updated from what the customer actually said.
+
+   A lost lead who writes again is a second chance, not history — same revival
+   rule as the inbound-message path. */
+export interface InboundReply {
+  message: string;
+  channel?: string;                       // "email", "whatsapp"… for the timeline line
+  reading?: { score: Score; note: string; urgency: string } | null;
+}
+
+export async function recordInboundReply(id: string, r: InboundReply): Promise<Lead | null> {
+  const channel = r.channel || 'email';
+  return mutate(id, (lead) => {
+    lead.notes.unshift({ id: randomUUID(), body: cleanText(r.message).trim().slice(0, 8000), at: now() });
+    logActivity(lead, 'message', `Reply received by ${channel}`);
+
+    if (lead.awaiting_reply_since) {
+      lead.awaiting_reply_since = undefined;
+      const chase = lead.tasks.find((t) => t.title === REPLY_TASK_TITLE && !t.done);
+      if (chase) chase.done = true;
+    }
+
+    if (lead.stage === 'lost') {
+      logActivity(lead, 'stage', `${stageLabel('lost')} → ${stageLabel('new')} (re-engaged)`);
+      lead.stage = 'new';
+      lead.lost_reason = undefined;
+    }
+
+    if (r.reading) {
+      lead.notes.unshift({ id: randomUUID(), body: r.reading.note, at: now() });
+      if (r.reading.score !== lead.score) {
+        logActivity(lead, 'score', `Score ${cap(lead.score)} → ${cap(r.reading.score)} (read from their reply)`);
+        lead.score = r.reading.score;
+      }
+      // A reply that needs answering today gets a dated task, so it can't sink.
+      if (r.reading.urgency === 'today' && !lead.tasks.some((t) => t.title === REPLY_NOW_TASK && !t.done)) {
+        lead.tasks.push({
+          id: randomUUID(), title: REPLY_NOW_TASK,
+          due: now(), done: false, at: now(),
+        });
+      }
+    }
+  });
+}
+
+const REPLY_NOW_TASK = 'Answer today — they are waiting';
+
 /* A lead opened one of our documents (the tracked /d/<id> link). Recorded on
    the timeline, which is the whole point: an operator can see that the person
    who went quiet did in fact read the brochure twice.
@@ -580,7 +638,25 @@ export async function recordDownload(id: string, title: string): Promise<void> {
     const repeat = (lead.history || []).some(
       (h) => h.kind === 'download' && h.detail === detail && h.at > cut,
     );
-    if (!repeat) logActivity(lead, 'download', detail);
+    if (repeat) return;
+    logActivity(lead, 'download', detail);
+
+    /* Behaviour beats the form. The score a lead arrives with is a guess made
+       from which button they pressed; opening what we sent is evidence. One
+       open says they are reading — at least warm. Three says they keep coming
+       back to it, which in practice is someone building a case for a decision.
+
+       Only ever upgrades: a human who judged a lead cold after a phone call
+       knows more than a click does, and this must not overwrite that. */
+    const opens = (lead.history || []).filter((h) => h.kind === 'download').length;
+    const earned: Score = opens >= 3 ? 'hot' : 'warm';
+    if (SCORE_RANK[earned] < SCORE_RANK[lead.score]) {
+      logActivity(
+        lead, 'score',
+        `Score ${cap(lead.score)} → ${cap(earned)} (opened our documents ${opens}×)`,
+      );
+      lead.score = earned;
+    }
   });
 }
 
