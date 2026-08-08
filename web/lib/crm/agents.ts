@@ -2,8 +2,13 @@ import type { Lead } from './types';
 
 /* The sales team, configured in env so it changes without a code edit:
 
-     CRM_AGENTS="Máté Szűcs|sales@longevitysamui.com|+66 12 345 6789;Anna K|anna@…|+66…"
-                 name      | e-mail (optional)     | phone (optional)
+     CRM_AGENTS="Máté Szűcs|sales@longevitysamui.com|+66 12 345 6789|hu,en;María|maria@…||es,en"
+                 name      | e-mail (optional)     | phone (optional)  | languages (optional)
+
+   Languages are ISO codes, comma-separated, most fluent first. They are what
+   lets a Spanish-speaking enquirer reach a Spanish-speaking salesperson — see
+   pickOwner below. Leave the field off and the agent is treated as taking any
+   language.
 
    Agents are who leads get assigned to, and whose name/phone signs the
    automated customer e-mails. With no roster configured, the single
@@ -14,7 +19,16 @@ export interface Agent {
   email?: string;
   phone?: string;
   title?: string;
+  languages?: string[];  // ISO 639-1, most fluent first
 }
+
+const langList = (s?: string): string[] | undefined => {
+  const codes = (s || '')
+    .split(',')
+    .map((x) => x.trim().slice(0, 2).toLowerCase())
+    .filter(Boolean);
+  return codes.length ? codes : undefined;
+};
 
 export function agents(): Agent[] {
   const raw = (process.env.CRM_AGENTS || '').trim();
@@ -22,8 +36,9 @@ export function agents(): Agent[] {
     return raw
       .split(';')
       .map((entry) => {
-        const [name, email, phone] = entry.split('|').map((s) => s.trim());
+        const [name, email, phone, langs] = entry.split('|').map((s) => s.trim());
         return name ? { name, email: email || undefined, phone: phone || undefined,
+                        languages: langList(langs),
                         title: process.env.CRM_AGENT_TITLE || undefined } : null;
       })
       .filter(Boolean) as Agent[];
@@ -35,8 +50,14 @@ export function agents(): Agent[] {
         email: process.env.CRM_NOTIFY_TO || undefined,
         phone: process.env.CRM_AGENT_PHONE || undefined,
         title: process.env.CRM_AGENT_TITLE || undefined,
+        languages: langList(process.env.CRM_AGENT_LANGUAGES),
       }]
     : [];
+}
+
+/** Agents who can hold a conversation in this language. */
+export function agentsSpeaking(language: string): Agent[] {
+  return agents().filter((a) => !a.languages || a.languages.includes(language));
 }
 
 export function agentByName(name?: string): Agent | undefined {
@@ -48,10 +69,19 @@ export function agentByName(name?: string): Agent | undefined {
 /* Round-robin that self-corrects: the next lead goes to whoever currently
    carries the fewest OPEN leads (ties break on roster order). Stateless — no
    counter to drift — and it rebalances by itself when someone closes deals
-   faster or joins mid-flight. */
-export function pickOwner(existing: Lead[]): string | undefined {
-  const roster = agents();
-  if (!roster.length) return undefined;
+   faster or joins mid-flight.
+
+   Language comes first. Being sold to in your own language beats being sold to
+   by whoever happens to be least busy, so the load balancing runs *within* the
+   set of agents who speak the lead's language. If nobody speaks it, the whole
+   roster is in play — a lead in the hands of someone who can't speak their
+   language still beats a lead nobody owns. */
+export function pickOwner(existing: Lead[], language?: string): string | undefined {
+  const all = agents();
+  if (!all.length) return undefined;
+
+  const speakers = language ? agentsSpeaking(language) : all;
+  const roster = speakers.length ? speakers : all;
   if (roster.length === 1) return roster[0].name;
 
   const open = new Set(['new', 'contacted', 'qualified', 'reserved']);

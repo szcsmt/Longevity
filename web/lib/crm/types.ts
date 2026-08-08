@@ -135,6 +135,11 @@ export interface Lead {
   villa?: string;
   gdpr_consent?: boolean;
 
+  /* The language they were reading the site in when they wrote to us. Stored
+     because it cannot be re-derived later; the phone-number reading (which is
+     stronger) is computed on demand in language.ts. */
+  locale?: string;
+
   // Deal
   value?: number; // expected deal value in THB — defaults from the villa list price
 

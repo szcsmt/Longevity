@@ -9,6 +9,7 @@ import { fmtTHB } from '@/lib/crm/villas';
 import { messageTemplates } from '@/lib/crm/templates';
 import { SEQUENCE_STEPS, sequenceState, stepLabel } from '@/lib/crm/sequence';
 import { DOCUMENTS } from '@/lib/crm/documents';
+import { guessLanguage, languageLabel, languageName } from '@/lib/crm/language';
 import { LostReasonDialog } from '@/components/crm/lost-reason-dialog';
 
 /* Fixed locale + UTC: the server prerender and the browser must produce the
@@ -317,6 +318,25 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
           >
             {SCORES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
           </select>
+          {/* Language — read off the phone number where possible, so the lead
+              can be handed to someone who speaks it. Derived, never stored:
+              correcting the phone number corrects this line immediately. */}
+          {(() => {
+            const g = guessLanguage(lead);
+            if (g.from === 'none') return null;
+            const source = { phone: 'from their phone number', browsing: 'from the language they browsed in', email: 'from their e-mail domain', none: '' }[g.from];
+            return (
+              <>
+                <label className="crm-label" style={{ marginTop: 16 }}>Language</label>
+                <div style={{ fontWeight: 600 }}>{languageLabel(g)}</div>
+                <div className="crm-meta" style={{ marginTop: 2 }}>
+                  {source}
+                  {g.alsoSpoken.length ? ` · also likely: ${g.alsoSpoken.map(languageName).join(', ')}` : ''}
+                </div>
+              </>
+            );
+          })()}
+
           {/* Owner — who this lead belongs to. Every automatic e-mail goes out
               signed by this person, so it is never an anonymous "team" mail. */}
           {(roster.length > 0 || lead.owner) && (

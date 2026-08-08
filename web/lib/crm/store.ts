@@ -6,6 +6,7 @@ import type {
 import { PHASES, SCORES, STAGES } from './types';
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
+import { guessLanguage, languageLabel } from './language';
 import { STAGE_MAX_DAYS, hasNoNextStep, isStalled } from './rules';
 import { VILLAS, fmtTHB, phaseAmount, villaByName } from './villas';
 import unitCatalog from '../villas.json';
@@ -105,10 +106,11 @@ export async function relatedLeads(lead: Lead): Promise<Lead[]> {
    automatic reply can be signed by a real person and there is never a lead
    nobody is responsible for. Silent no-op while no roster is configured. */
 async function assignOwner(lead: Lead): Promise<void> {
-  const owner = pickOwner(await (await backend()).allLeads());
+  const lang = guessLanguage(lead);
+  const owner = pickOwner(await (await backend()).allLeads(), lang.language);
   if (!owner) return;
   lead.owner = owner;
-  logActivity(lead, 'assigned', `Assigned to ${owner}`);
+  logActivity(lead, 'assigned', `Assigned to ${owner} (${languageLabel(lang)})`);
 }
 
 export async function createLeadFromPayload(p: Record<string, unknown>): Promise<Lead> {
@@ -125,6 +127,7 @@ export async function createLeadFromPayload(p: Record<string, unknown>): Promise
     form_origin: s('form_origin'),
     villa: s('villa'),
     gdpr_consent: p['gdpr_consent'] === true,
+    locale: s('locale'),
     utm_source: s('utm_source'),
     utm_medium: s('utm_medium'),
     utm_campaign: s('utm_campaign'),
@@ -222,7 +225,9 @@ export async function upsertLeadFromPayload(
   const source = s('source');
   const newScore = scoreFor(s('form_type'), s('form_origin'));
   // A lead from before the roster existed picks up an owner on its next contact.
-  const missingOwner = existing.owner ? undefined : pickOwner(await (await backend()).allLeads());
+  const missingOwner = existing.owner
+    ? undefined
+    : pickOwner(await (await backend()).allLeads(), guessLanguage({ ...existing, phone: s('phone') || existing.phone }).language);
   const updated = await mutate(existing.id, (lead) => {
     if (!lead.owner && missingOwner) {
       lead.owner = missingOwner;

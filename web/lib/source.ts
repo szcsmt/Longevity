@@ -54,6 +54,11 @@ export async function sendLead(payload: Record<string, unknown>): Promise<void> 
         ...captureUtm(),
         ...payload,
         page_url: typeof location !== 'undefined' ? location.href : '',
+        // Which language they were reading the site in — the CRM uses it to
+        // route the lead to someone who speaks it (see lib/crm/language.ts).
+        locale: typeof document !== 'undefined'
+          ? (document.documentElement.lang || navigator.language || '').slice(0, 5)
+          : '',
         submitted_at: new Date().toISOString(),
       }),
     });
