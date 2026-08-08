@@ -42,7 +42,7 @@ export async function notifyNewLead(lead: Lead): Promise<void> {
     .map(
       ([k, v]) => `
       <tr>
-        <td width="120" style="width:120px;padding:12px 0 0 0;font-family:Helvetica,Arial,sans-serif;font-size:11px;line-height:26px;letter-spacing:0.22em;text-transform:uppercase;color:#94896F;">${k}</td>
+        <td width="120" style="width:120px;padding:12px 0 0 0;font-family:Helvetica,Arial,sans-serif;font-size:11px;line-height:26px;letter-spacing:0.22em;text-transform:uppercase;color:#C6BCA6;">${k}</td>
         <td style="padding:12px 0 0 0;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:26px;color:#D6C7A8;">${esc(v!)}${k === 'Score' && hot ? ' &#128293;' : ''}</td>
       </tr>`,
     )
@@ -82,7 +82,7 @@ export async function notifyNewLead(lead: Lead): Promise<void> {
 
 <tr><td class="px" style="padding:44px 56px 0 56px;" align="center">
   <img src="${SITE}/email/logo.png" width="134" height="100" alt="Longevity Resort" style="display:block;width:134px;height:100px;border:0;outline:none;text-decoration:none;margin:0 auto;">
-  <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;line-height:16px;letter-spacing:0.30em;text-transform:uppercase;color:#94896F;padding-top:16px;">New lead &middot; Longevity CRM</div>
+  <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;line-height:16px;letter-spacing:0.30em;text-transform:uppercase;color:#C6BCA6;padding-top:16px;">New lead &middot; Longevity CRM</div>
 </td></tr>
 
 <tr><td class="px" style="padding:34px 56px 0 56px;" align="center">
@@ -121,7 +121,7 @@ export async function notifyNewLead(lead: Lead): Promise<void> {
 
 <tr><td class="px" style="padding:24px 56px 44px 56px;" align="center">
   <div style="font-family:Georgia,'Times New Roman',serif;font-size:18px;line-height:26px;color:#D8B87C;">Longevity CRM</div>
-  <div style="font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:22px;color:#94896F;padding-top:6px;">Automatic alert &middot;
+  <div style="font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:22px;color:#C6BCA6;padding-top:6px;">Automatic alert &middot;
     <a href="${SITE}/admin" style="color:#C9A46A;text-decoration:none;">longevitysamui.com/admin</a>
   </div>
 </td></tr>

@@ -123,7 +123,7 @@ const PANEL = '#0A140C';
 const GOLD = '#C9A46A';
 const GOLD_HI = '#D8B87C';
 const BODY = '#D6C7A8';
-const MUTED = '#94896F';
+const MUTED = '#C6BCA6';   // sand, matching the letters — see letters.ts
 
 function section(title: string, lines: DigestLine[], urgent = false): string {
   if (!lines.length) return '';

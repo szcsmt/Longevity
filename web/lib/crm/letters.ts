@@ -48,8 +48,13 @@ const EYEBROW = '#E4C48F';
 const BODY = '#E6DFD1';        // intro/lead copy
 const BODY_ROW = '#DBD3C3';    // the essentials table's right column
 const BODY_2 = '#C9BFAC';      // price line, one step back from the body
-const MUTED = '#8B8371';        // location line, sign-off detail
-const LEGAL = '#6A6353';        // legal footer, outside the panel
+/* Sand, not grey. These two carry the sign-off and the footer — the smallest
+   type in the letter — and the olive-grey they replace measured 5.0:1 and
+   3.1:1 against the panel, which is unreadable at 11px on a phone in daylight.
+   Same family as the body copy, two steps back rather than five: 10.0:1 and
+   7.6:1, so they still recede without disappearing. */
+const MUTED = '#C6BCA6';        // location line, sign-off detail
+const LEGAL = '#B0A488';        // legal footer, outside the panel
 const HAIR = 'rgba(201,164,106,0.26)';
 const SERIF = "Georgia,'Times New Roman',serif";
 const SANS = 'Helvetica,Arial,sans-serif';
