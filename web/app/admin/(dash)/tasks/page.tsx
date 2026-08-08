@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { isAdmin } from '@/lib/crm/auth';
+import { canEdit } from '@/lib/crm/auth';
 import { allTasks, type GlobalTask } from '@/lib/crm/store';
 import { STAGES } from '@/lib/crm/types';
 import { TaskToggle } from '@/components/crm/task-toggle';
@@ -40,7 +40,7 @@ function Group({ title, items, overdue, empty, readOnly }: { title: string; item
 
 export default async function TasksPage() {
   const tasks = await allTasks();
-  const readOnly = !(await isAdmin());
+  const readOnly = !(await canEdit());
   // Compare CALENDAR DATES, not instants: a due date is stored as midnight UTC,
   // so an instant comparison would flag today's tasks as overdue all day.
   const todayStr = new Date().toISOString().slice(0, 10);

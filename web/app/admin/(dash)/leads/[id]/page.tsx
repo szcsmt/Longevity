@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { isAdmin } from '@/lib/crm/auth';
+import { canEdit } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import { getLead, relatedLeads } from '@/lib/crm/store';
 import { LeadWorkspace } from '@/components/crm/lead-workspace';
@@ -27,7 +27,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       </div>
       {/* The roster lives in env (server-only), so the workspace gets the names
           it may assign to as a prop. */}
-      <LeadWorkspace lead={lead} related={related} roster={agents().map((a) => a.name)} readOnly={!(await isAdmin())} />
+      <LeadWorkspace lead={lead} related={related} roster={agents().map((a) => a.name)} readOnly={!(await canEdit())} />
     </>
   );
 }

@@ -13,10 +13,20 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 export const CRM_COOKIE = 'lr_crm';
 const SECRET_SUFFIX = 'lr-crm-session-v2';
 
-/* Roles: an "admin" can do everything; a "viewer" sees everything but every
-   mutating API rejects them (403) — for guests, investors, auditors.
-   CRM_USERS format: "name:password" (admin) or "name:password:viewer". */
-export type CrmRole = 'admin' | 'viewer';
+/* Roles, from most to least power:
+
+     admin   everything — including deleting leads, editing the masterplan and
+             its money, exporting the database, and running the maintenance jobs
+     agent   a salesperson: works leads all day (notes, tasks, stages, scores,
+             owners) but cannot delete a lead, touch the sales ledger or export
+             the list. The things that are irreversible or that walk out of the
+             building stay with the owner of the business.
+     viewer  reads everything, changes nothing — guests, investors, auditors
+
+   CRM_USERS format: "name:password", "name:password:agent", "name:password:viewer".
+   An entry with no role is an admin, which keeps every existing account working
+   exactly as it did before this role existed. */
+export type CrmRole = 'admin' | 'agent' | 'viewer';
 
 interface CrmAccount { name: string; password: string; role: CrmRole }
 
@@ -30,7 +40,8 @@ function accounts(): CrmAccount[] {
     if (parts.length >= 2) {
       const name = parts[0].trim();
       const password = parts[1].trim();
-      const role: CrmRole = parts[2]?.trim().toLowerCase() === 'viewer' ? 'viewer' : 'admin';
+      const named = parts[2]?.trim().toLowerCase();
+      const role: CrmRole = named === 'viewer' ? 'viewer' : named === 'agent' ? 'agent' : 'admin';
       if (name && password) list.push({ name, password, role });
     }
   }
@@ -98,7 +109,16 @@ export async function currentUser(): Promise<string | null> {
   return (await currentAccount())?.name ?? null;
 }
 
-/** True when the session may MUTATE data. Every write endpoint checks this. */
+/** True for the account that owns the business. Guards the irreversible and
+    the exportable: deleting leads, the sales ledger, exports, maintenance. */
 export async function isAdmin(): Promise<boolean> {
   return (await currentAccount())?.role === 'admin';
+}
+
+/** True when the session may MUTATE lead data — admins and agents both. This
+    is the check every day-to-day write endpoint wants; `isAdmin` is for the
+    handful of operations a salesperson should not be able to perform. */
+export async function canEdit(): Promise<boolean> {
+  const role = (await currentAccount())?.role;
+  return role === 'admin' || role === 'agent';
 }

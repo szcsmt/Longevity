@@ -1,4 +1,4 @@
-import { isAuthed } from '@/lib/crm/auth';
+import { isAdmin, isAuthed } from '@/lib/crm/auth';
 import { listLeads } from '@/lib/crm/store';
 import type { Lead, Stage } from '@/lib/crm/types';
 
@@ -41,6 +41,9 @@ const cell = (v: string | number | undefined) => {
 
 export async function GET(req: Request) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
+  /* Every contact detail we hold, in one file, on someone's laptop. Hiding the
+     button is not a control; refusing the request is. */
+  if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
   const url = new URL(req.url);
   const p = (k: string) => url.searchParams.get(k) || undefined;
   const leads = await listLeads({

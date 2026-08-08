@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { isAdmin } from '@/lib/crm/auth';
+import { canEdit, currentUser, isAdmin } from '@/lib/crm/auth';
+import { agents } from '@/lib/crm/agents';
 import { listLeads } from '@/lib/crm/store';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
@@ -31,13 +32,19 @@ export default async function LeadsPage({
     stage: str(sp.stage),
     score: str(sp.score),
     form_type: str(sp.form_type),
+    owner: str(sp.owner),
     q: str(sp.q),
   };
   // Object.hasOwn, not a truthy lookup: '__proto__' or 'hasOwnProperty' would
   // otherwise pass the check and hand Array.sort a non-function comparator.
   const sort = Object.hasOwn(SORTS, str(sp.sort)) ? str(sp.sort) : 'received';
   const leads = (await listLeads(filter as never)).sort(SORTS[sort]);
-  const admin = await isAdmin();
+  const [admin, editor, me] = await Promise.all([isAdmin(), canEdit(), currentUser()]);
+  const roster = agents().map((a) => a.name);
+  /* A salesperson's own leads are the ones they are paid to work, so that is
+     the view they land on. It is a default, not a wall: "Everyone" is one
+     click away, because covering for a colleague is normal. */
+  const mine = me && roster.includes(me) ? me : null;
 
   // Preserve the current view in links (sorting keeps filters, export keeps both).
   const qs = (over: Record<string, string>) => {
@@ -58,9 +65,16 @@ export default async function LeadsPage({
           <p className="crm-sub">{leads.length} {leads.length === 1 ? 'lead' : 'leads'} matching your view.</p>
         </div>
         <div className="act-row">
-          {admin && <Link className="crm-btn gold" href="/admin/leads/new">+ Add lead</Link>}
+          {editor && <Link className="crm-btn gold" href="/admin/leads/new">+ Add lead</Link>}
           {admin && <DedupeButton />}
-          <a className="crm-btn" href={`/api/crm/export${qs({ sort: '' })}`}>Export CSV</a>
+          {/* The export walks out of the building with every contact on it,
+              so it stays with the owner. */}
+          {admin && <a className="crm-btn" href={`/api/crm/export${qs({ sort: '' })}`}>Export CSV</a>}
+          {mine && (
+            <Link className="crm-btn" href={filter.owner === mine ? '/admin/leads' : `/admin/leads${qs({ owner: mine })}`}>
+              {filter.owner === mine ? 'Everyone' : 'My leads'}
+            </Link>
+          )}
           <Link className="crm-btn" href="/admin/pipeline">Pipeline view →</Link>
         </div>
       </div>
@@ -88,11 +102,21 @@ export default async function LeadsPage({
             {FORM_TYPES.map((f) => <option key={f} value={f}>{f.replace('_', ' ')}</option>)}
           </select>
         </div>
+        {/* With one salesperson this is noise, so it only appears once there
+            is a roster to choose from. */}
+        {roster.length > 1 && (
+          <div className="fld">
+            <select className="crm-select" name="owner" defaultValue={filter.owner} aria-label="Filter by owner">
+              <option value="">Everyone</option>
+              {roster.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+        )}
         <button className="crm-btn gold" type="submit">Filter</button>
         <Link className="crm-btn ghost" href="/admin/leads">Reset</Link>
       </form>
 
-      <LeadsTable leads={leads} sortHrefs={sortHrefs} sort={sort} readOnly={!admin} />
+      <LeadsTable leads={leads} sortHrefs={sortHrefs} sort={sort} readOnly={!editor} canDelete={admin} />
     </>
   );
 }

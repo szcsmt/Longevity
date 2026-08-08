@@ -1,4 +1,4 @@
-import { isAdmin, isAuthed } from '@/lib/crm/auth';
+import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import { addNote, addTask, blockContactOf, deleteLead, getLead, mergeLeads, setAwaitingReply, toggleTask, updateLead } from '@/lib/crm/store';
 import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
@@ -40,27 +40,31 @@ function sanitizePatch(raw: unknown): LeadPatch {
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
-  if (!(await isAdmin())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
+  if (!(await canEdit())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
   const { id } = await params;
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  // Stamped onto every change, so the timeline says who as well as what.
+  const actor = (await currentUser()) || undefined;
 
   let lead = null;
   switch (body.op) {
     case 'update':
-      lead = await updateLead(id, sanitizePatch(body.patch));
+      lead = await updateLead(id, sanitizePatch(body.patch), actor);
       break;
     case 'addNote':
       if (!String(body.body || '').trim()) return Response.json({ ok: false, error: 'empty note' }, { status: 400 });
-      lead = await addNote(id, String(body.body));
+      lead = await addNote(id, String(body.body), actor);
       break;
     case 'addTask':
       if (!String(body.title || '').trim()) return Response.json({ ok: false, error: 'empty task' }, { status: 400 });
-      lead = await addTask(id, String(body.title), body.due ? String(body.due) : undefined);
+      lead = await addTask(id, String(body.title), body.due ? String(body.due) : undefined, actor);
       break;
     case 'toggleTask':
       lead = await toggleTask(id, String(body.taskId || ''));
       break;
     case 'merge':
+      // Merging destroys one of the two records — an owner's decision.
+      if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
       lead = await mergeLeads(id, String(body.otherId || ''));
       break;
     case 'awaiting':
@@ -76,7 +80,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
-  if (!(await isAdmin())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
+  // Deleting a lead cannot be undone, so it stays with the owner of the
+  // business even though agents may edit everything else about it.
+  if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
   const { id } = await params;
   // ?block=1: also blocklist the contact so their next WhatsApp message never
   // recreates the lead (for private/non-lead contacts).

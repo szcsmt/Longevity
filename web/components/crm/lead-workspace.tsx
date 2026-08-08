@@ -143,8 +143,8 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
 
   // One merged timeline: manual notes and automatic history, newest first.
   const timeline = [
-    ...lead.notes.map((n) => ({ id: n.id, at: n.at, body: n.body, kind: 'note' as const })),
-    ...(lead.history || []).map((h) => ({ id: h.id, at: h.at, body: h.detail, kind: h.kind })),
+    ...lead.notes.map((n) => ({ id: n.id, at: n.at, body: n.body, kind: 'note' as const, by: n.by })),
+    ...(lead.history || []).map((h) => ({ id: h.id, at: h.at, body: h.detail, kind: h.kind, by: h.by })),
   ].sort((a, b) => b.at.localeCompare(a.at));
 
   return (
@@ -198,6 +198,14 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
                 {safeEmail(lead.email) && <a className="crm-btn sm" href={`mailto:${safeEmail(lead.email)}`}>✉ Email</a>}
                 {wa && <a className="crm-btn sm" href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer">WhatsApp</a>}
                 {lead.phone && <a className="crm-btn sm" href={`tel:${digits(lead.phone)}`}>Call</a>}
+                {/* Opens the offer filled from this lead: their name, their
+                    residence, the payment schedule worked out from the price.
+                    Print or save as PDF from the page itself. */}
+                {!readOnly && (
+                  <a className="crm-btn sm" href={`/api/crm/leads/${lead.id}/offer`} target="_blank" rel="noreferrer">
+                    Offer
+                  </a>
+                )}
               </div>
 
               {/* One-click reply templates — open the mail/WhatsApp client prefilled */}
@@ -287,7 +295,9 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
               <li key={item.id} className={item.kind !== 'note' ? 'auto' : undefined}>
                 {item.kind !== 'note' && <span className="badge stage tl-badge">{item.kind === 'created' ? 'new lead' : item.kind}</span>}
                 {item.body}
-                <div className="t">{fmtDate(item.at)}</div>
+                {/* Who did it, once more than one person is signed in. Entries
+                    with nobody named were the CRM's own doing. */}
+                <div className="t">{fmtDate(item.at)}{item.by ? ` · ${item.by}` : ''}</div>
               </li>
             ))}
           </ul>

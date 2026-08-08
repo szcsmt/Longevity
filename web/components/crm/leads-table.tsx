@@ -11,11 +11,14 @@ import { hasNoNextStep, isStalled, stageAgeDays } from '@/lib/crm/rules';
 const fmtDay = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
-export function LeadsTable({ leads, sortHrefs, sort, readOnly = false }: {
+export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete = false }: {
   leads: Lead[];
   sortHrefs: Record<string, string>; // column id -> href with that sort applied
   sort: string;
   readOnly?: boolean;
+  /** Agents re-stage and re-score all day but may not delete: the button is
+      hidden for them rather than shown and then refused by the API. */
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -86,7 +89,7 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false }: {
             <option value="">Set score…</option>
             {SCORES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
           </select>
-          <button className="crm-btn danger sm" disabled={busy || !any} onClick={() => bulk('delete')}>Delete</button>
+          {canDelete && <button className="crm-btn danger sm" disabled={busy || !any} onClick={() => bulk('delete')}>Delete</button>}
           <button className="crm-btn ghost sm" disabled={busy || !any} onClick={() => setSel(new Set())}>Clear</button>
         </div>
       )}

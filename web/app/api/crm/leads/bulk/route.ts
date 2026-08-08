@@ -1,4 +1,4 @@
-import { isAdmin, isAuthed } from '@/lib/crm/auth';
+import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import { bulkDelete, bulkUpdate } from '@/lib/crm/store';
 import { SCORES, STAGES } from '@/lib/crm/types';
 import type { Score, Stage } from '@/lib/crm/types';
@@ -12,7 +12,8 @@ export const dynamic = 'force-dynamic';
    mistaken for full success. */
 export async function POST(req: Request) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
-  if (!(await isAdmin())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
+  if (!(await canEdit())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
+  const actor = (await currentUser()) || undefined;
   const body = (await req.json().catch(() => ({}))) as {
     ids?: unknown;
     action?: unknown;
@@ -26,13 +27,17 @@ export async function POST(req: Request) {
   switch (body.action) {
     case 'stage':
       if (!STAGES.some((s) => s.id === value)) return Response.json({ ok: false, error: 'bad stage' }, { status: 400 });
-      result = await bulkUpdate(ids, { stage: value as Stage });
+      result = await bulkUpdate(ids, { stage: value as Stage }, actor);
       break;
     case 'score':
       if (!(SCORES as string[]).includes(value)) return Response.json({ ok: false, error: 'bad score' }, { status: 400 });
-      result = await bulkUpdate(ids, { score: value as Score });
+      result = await bulkUpdate(ids, { score: value as Score }, actor);
       break;
     case 'delete':
+      // Deleting in bulk is the most destructive thing this CRM can do in one
+      // click, so it stays with the owner even though agents may re-stage and
+      // re-score freely.
+      if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
       result = await bulkDelete(ids);
       break;
     default:

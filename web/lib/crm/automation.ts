@@ -3,9 +3,11 @@ import type { EmailStep, Lead } from './types';
 import { autoEmailsEnabled, sendEmail } from './mailer';
 import {
   closingEmail, reminderEmail, storyEmail, termsEmail, viewingEmail, welcomeEmail,
+  whatsappMessage,
 } from './letters';
-import { dueStep } from './sequence';
+import { channelFor, dueStep, stepLabel } from './sequence';
 import { listLeads, recordSentEmail } from './store';
+import { sendWhatsApp, whatsappEnabled } from './whatsapp';
 
 /* ── The customer-facing e-mail sequence: minute 0 → day 60 ──
 
@@ -39,12 +41,40 @@ const LETTERS: Record<EmailStep, Letter> = {
   closing: closingEmail,
 };
 
+/* ── Sending one step, on whichever channel the lead can be reached on ──
+
+   E-mail is always preferred: it carries the designed letter, it can be read
+   later, and it is what most enquiries arrive with. WhatsApp is the fallback
+   for the leads that give us a number and no address — until now those got
+   nothing at all, which is the gap this closes.
+
+   Returns the subject recorded in the outbox, or null when nothing went out.
+   A WhatsApp send that Meta refuses (the 24-hour window, most often) returns
+   null, so nothing is recorded and the step comes due again the next day. */
+async function deliver(l: Lead, step: EmailStep): Promise<string | null> {
+  const channel = channelFor(l);
+
+  if (channel === 'email' && autoEmailsEnabled()) {
+    const mail = LETTERS[step](l);
+    return (await sendEmail({ to: l.email!, ...mail })) ? mail.subject : null;
+  }
+
+  if (channel === 'whatsapp' && whatsappEnabled()) {
+    const text = whatsappMessage(step, l);
+    if (!text) return null;
+    const to = l.whatsapp || l.phone!;
+    return (await sendWhatsApp(to, text)) ? `WhatsApp: ${stepLabel(step)}` : null;
+  }
+
+  return null;
+}
+
 /** Minute-0 welcome. Called from the public lead intake; no-op while dark. */
 export async function sendAutoWelcome(lead: Lead): Promise<void> {
-  if (!autoEmailsEnabled() || !lead.email || lead.unsubscribed) return;
-  const mail = welcomeEmail(lead);
-  if (await sendEmail({ to: lead.email, ...mail })) {
-    await recordSentEmail(lead.id, { id: randomUUID(), step: 'welcome', subject: mail.subject, at: new Date().toISOString() });
+  if (lead.unsubscribed) return;
+  const subject = await deliver(lead, 'welcome');
+  if (subject) {
+    await recordSentEmail(lead.id, { id: randomUUID(), step: 'welcome', subject, at: new Date().toISOString() });
   }
 }
 
@@ -56,16 +86,16 @@ export interface SequenceResult {
 
 /** Daily sweep: advances every quiet lead by at most one step. */
 export async function runSequence(): Promise<SequenceResult> {
-  if (!autoEmailsEnabled()) return { checked: 0, sent: 0, steps: {} };
+  if (!autoEmailsEnabled() && !whatsappEnabled()) return { checked: 0, sent: 0, steps: {} };
   const leads = await listLeads();
   const steps: Partial<Record<EmailStep, number>> = {};
   let sent = 0;
   for (const l of leads) {
     const due = dueStep(l);
     if (!due) continue;
-    const mail = LETTERS[due.step](l);
-    if (await sendEmail({ to: l.email!, ...mail })) {
-      await recordSentEmail(l.id, { id: randomUUID(), step: due.step, subject: mail.subject, at: new Date().toISOString() });
+    const subject = await deliver(l, due.step);
+    if (subject) {
+      await recordSentEmail(l.id, { id: randomUUID(), step: due.step, subject, at: new Date().toISOString() });
       steps[due.step] = (steps[due.step] || 0) + 1;
       sent++;
     }

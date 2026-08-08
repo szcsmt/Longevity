@@ -84,6 +84,7 @@ silently overwriting each other.
 | `id` | string | UUID |
 | `body` | string | Cleaned, max 4000 chars |
 | `at` | string | ISO |
+| `by` | string? | Who wrote it. Unset on notes the CRM filed itself (an inbound reply, an AI brief) and on everything written before there was more than one user. |
 
 Special convention: a note whose body starts with `"Lost:"` carries the free-text lost detail;
 the reports page collects these (`reports().lostReasons`).
@@ -97,6 +98,7 @@ the reports page collects these (`reports().lostReasons`).
 | `due` | string? | ISO date; overdue is compared by **calendar date** (`due.slice(0,10) < today`), not instant |
 | `done` | boolean | |
 | `at` | string | ISO created |
+| `by` | string? | Who added it |
 
 A reserved title, `"Follow up — no reply yet"`, is the auto-created chase task of the
 awaiting-reply flow (due 3 days out); it is auto-completed when the reply arrives.
@@ -117,8 +119,13 @@ timeline.
 | `email` | Auto-email sent, "Email sent — awaiting reply", "Reply received", "Customer opted out of the automated e-mails" |
 | `message` | New inbound form/WhatsApp message landed on the lead |
 | `assigned` | The lead got an owner (at intake, on a later contact, or by hand) |
+| `download` | A tracked document link was opened (`"Opened: <title>"`), deduped within the hour |
+| `click` | A button in a letter was pressed (`"Clicked: <label>"`), deduped within the hour |
+| `document` | A document was produced for this lead — an offer (`"Offer LR-4F2A-0812"`) |
 
-Fields: `id`, `kind`, `detail` (human line), `at`.
+Fields: `id`, `kind`, `detail` (human line), `at`, and `by` — the signed-in person who did
+it. `by` is deliberately absent on anything the system or the customer did, which is how the
+timeline distinguishes "Anna moved this to Qualified" from "the CRM did".
 
 ## SentEmail
 
@@ -137,20 +144,34 @@ in the sequence?" decision (pure — the admin UI renders the same call the engi
 the screen and the engine cannot disagree), `letters.ts` holds the copy, `automation.ts` is
 the engine.
 
-| Step | Day | What it is |
-|---|---|---|
-| `welcome` | 0 | Thank-you, personalised to the form type (brochure / reservation / general). Sent by the **intake**, not the cron; never for a returning contact |
-| `reminder` | 3 | One gentle nudge |
-| `story` | 10 | What Longevity is — a reason to care again |
-| `viewing` | 24 | Invitation to visit, in person or by video |
-| `terms` | 45 | Pricing and the 7/43/40/10 payment schedule |
-| `closing` | 60 | A graceful last word — then the engine stops |
+| Step | Day | Document | What it is |
+|---|---|---|---|
+| `welcome` | 0 | `overview` | Thank-you, personalised to the form type (brochure / reservation / general). Sent by the **intake**, not the cron; never for a returning contact |
+| `reminder` | 3 | — | One gentle nudge |
+| `story` | 10 | `brochure` | What Longevity is — a reason to care again |
+| `viewing` | 24 | `overview` | Invitation to visit, in person or by video |
+| `terms` | 45 | `brochure` | Pricing and the 7/43/40/10 payment schedule |
+| `closing` | 60 | — | A graceful last word — then the engine stops |
+
+The document escalation is deliberate. The 12-page overview (2.6 MB) opens instantly on a
+phone and is what a stranger will actually read, so it goes first; the 52-page brochure
+(14 MB) is held back for day 10, by which point someone still reading has earned it. Steps
+with no document are the ones whose job is to ask rather than to give. An explicit
+`brochure_request` is the exception: they asked for the brochure, so they get the brochure.
 
 Each letter is signed by the lead's `owner` (name, title, phone, WhatsApp link) and carries
 an opt-out link. The daily sweep advances a lead by **at most one step per run** — several
 steps coming due at once (after a cron outage) sends only the latest, never a burst.
 
-A lead drops out of the sequence when any of these is true: it has no e-mail, `unsubscribed`
+**Channel.** E-mail is preferred whenever there is an address: it carries the designed
+letter and can be read later. A lead with a number and no address gets the WhatsApp version
+of the same step (`whatsappMessage()` in `letters.ts`) — short, one idea, one tracked link,
+and a real question, because a chat that reads like a mailshot gets blocked. Before this,
+such leads received nothing at all. A send Meta refuses (the 24-hour window, usually) records
+nothing, so the step simply comes due again the next day.
+
+A lead drops out of the sequence when any of these is true: there is no e-mail address **and
+no WhatsApp number**, `unsubscribed`
 is set, the stage left `new`/`contacted`/`qualified`, the customer said anything (an inbound
 `message` activity or a logged reply), or — importantly — **the lead never received the
 minute-0 welcome**. That last rule means switching the engine on cannot mail the back
@@ -210,9 +231,18 @@ promised date, construction beyond `not_started`, any paid phase, any extra).
 | `build` | 40 | Building · 40% | Building complete |
 | `furnish` | 10 | Furnishing · 10% | Furnishing complete |
 
-`VillaPhase` = `{ paid: boolean, at?: ISO, amount?: number }` — `amount` is a THB override;
-otherwise `phaseAmount()` computes `pct × contractValue`. `paidTotal()` sums the paid phases,
-`nextPhase()` returns the first unpaid milestone.
+`VillaPhase` = `{ paid: boolean, at?: ISO, amount?: number, due?: ISO }` — `amount` is a THB
+override, otherwise `phaseAmount()` computes `pct × contractValue`. `paidTotal()` sums the
+paid phases, `nextPhase()` returns the first unpaid milestone.
+
+`due` is optional because most of the schedule is governed by progress on site rather than by
+the calendar: the 43% falls due when the foundation is finished, whenever that is. So
+`finance.ts` treats an instalment as **due** once its construction gate has been passed
+(`not_started` releases `slot`, `foundation` releases `foundation`, `structure` releases
+`build`, `furnishing` releases `furnish`) and still unpaid — no date required. Set `due` when
+a specific date has actually been agreed with a buyer; only then can an instalment be
+**overdue**, with a real day count. This is what the Payments view is computed from; nothing
+about it is stored twice.
 
 ## VillaHistoryEntry
 
@@ -368,20 +398,27 @@ the history.
 
 ---
 
-## Reserved extension points (multi-user)
+## Multi-user
 
-The auth layer already supports multiple named accounts (`auth.ts`): `CRM_USER`+`CRM_PASSWORD`
-for the primary account (always admin) plus `CRM_USERS="name:password,name:password"`, with the
-session cookie encoding **who** is signed in
-(`<base64url(name)>.<sha256(name:password:salt)>`) — used for the greeting now, reserved for
-the audit trail later. Accounts carry a **role**: a `CRM_USERS` entry may end in `:viewer`
-(`name:password:viewer`), and every mutating endpoint rejects viewers with 403 (`isAdmin()`);
-everyone else is an admin. What is deliberately not modeled yet:
+Accounts come from env, merged: `CRM_USER`+`CRM_PASSWORD` (the primary account, always admin)
+plus `CRM_USERS`, comma-separated `name:password[:role]`. The session cookie encodes **who**
+is signed in (`<base64url(name)>.<sha256(name:password:salt)>`), so the app always knows the
+actor. Three roles — `admin`, `agent`, `viewer` — with the split documented in API.md. An
+entry with no role stays admin, so nothing that worked before this existed stopped working.
 
-- `Lead` has no `owner` field and `Activity`/`Note`/`Task` have no `actor` field — every
-  admin sees and edits everything; `currentUser()` is the hook for attributing actions.
+Attribution: `Note.by`, `Task.by` and `Activity.by` carry the signed-in name, threaded from
+the route handlers as an explicit `actor` argument rather than picked up from ambient
+request state — the same store functions are called by the cron and by inbound webhooks,
+where there is no signed-in person and `by` must stay unset.
+
+`Lead.owner` names a person on the `CRM_AGENTS` roster and is assigned at intake, balancing
+load among the agents who speak the lead's likely language (`language.ts` reads that from the
+dialling code, then the browsing locale, then the e-mail TLD). The leads list defaults an
+agent to their own leads, one click from everyone's.
+
+Still not modeled:
+
 - `VillaRecord.seller` / `VillaHistoryEntry.seller` are free-text names, not account
   references.
-- The outgoing e-mail signature is a single env-configured person (`CRM_AGENT_NAME`,
-  `CRM_AGENT_TITLE`, `CRM_AGENT_PHONE`), noted in `automation.ts` as "later become
-  per-salesperson".
+- Roles are global, not per-lead: an agent can open any lead, not only their own. That is
+  deliberate while the team is small enough to cover for each other.

@@ -1,4 +1,4 @@
-import type { Lead } from './types';
+import type { EmailStep, Lead } from './types';
 import { type Agent, agentByName, agents } from './agents';
 import { docHref } from './documents';
 import { VILLAS } from './villas';
@@ -21,7 +21,23 @@ const SITE = 'https://longevitysamui.com';
 /* Documents are linked through the tracked /d/<id> route, so the CRM records
    who opened what — and so the file behind a link can be replaced without
    breaking the letters already sitting in people's inboxes. */
-const brochureUrl = (l: Lead) => `${SITE}${docHref('brochure', l.id)}`;
+const docUrl = (l: Lead, id = 'brochure') => `${SITE}${docHref(id, l.id)}`;
+
+/* ── Knowing who clicked ──
+
+   Opening a letter tells us almost nothing: images load themselves, previews
+   fire, and half of it is noise. A click is different — a person decided to
+   act. So every button leaves through /c, which records the click on that
+   lead's timeline and then redirects to the real destination.
+
+   Two exemptions. A /d/ document link already records the open, and one tap
+   should read as one line of history rather than two. And mailto: cannot be
+   redirected to, so it goes out untouched. */
+const track = (l: Lead, label: string, href: string) => {
+  if (href.startsWith(`${SITE}/d/`) || href.startsWith('mailto:')) return href;
+  const q = new URLSearchParams({ l: l.id, t: label, u: href });
+  return `${SITE}/c?${q.toString()}`;
+};
 
 /* Design tokens, straight from the hand-off. */
 const PAGE = '#060E08';
@@ -113,18 +129,19 @@ const priceLine = () => `
 
 interface Button { label: string; href: string }
 
-/** Primary (solid gold) and optional secondary (outlined) button, side by side. */
-const buttons = (primary: Button, secondary?: Button) => `
+/** Primary (solid gold) and optional secondary (outlined) button, side by side.
+    Takes the lead so every destination can leave through the click tracker. */
+const buttons = (l: Lead, primary: Button, secondary?: Button) => `
   <tr><td class="px" style="padding:34px 56px 0 56px;" align="center">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btnwrap" style="margin:0 auto;">
       <tr class="btnrow">
         <td align="center" bgcolor="${GOLD}" class="btn" style="${bg(GOLD)}border-radius:999px;">
-          <a href="${primary.href}" style="display:block;padding:17px 40px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${PANEL};text-decoration:none;">${primary.label}</a>
+          <a href="${track(l, primary.label, primary.href)}" style="display:block;padding:17px 40px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${PANEL};text-decoration:none;">${primary.label}</a>
         </td>
         ${secondary ? `
         <td width="14" class="gap" style="width:14px;font-size:1px;line-height:1px;">&nbsp;</td>
         <td align="center" class="btn" style="border:1px solid rgba(201,164,106,0.5);border-radius:999px;">
-          <a href="${secondary.href}" style="display:block;padding:16px 36px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${GOLD};text-decoration:none;">${secondary.label}</a>
+          <a href="${track(l, secondary.label, secondary.href)}" style="display:block;padding:16px 36px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${GOLD};text-decoration:none;">${secondary.label}</a>
         </td>` : ''}
       </tr>
     </table>
@@ -140,7 +157,7 @@ const buttons = (primary: Button, secondary?: Button) => `
        knows who is responsible, it just isn't printed in the letter.
 
    Env: CRM_SIGNATURE_NAME, _TITLE, _PHONE, _EMAIL. */
-function letterIdentity(l: Lead): { name: string; title: string; phone?: string; email?: string } {
+export function letterIdentity(l: Lead): { name: string; title: string; phone?: string; email?: string } {
   const office = process.env.CRM_SIGNATURE_NAME;
   if (office) {
     return {
@@ -287,7 +304,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
             Owners receive a fixed return and full management; guests receive the medical programme.`) +
           essentials() +
           priceLine() +
-          buttons({ label: 'Download brochure', href: brochureUrl(l) }, { label: 'Book a call', href: callHref(l) }) +
+          buttons(l, { label: 'Download brochure', href: docUrl(l, 'brochure') }, { label: 'Book a call', href: callHref(l) }) +
           p(`If any of the residences catches your eye, just reply to this e-mail. I am happy to walk
             you through availability, pricing and how reservation works.`),
       }),
@@ -306,7 +323,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
             exact pricing and our four-step payment schedule.`) +
           essentials() +
           priceLine() +
-          buttons({ label: 'Book a call', href: callHref(l) }, { label: 'Download brochure', href: brochureUrl(l) }) +
+          buttons(l, { label: 'Book a call', href: callHref(l) }, { label: 'The overview', href: docUrl(l, 'overview') }) +
           p(`I will come back to you personally within a few hours. If you would rather talk sooner,
             simply reply to this e-mail.`),
       }),
@@ -324,7 +341,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
           physician-led longevity centre.`) +
         essentials() +
         priceLine() +
-        buttons({ label: 'Book a call', href: callHref(l) }, { label: 'Download brochure', href: brochureUrl(l) }) +
+        buttons(l, { label: 'Book a call', href: callHref(l) }, { label: 'The overview', href: docUrl(l, 'overview') }) +
         p(`In the meantime, feel free to reply with anything you would like to know. This inbox comes
           straight to me.`),
     }),
@@ -343,7 +360,7 @@ export function reminderEmail(l: Lead): { subject: string; html: string } {
         p(`If any questions have come up about the residences, the pricing or the reservation process,
           simply reply and I will answer them. And if the timing is not right, a one-line reply saying
           so is absolutely fine too.`) +
-        buttons({ label: 'Book a call', href: callHref(l) }),
+        buttons(l, { label: 'Book a call', href: callHref(l) }),
     }),
   };
 }
@@ -365,7 +382,10 @@ export function storyEmail(l: Lead): { subject: string; html: string } {
         p(`Owners use their residence part of the year and let us take care of it, and of guests, the
           rest. That is the part most people ask about second, once the place itself has done its work.`) +
         p(`If you would like, reply with what matters most to you: the lifestyle, the returns, or
-          simply the timing. I will send you exactly that and nothing else.`),
+          simply the timing. I will send you exactly that and nothing else.`) +
+        /* The full 52-page brochure lands here rather than on day 0. Someone who
+           has read this far will open it; a stranger on day one would not. */
+        buttons(l, { label: 'The full brochure', href: docUrl(l, 'brochure') }, { label: 'Book a call', href: callHref(l) }),
     }),
   };
 }
@@ -385,7 +405,7 @@ export function viewingEmail(l: Lead): { subject: string; html: string } {
           time properly, so it is never a rushed walk-through.`) +
         p(`If travelling is not practical right now, I will do a live video tour with you instead. The
           same thing from your sofa, and you can ask anything as we go.`) +
-        buttons({ label: 'Arrange a viewing', href: callHref(l) }, { label: 'Download brochure', href: brochureUrl(l) }),
+        buttons(l, { label: 'Arrange a viewing', href: callHref(l) }, { label: 'The overview', href: docUrl(l, 'overview') }),
     }),
   };
 }
@@ -424,7 +444,7 @@ export function termsEmail(l: Lead): { subject: string; html: string } {
         schedule +
         p(`Nothing moves until the step before it is genuinely finished, which is the whole point of
           doing it this way.`) +
-        buttons({ label: 'Ask for the figures', href: callHref(l) }) +
+        buttons(l, { label: 'Ask for the figures', href: callHref(l) }, { label: 'The full brochure', href: docUrl(l, 'brochure') }) +
         p(`Reply and I will send the current availability${l.villa ? ` and the exact figures for ${esc(l.villa)}` : ' and the exact figures'},
           plus the reservation agreement to read at your own pace.`),
     }),
@@ -448,4 +468,73 @@ export function closingEmail(l: Lead): { subject: string; html: string } {
           invitation to visit stands.`),
     }),
   };
+}
+
+/* ── The same sequence, on WhatsApp ──
+
+   For the leads that arrive with a number and no e-mail address — most of the
+   WhatsApp ones — this is the whole conversation, so it has to stand on its
+   own. It is not the letter shortened: WhatsApp is a chat, and a chat that
+   reads like a mailshot gets blocked. Short, one idea, one link, and a real
+   question at the end, because a message that asks nothing gets no reply.
+
+   Links go through the same tracked routes as the letters, so an open or a
+   click lands on the timeline no matter which channel produced it. */
+export function whatsappMessage(step: EmailStep, l: Lead): string | null {
+  const name = firstName(l);
+  const hi = name === 'there' ? 'Hello' : `Hi ${name}`;
+  const call = track(l, 'Book a call', callHref(l));
+  const overview = docUrl(l, 'overview');
+  const brochure = docUrl(l, 'brochure');
+  const office = process.env.CRM_SIGNATURE_NAME || 'Longevity Resort';
+
+  switch (step) {
+    case 'welcome':
+      return `${hi}, thank you for your enquiry about Longevity Resort on Koh Samui.\n\n` +
+        why(l) +
+        `Here is a short overview, 12 pages: ${overview}\n\n` +
+        `What would be most useful to know first — the residences, the returns, or the timing?\n\n${office}`;
+
+    case 'reminder':
+      return `${hi}, just following up on what I sent a few days ago. No rush at all.\n\n` +
+        `If a question has come up about the residences or the pricing, send it over and I will answer it. ` +
+        `And if the timing is simply not right, one line saying so is absolutely fine.`;
+
+    case 'story':
+      return `${hi}, I thought you might like the fuller picture.\n\n` +
+        `Longevity is not a villa development with a spa attached. It is a resort built around one idea: ` +
+        `that where you live should add years to your life rather than take them. Private residences, a ` +
+        `physician-led longevity centre, on one of the calmest parts of Koh Samui.\n\n` +
+        `The full brochure, if you would like it: ${brochure}`;
+
+    case 'viewing':
+      return `${hi}, an offer that stands whenever you are ready: come and see ` +
+        `${l.villa || 'the resort'} in person. We arrange private viewings on Samui and block out the time properly.\n\n` +
+        `If travelling is not practical right now, I will do a live video tour with you instead.\n\n` +
+        `Pick a time here: ${call}`;
+
+    case 'terms':
+      return `${hi}, the commercial side in plain terms:\n\n` +
+        `7% reserves the plot and transfers it into your name\n` +
+        `43% on completed foundation\n` +
+        `40% on completed building\n` +
+        `10% on furnishing, at handover\n\n` +
+        `Nothing moves until the step before it is genuinely finished. ` +
+        `Say the word and I will send the current availability and the exact figures.`;
+
+    case 'closing':
+      return `${hi}, I do not want to keep landing in your messages uninvited, so this is my last note. ` +
+        `Your enquiry stays on file. If Longevity comes back to mind in a month or in a year, one line here ` +
+        `is all it takes.\n\nThank you for the interest, and if you are ever on Samui the invitation to visit stands.`;
+
+    default:
+      return null;
+  }
+}
+
+/** One line of context in the welcome, matched to what they actually did. */
+function why(l: Lead): string {
+  if (l.form_type === 'brochure_request') return `You asked for the brochure, so here it is.\n\n`;
+  if (l.villa) return `You were looking at ${l.villa}, which is a very good choice.\n\n`;
+  return '';
 }

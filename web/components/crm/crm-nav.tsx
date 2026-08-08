@@ -25,6 +25,11 @@ const items = [
     icon: <path d="m9 20-6-2V4l6 2m0 14 6-2m-6 2V6m6 12 6 2V6l-6-2m0 14V4M9 6l6-2" />,
   },
   {
+    href: '/admin/finance',
+    label: 'Payments',
+    icon: <path d="M2 7h20v12H2zM2 11h20M6 15h4" />,
+  },
+  {
     href: '/admin/tasks',
     label: 'Follow-ups',
     icon: <path d="m9 11 3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,

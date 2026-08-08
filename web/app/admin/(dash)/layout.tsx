@@ -25,9 +25,17 @@ export default async function DashLayout({ children }: { children: React.ReactNo
           </div>
           <CrmNav alerts={{ leads: att.actionable, followups: att.overdue }} />
           <div className="crm-side-foot">
+            {/* Knowing which account you are signed in as matters the moment
+                more than one person uses the CRM — an agent who does not know
+                they are an agent reads a hidden button as a broken one. */}
             {account?.role === 'viewer' && (
               <div className="viewer-chip" title="Read-only account — changes are disabled">
                 👁 View only · {account.name}
+              </div>
+            )}
+            {account?.role === 'agent' && (
+              <div className="viewer-chip" title="Sales account — you can work every lead, but deleting, the masterplan ledger and exports stay with the owner">
+                ◆ Sales · {account.name}
               </div>
             )}
             <LogoutButton />

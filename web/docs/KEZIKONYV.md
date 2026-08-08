@@ -95,6 +95,14 @@ Alatta gyorsgombok: **✉ Email** (levelezőt nyit), **WhatsApp** (wa.me link), 
 
 **Notes & activity** — egyetlen idővonal: a kézi jegyzeteid és az automatikus bejegyzések (lead érkezett, fázisváltás, hőfokváltás, kontakt módosítva, érték beállítva, e-mail ment ki, üzenet jött be, összevonás) együtt, legfrissebb elöl. Ide írd a hívások összefoglalóját — ami nincs leírva, az nem történt meg.
 
+**Offer gomb.** A kapcsolat-gombok mellett. Megnyit egy kész ajánlatot a lead adataiból:
+a neve, a kiválasztott rezidencia, az ár, és a 7 / 43 / 40 / 10 ütemterv kiszámolva.
+Jobb felül a *Print or save as PDF* gombbal PDF-be mented. Az idővonalra rákerül, hogy
+ajánlat készült és milyen összegre — ezt hetekkel később mindig megkérdezi valaki.
+
+A foglalási és üzemeltetési **szerződés** ettől külön él, azok jogi dokumentumok. Ha
+feltöltöd a sablonjaikat, ugyanezekből az adatokból ki tudjuk tölteni azokat is.
+
 ### Jobb oldal
 
 **Status** — fázis és hőfok legördülőből, plusz az **üzletérték (THB)**. Az érték a villaválasztásból magától kitöltődik a lista-árral, de bármikor átírható.
@@ -187,7 +195,30 @@ A státuszváltozások a háttérben a Google Sheet-tel és a 3D-modellel (3DEst
 
 ---
 
-## 7. Follow-ups — teendők egyben
+## 7. Payments — mennyi pénz áll kint
+
+`/admin/finance` — a Masterplan ugyanazokat a számokat mutatja telkenként, ez pedig
+oldalra fordítva: nem azt, hogy a B12-es mivel tartozik, hanem azt, hogy **mennyi jár
+nekünk, és ki van csúszásban.**
+
+Négy szám felül: **Contracted** (szerződött érték), **Received** (befolyt), **Outstanding**
+(hátralék), **Needs chasing** (amit be kellene hajtani). Alatta négy lista:
+
+- **Overdue** — elmúlt a megbeszélt dátum. Piros, és megmondja hány napja.
+- **Due now** — az építkezés elért arra a szintre, ami kiengedi a részletet, de nem fizették be.
+- **Next 30 days** — megbeszélt dátum a következő 30 napban.
+- **Later** — még arra a szintre sem ért az építkezés.
+
+A logika onnan jön, ahogy az ütemterv tényleg működik: **a 43% akkor esedékes, amikor az
+alap elkészül**, nem egy naptári napon. Ezért ha a Masterplanon átállítod az építkezés
+állapotát „Foundation"-re, a 43% magától átkerül a *Due now* listába. Ha egy konkrét
+dátumban is megállapodtatok a vevővel, azt beírhatod a részlethez, és onnantól **késhet** is.
+
+Minden sorból link visz a vevő leadjére. Ez a nézet csak a tulajdonosi fióknak látszik.
+
+---
+
+## 8. Follow-ups — teendők egyben
 
 `/admin/tasks` — az összes lead összes teendője négy csoportban:
 
@@ -200,7 +231,7 @@ Minden sorból link visz a leadre. Pipálással kész — átkerül a Done-ba.
 
 ---
 
-## 8. Analytics — számok
+## 9. Analytics — számok
 
 `/admin/analytics` — időablak-választó: 7 nap / 30 nap / 90 nap / Összes.
 
@@ -219,13 +250,13 @@ Minden sorból link visz a leadre. Pipálással kész — átkerül a Done-ba.
 
 ---
 
-## 9. Activity — mi történik a weboldalon
+## 10. Activity — mi történik a weboldalon
 
 `/admin/activity` — minden látogatói interakció a weboldalon, név nélkül: látogatás, kattintás, WhatsApp-gomb, hívás-gomb, e-mail, brossúra-letöltés, űrlap-megnyitás. Fent összesítők, alatta típus szerint szűrhető napló. Arra jó, hogy lásd: mozog-e az oldal, melyik csatorna él. A leadeket nem szennyezi — ez csak jelzés.
 
 ---
 
-## 10. Hogyan kerülnek be a leadek — és mit csinál a rendszer magától
+## 11. Hogyan kerülnek be a leadek — és mit csinál a rendszer magától
 
 - **Weboldal-űrlapok**: minden beküldés azonnal leadet csinál. A hőfokot a rendszer magától állítja: konkrét villára irányuló megkeresés vagy foglalási szándék = **hot**, általános érdeklődés = **warm** (befektetési/foglalási területről indítva hot), brossúra-kérés = **cold**.
 - **Egy ember = egy lead**: ha ugyanaz az e-mail/telefonszám ír újra (akár WhatsAppon), az üzenet a **meglévő** leadre kerül jegyzetként — nem születik duplikátum. Az üres mezők kitöltődnek, a hőfok csak felfelé módosul. A beérkező üzenet válasznak számít (törli a válasz-időzítőt), az elveszett leadet pedig újraéleszti.
@@ -248,11 +279,48 @@ Minden sorból link visz a leadre. Pipálással kész — átkerül a Done-ba.
   3. **Az élesítés előtti leadeket a rendszer nem szólítja meg** — a bekapcsolás nem küld semmit a régi listára, csak az azóta érkezőket kíséri végig.
   4. Minden levél alján **leiratkozó link** van. Aki rákattint, többé nem kap automata levelet (a személyes, kézzel írt leveleidet ez nem érinti) — a lead idővonalán is megjelenik, hogy leiratkozott.
 
-  A leveleket a naponta 07:00-kor (UTC) futó időzített feladat küldi; hajnali 3-kor automata mentés fut. A kiment levelek a lead idővonalán és az *Automatic sequence* dobozban is látszanak.
+  A leveleket a naponta **07:00-kor samui idő szerint** futó időzített feladat küldi; hajnali 3-kor automata mentés fut. A kiment levelek a lead idővonalán és az *Automatic sequence* dobozban is látszanak.
+
+- **Melyik levél melyik anyagot viszi.** Nem mindegyik ugyanazt: a 0. napon a **12 oldalas áttekintő** megy (2,6 MB, telefonon azonnal megnyílik, és egy idegen ezt fogja tényleg elolvasni), a 10. és a 45. napon a **teljes 52 oldalas brossúra**. Aki kifejezetten a brossúrát kérte, az természetesen rögtön azt kapja. Így minden lépésnek van új oka a megnyitásra.
+
+- **Kinek melyik csatorna.** Ha van e-mail címe, levelet kap. Ha csak telefonszáma van, ugyanazt a lépést **WhatsApp üzenetként** kapja meg, rövidebb formában. Eddig az ilyen leadek semmit nem kaptak.
+
+- **WhatsApp mindkét irányban.** A beérkező WhatsApp üzenetek is a CRM-be futnak: ismeretlen számból lead lesz, ismert számnál válasz a meglévő leadre. Ezzel megáll az automata sorozat, és átjön hozzád a levelező-fiókodba is. Eddig ez Dorina telefonján maradt.
+
+- **Ki nyitotta meg, ki kattintott.** Minden anyag saját követett linken megy ki, és minden gomb is. A lead idővonalán látszik, hogy megnyitotta a brossúrát vagy megnyomta a „Book a call" gombot. Aki egyszer megnyit valamit, warm lesz, aki háromszor, hot. Ez a legmegbízhatóbb jel arra, hogy egy elhallgatott lead újra gondolkodik rajta.
+
+- **Reggeli összefoglaló.** Minden nap 7-kor kapsz egy levelet arról, mi vár rád: ki vár válaszra, mi járt le, kihez nem nyúlt senki, ki nyitotta meg tegnap az anyagot. **Ha nincs teendő, nem érkezik levél** — pont ettől lesz érdemes megnyitni azokon a napokon, amikor mégis jön.
 
 ---
 
-## 11. A napi rutin
+## 12. Ki mit lát és mit tehet
+
+Három fiók-típus van. A tulajdonos (`admin`) mindent. Az **értékesítő** (`agent`) egész nap
+dolgozik a leadeken, de nem törölhet és nem lát pénzügyet. A **néző** (`viewer`) csak olvas.
+
+| Mit | Tulajdonos | Értékesítő | Néző |
+|---|:--:|:--:|:--:|
+| Minden lead, pipeline, masterplan, analytics olvasása | ✓ | ✓ | ✓ |
+| Lead felvétele, jegyzet, teendő, fázis, hőfok, gazda | ✓ | ✓ | — |
+| Ajánlat készítése | ✓ | ✓ | — |
+| Lead törlése, összevonása | ✓ | — | — |
+| Masterplan pénzügyi adatai | ✓ | — | — |
+| Payments nézet | ✓ | — | — |
+| CSV export | ✓ | — | — |
+
+**Minden változtatás mellett ott a neve annak, aki csinálta**, a lead idővonalán. Aminél
+nincs név, azt a rendszer csinálta magától.
+
+Az értékesítő a saját leadjeit látja először: a Leads oldalon a **My leads** gombbal
+szűkíthető, egy kattintással vissza mindenkire. Ez alapbeállítás, nem fal — egymás
+helyettesítése normális.
+
+Új fiókot a `CRM_USERS` környezeti változóban lehet felvenni, `név:jelszó:agent` alakban.
+Szólj, ha kell egy, és beállítom.
+
+---
+
+## 13. A napi rutin
 
 **Reggel:**
 1. Nyisd meg a Dashboardot. **A piros kapszulák és a menü jelvényei = a mai munkalista.** Ha nincs kapszula, minden kézben van.

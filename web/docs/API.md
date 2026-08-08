@@ -123,6 +123,36 @@ timeline, and ends the sequence for good. E-mail a person writes by hand is unaf
 Idempotent, and always answers `200` with a friendly HTML page — even for an unknown or
 missing id, so a customer never sees an error for doing what we asked them to do.
 
+### GET /c?l=&lt;lead id&gt;&amp;t=&lt;label&gt;&amp;u=&lt;destination&gt;
+
+Tracked click. Every button in every automated letter points here; the route records
+`Clicked: <label>` on the lead's timeline, upgrades a cold lead to warm, then `302`s to the
+destination. Public and unauthenticated for the same reason as the opt-out link: the lead id
+is the token.
+
+The destination is checked against an allowlist (`longevitysamui.com` and its subdomains,
+`cal.com`, `app.cal.com`, `wa.me`, `api.whatsapp.com`) and anything else is refused with
+`400`. Without that check this would be an open redirect — the exact shape a phishing mail
+takes. Deduped within the hour, so a prefetching mail client writes one line, not five.
+
+Document links are **not** routed through here: `/d/<id>` already records the open, and one
+tap should read as one line of history.
+
+### GET /d/&lt;document id&gt;?l=&lt;lead id&gt;
+
+Tracked document link. Records `Opened: <title>` on the lead's timeline, then `302`s to the
+real file. One open makes a lead warm, three make it hot. Deduped within the hour, because a
+PDF viewer commonly re-requests a file. Without `?l=` the link still works, it is simply not
+attributed — the same URL is therefore usable in a WhatsApp message or on a business card.
+
+The library lives in `lib/crm/documents.ts`. Replacing the file behind an id updates every
+letter already sitting in somebody's inbox.
+
+| id | File | What it is |
+|---|---|---|
+| `overview` | `/brochure/longevity-overview-2026.pdf` | 12 pages, 2.6 MB. First contact — small enough to open on a phone. |
+| `brochure` | `/brochure/longevity-brochure-2026.pdf` | 52 pages, 14 MB. Held back for someone who has already shown interest. |
+
 ---
 
 ## Inbound integration endpoints
@@ -164,6 +194,44 @@ Behaviour (all "skip" cases return **200** so the make.com scenario never shows 
 Same upsert/dedupe semantics as `/api/lead` (message → note, reply-flag clear, lost-lead
 revival, score upgrade only). `notifyNewLead` fires only for genuinely new contacts. The auto
 welcome e-mail is **not** sent from this route.
+
+### GET · POST /api/whatsapp
+
+Inbound WhatsApp through the Meta Cloud API — the channel that used to end on one person's
+handset.
+
+`GET` is Meta's one-time subscription handshake: echoes `hub.challenge` as plain text when
+`hub.verify_token` matches `WHATSAPP_VERIFY_TOKEN`, else `403`.
+
+`POST` is the delivery. Every request is verified against `x-hub-signature-256`
+(HMAC-SHA256 of the **raw** body with `WHATSAPP_APP_SECRET`); an unverifiable delivery is
+`401`ed rather than trusted. Then, per message:
+
+1. an unknown number becomes a lead, a known number's message becomes a reply on the lead
+   that already exists (`upsertLeadFromPayload`, one person = one lead);
+2. blocked contacts are skipped silently;
+3. `readReply` reads it, if `ANTHROPIC_API_KEY` is set;
+4. `recordInboundReply(channel: 'whatsapp')` files it, which **stops the sequence**;
+5. the message is forwarded to `CRM_NOTIFY_TO` with the brief on top.
+
+Always answers `200` — a non-2xx makes Meta retry, which would double-file a message we have
+already accepted. Response: `{"ok":true,"messages":N,"filed":N}`. Most deliveries are status
+receipts and file nothing.
+
+### POST /api/inbound
+
+Inbound customer e-mail (Resend `email.received`). Auth: `?key=<INBOUND_SECRET>`; unset →
+always `401`. The webhook carries metadata only, so the body is fetched back from
+`GET https://api.resend.com/emails/receiving/{id}` before anything is filed. Quoted history
+is cut off at the first quote marker so the note shows what the person actually wrote this
+time. Then the same pipeline as WhatsApp: upsert → read → file → forward.
+
+### POST /api/booking
+
+Cal.com booking webhook (`BOOKING_CREATED`, `BOOKING_RESCHEDULED`, `BOOKING_CANCELLED`),
+verified by HMAC-SHA256 in `x-cal-signature-256` against `CAL_WEBHOOK_SECRET`. Files the
+booking on the lead, marks it hot, moves `new`/`lost` → `contacted`, and drops a dated
+"Call booked — be there" task with the video link on the timeline.
 
 ### POST /api/villa-sync
 
@@ -282,6 +350,20 @@ Deletes the lead. With `?block=1`, the lead's contact keys (`e:<lowercased email
 the person's next WhatsApp message through `/api/ingest` never recreates the lead (used for
 private/non-lead contacts, "Delete & block"). Response: `200 {"ok":true}` or `404 {"ok":false}`.
 
+### GET /api/crm/leads/[id]/offer?value=&lt;THB&gt;
+
+The reservation offer for one lead, as a printable HTML page: their name, their residence,
+the price, and the 7/43/40/10 schedule worked out from it. Auth: session cookie, admin or
+agent (`403` for viewers).
+
+HTML rather than a generated PDF on purpose — the browser's own print dialogue makes a
+better PDF than any library we would have to ship, and the operator reads it before it goes
+anywhere. `?value=` overrides the catalogue price for a negotiated figure; rounding drift is
+absorbed by the final instalment so the column sums to the total.
+
+Generating one files `Offer <reference>` on the timeline (deduped within the hour), because
+"did we ever send them an offer, and for how much" gets asked weeks later.
+
 ### POST /api/crm/leads/bulk
 
 Bulk action from the leads list. Body:
@@ -351,15 +433,30 @@ quoted. Output is UTF-8 with BOM, CRLF line endings,
 
 ### GET /api/crm/cron
 
-Daily follow-up sweep. Auth: `Authorization: Bearer <CRON_SECRET>` (Vercel Cron) **or** a
-valid session cookie (manual trigger). Scheduled in `vercel.json`: `0 7 * * *` (daily 07:00 UTC).
+Daily sweep. Auth: `Authorization: Bearer <CRON_SECRET>` (Vercel Cron) **or** a valid session
+cookie (manual trigger). Scheduled in `vercel.json`: `0 0 * * *` — midnight UTC, which is
+**07:00 on Samui**, so the operator's day starts with the CRM having already done its round.
 
-- Mailer dark (env not configured) → `200 {"ok":true,"enabled":false,"sent":0,"note":"auto-emails are dark (env not configured)"}` — fully inert.
-- Mailer enabled → runs `runSequence`: advances every still-quiet lead by **at most one
-  step** of the minute-0 → day-60 sequence (day 3 nudge, day 10 story, day 24 viewing
-  invite, day 45 terms, day 60 closing note — see DATA-MODEL.md for the drop-out rules).
-  Each mail sent is recorded on the lead's outbox.
-  Response: `200 {"ok":true,"enabled":true,"checked":N,"sent":N,"steps":{"reminder":2,…}}`.
+Two jobs in one run, deliberately: the plan allows few scheduled jobs, and these belong
+together anyway — advance the customer sequence, then report to the operator on what is left
+for a human.
+
+**1. The sequence.** Advances every still-quiet lead by **at most one step** of the minute-0
+→ day-60 sequence (day 3 nudge, day 10 story, day 24 viewing invite, day 45 terms, day 60
+closing note — see DATA-MODEL.md for the drop-out rules). Each send is recorded on the
+lead's outbox. Channel per lead: **e-mail when there is an address, WhatsApp otherwise** —
+before this, a lead with a number and no address received nothing at all. A WhatsApp send
+Meta refuses (the 24-hour window, usually) records nothing, so the step comes due again the
+next day. Inert when both `autoEmailsEnabled()` and `whatsappEnabled()` are false.
+
+**2. The morning digest.** Runs even when the sequence is dark — telling the operator what
+needs doing has nothing to do with whether we are mailing customers. Only things a person
+has to **do** today, worst first: customers waiting on a reply, overdue tasks, untouched new
+leads, leads warming up (opened or clicked in the last 24 h), gone quiet, stalled, no next
+step. **Nothing is sent when there is nothing to do** — that is what keeps the mail worth
+opening. Recipient `CRM_DIGEST_TO` (comma-separated), falling back to `CRM_NOTIFY_TO`.
+
+Response: `200 {"ok":true,"enabled":true,"checked":N,"sent":N,"steps":{…},"digest":{"sent":true,"total":N}}`.
 
 ### GET /api/crm/backup
 
@@ -403,7 +500,20 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 | `CRON_SECRET` | Bearer token Vercel Cron sends to `GET /api/crm/cron` and `GET /api/crm/backup`. |
 | `CRM_USER` | Primary CRM account name (default `admin`). |
 | `CRM_PASSWORD` | Primary CRM account password. Unset in production → primary account disabled (fails closed); dev fallback password is `longevity`. |
-| `CRM_USERS` | Extra accounts, comma-separated `name:password` or `name:password:viewer` — the `viewer` suffix makes the account read-only (403 on every mutating endpoint); default role is admin. |
+| `CRM_USERS` | Extra accounts, comma-separated. `name:password` = admin; `name:password:agent` = salesperson; `name:password:viewer` = read-only. An entry with no role stays admin, so existing accounts are unaffected. See the role table below. |
+| `INBOUND_SECRET` | Query-string secret for `POST /api/inbound` (`?key=`). Unset → always 401. |
+| `CRM_REPLY_TO` | The Resend inbound address customer replies should go to, e.g. `reply@….resend.app`. Set → the CRM sees replies and can stop the sequence. Unset → falls back to `CRM_NOTIFY_TO` and the CRM stays blind. |
+| `CRM_DIGEST_TO` | Morning-digest recipients, comma-separated. Falls back to `CRM_NOTIFY_TO`. |
+| `WHATSAPP_TOKEN` | Meta Cloud API permanent access token. |
+| `WHATSAPP_PHONE_ID` | Meta phone **number id** (not the number itself). |
+| `WHATSAPP_VERIFY_TOKEN` | Any string; also typed into Meta's webhook form. Unset → `GET /api/whatsapp` always 403s. |
+| `WHATSAPP_APP_SECRET` | App secret used to verify every delivery. Unset → `POST /api/whatsapp` always 401s. |
+| `WHATSAPP_API_VERSION` | Graph API version (default `v21.0`). |
+| `WHATSAPP_MESSAGES` | Kill-switch: `off` disables outbound WhatsApp even when configured. |
+| `ANTHROPIC_API_KEY` | Enables the reply reading. Unset → replies are still filed and the sequence still stops; only the brief is skipped. |
+| `CRM_BOOKING_URL` | Cal.com booking link. Set → "Book a call" opens the calendar with name and e-mail pre-filled; unset → falls back to a `mailto:`. |
+| `CAL_WEBHOOK_SECRET` | Signing secret for `POST /api/booking`. |
+| `CRM_SIGNATURE_NAME`, `_TITLE`, `_PHONE`, `_EMAIL` | Set → letters are signed by the office with no personal name. The lead's owner is unchanged either way; it is simply not printed. |
 | `RESEND_API_KEY` | Resend API key — needed for both the operator alert and the customer auto e-mails. |
 | `CRM_NOTIFY_TO` | Operator alert + daily backup recipient; also the `reply_to` of customer auto e-mails. |
 | `CRM_NOTIFY_FROM` | Operator alert sender (default `Longevity CRM <onboarding@resend.dev>`). |
@@ -415,6 +525,26 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 | `DATABASE_URL` / `POSTGRES_URL` | Neon Postgres connection (either works). Present → the Postgres backend is used; absent → local JSON file backend. |
 | `CRM_DATA_DIR` | Directory of the local dev JSON store (default `~/.longevity-crm`, file `db.json`). |
 | `NODE_ENV` | `production` toggles the `Secure` cookie flag and disables the dev login fallback. |
+
+## Roles
+
+| Can | admin | agent | viewer |
+|---|:--:|:--:|:--:|
+| Read every lead, pipeline, masterplan, analytics | ✓ | ✓ | ✓ |
+| Add leads, notes, tasks; change stage, score, owner | ✓ | ✓ | — |
+| Generate an offer | ✓ | ✓ | — |
+| Delete a lead (single or bulk), merge, dedupe | ✓ | — | — |
+| Edit the masterplan sales ledger | ✓ | — | — |
+| See the Payments view | ✓ | — | — |
+| Export the CSV | ✓ | — | — |
+| Run backup / cron by hand | ✓ | — | — |
+
+Every change made by a signed-in person is stamped with their name (`by` on notes, tasks and
+history entries) and shown on the timeline. Entries with nobody named were the CRM's own
+doing — the sequence, an inbound reply, a tracked click.
+
+Hiding a button is not a control: each of the admin-only rows above is refused by the API
+itself, not merely absent from the screen.
 
 ## Persistence note
 

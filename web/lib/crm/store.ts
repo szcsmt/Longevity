@@ -53,6 +53,9 @@ export interface LeadFilter {
   form_type?: string;
   source?: string;
   q?: string;
+  /** Restrict to one salesperson's leads. With several people selling, "all
+      leads" stops being a worklist and starts being a directory. */
+  owner?: string;
 }
 
 export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
@@ -64,6 +67,7 @@ export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
       if (filter.score && l.score !== filter.score) return false;
       if (filter.form_type && l.form_type !== filter.form_type) return false;
       if (filter.source && (l.source || l.utm_source || '') !== filter.source) return false;
+      if (filter.owner && (l.owner || '') !== filter.owner) return false;
       if (q) {
         const hay = `${l.name || ''} ${l.email || ''} ${l.phone || ''} ${l.villa || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -279,7 +283,7 @@ export interface ManualLeadInput {
   note?: string;
 }
 
-export async function createManualLead(input: ManualLeadInput): Promise<Lead> {
+export async function createManualLead(input: ManualLeadInput, actor?: string): Promise<Lead> {
   const t = (v?: string) => (typeof v === 'string' ? cleanText(v).trim().slice(0, 300) : undefined) || undefined;
   const source = t(input.source) || 'manual';
   const score = (SCORES as string[]).includes(input.score || '') ? (input.score as Score) : 'warm';
@@ -303,13 +307,13 @@ export async function createManualLead(input: ManualLeadInput): Promise<Lead> {
     score,
     notes: [],
     tasks: [],
-    history: [{ id: randomUUID(), kind: 'created', detail: `Added manually (${source})`, at: now() }],
+    history: [{ id: randomUUID(), kind: 'created', detail: `Added manually (${source})`, at: now(), ...(actor ? { by: actor } : {}) }],
     created_at: now(),
     updated_at: now(),
     rev: 0,
   };
   const note = t(input.note);
-  if (note) lead.notes.push({ id: randomUUID(), body: note, at: now() });
+  if (note) lead.notes.push({ id: randomUUID(), body: note, at: now(), ...(actor ? { by: actor } : {}) });
   await assignOwner(lead);
   await (await backend()).insertLead(lead);
   return lead;
@@ -318,8 +322,11 @@ export async function createManualLead(input: ManualLeadInput): Promise<Lead> {
 const stageLabel = (id?: string) => STAGES.find((s) => s.id === id)?.label || id || '?';
 const cap = (s?: string) => (s ? s[0].toUpperCase() + s.slice(1) : '?');
 
-function logActivity(lead: Lead, kind: Activity['kind'], detail: string) {
-  (lead.history ??= []).push({ id: randomUUID(), kind, detail, at: now() });
+/* `by` is the signed-in operator, when there is one. Automatic entries (the
+   sequence, an inbound reply, a tracked click) leave it unset, which is how the
+   timeline tells "Anna moved this to Qualified" apart from "the CRM did". */
+function logActivity(lead: Lead, kind: Activity['kind'], detail: string, by?: string) {
+  (lead.history ??= []).push({ id: randomUUID(), kind, detail, at: now(), ...(by ? { by } : {}) });
 }
 
 /* Speed-to-lead measurement: the first moment a HUMAN acted on this lead — a
@@ -346,19 +353,19 @@ async function mutate(id: string, fn: (lead: Lead) => void): Promise<Lead | null
   throw new Error(`lead ${id}: too many concurrent updates`);
 }
 
-export async function updateLead(id: string, patch: LeadPatch): Promise<Lead | null> {
+export async function updateLead(id: string, patch: LeadPatch, actor?: string): Promise<Lead | null> {
   return mutate(id, (lead) => {
     if (patch.stage && patch.stage !== lead.stage)
-      logActivity(lead, 'stage', `${stageLabel(lead.stage)} → ${stageLabel(patch.stage)}`);
+      logActivity(lead, 'stage', `${stageLabel(lead.stage)} → ${stageLabel(patch.stage)}`, actor);
     if (patch.score && patch.score !== lead.score)
-      logActivity(lead, 'score', `Score ${cap(lead.score)} → ${cap(patch.score)}`);
+      logActivity(lead, 'score', `Score ${cap(lead.score)} → ${cap(patch.score)}`, actor);
     const contactKeys = ['name', 'email', 'phone', 'whatsapp', 'villa'] as const;
     const edited = contactKeys.filter((k) => k in patch && (patch[k] || '') !== (lead[k] || ''));
-    if (edited.length) logActivity(lead, 'contact', `Contact details updated (${edited.join(', ')})`);
+    if (edited.length) logActivity(lead, 'contact', `Contact details updated (${edited.join(', ')})`, actor);
     if ('value' in patch && patch.value !== lead.value)
-      logActivity(lead, 'value', patch.value ? `Deal value set to ${fmtTHB(patch.value)}` : 'Deal value cleared');
+      logActivity(lead, 'value', patch.value ? `Deal value set to ${fmtTHB(patch.value)}` : 'Deal value cleared', actor);
     if (patch.owner && patch.owner !== lead.owner)
-      logActivity(lead, 'assigned', `Assigned to ${patch.owner}`);
+      logActivity(lead, 'assigned', `Assigned to ${patch.owner}`, actor);
     if (patch.stage || patch.score || edited.length) markFirstResponse(lead);
     Object.assign(lead, patch);
     // A revived deal is no longer lost — drop the stale reason.
@@ -489,11 +496,11 @@ export async function dedupeMerge(): Promise<{ groups: number; merged: number }>
 /* Bulk operations for the list view. One failing lead must not abort the rest
    of the batch — each item is attempted independently and the counts report
    what actually happened. */
-export async function bulkUpdate(ids: string[], patch: LeadPatch): Promise<{ done: number; failed: number }> {
+export async function bulkUpdate(ids: string[], patch: LeadPatch, actor?: string): Promise<{ done: number; failed: number }> {
   let done = 0, failed = 0;
   for (const id of ids) {
     try {
-      if (await updateLead(id, patch)) done++;
+      if (await updateLead(id, patch, actor)) done++;
     } catch {
       failed++;
     }
@@ -530,16 +537,16 @@ export async function allTasks(): Promise<GlobalTask[]> {
   );
 }
 
-export async function addNote(id: string, body: string): Promise<Lead | null> {
-  const note: Note = { id: randomUUID(), body: cleanText(body).trim().slice(0, 4000), at: now() };
+export async function addNote(id: string, body: string, actor?: string): Promise<Lead | null> {
+  const note: Note = { id: randomUUID(), body: cleanText(body).trim().slice(0, 4000), at: now(), ...(actor ? { by: actor } : {}) };
   return mutate(id, (lead) => {
     lead.notes.unshift(note);
     markFirstResponse(lead);
   });
 }
 
-export async function addTask(id: string, title: string, due?: string): Promise<Lead | null> {
-  const task: Task = { id: randomUUID(), title: cleanText(title).trim().slice(0, 300), due, done: false, at: now() };
+export async function addTask(id: string, title: string, due?: string, actor?: string): Promise<Lead | null> {
+  const task: Task = { id: randomUUID(), title: cleanText(title).trim().slice(0, 300), due, done: false, at: now(), ...(actor ? { by: actor } : {}) };
   return mutate(id, (lead) => {
     lead.tasks.push(task);
     markFirstResponse(lead);
@@ -725,6 +732,51 @@ export async function recordDownload(id: string, title: string): Promise<void> {
         `Score ${cap(lead.score)} → ${cap(earned)} (opened our documents ${opens}×)`,
       );
       lead.score = earned;
+    }
+  });
+}
+
+/* A document was produced for this lead — an offer, most often.
+
+   Deduped within the hour so that opening the offer twice to check a figure
+   does not read, later, as two offers having been issued. Marks a first
+   response: writing someone an offer is unambiguously a human acting. */
+export async function recordDocument(id: string, detail: string, actor?: string): Promise<Lead | null> {
+  const cut = new Date(Date.now() - 3_600_000).toISOString();
+  return mutate(id, (lead) => {
+    const repeat = (lead.history || []).some(
+      (h) => h.kind === 'document' && h.detail === detail && h.at > cut,
+    );
+    if (repeat) return;
+    logActivity(lead, 'document', detail, actor);
+    markFirstResponse(lead);
+  });
+}
+
+/* A lead pressed a button in one of our letters (the tracked /c link).
+
+   Opens tell us little — images load themselves and previews fire on their
+   own — but a click is a decision. It carries the same weight as opening a
+   document, so it earns the same warm score, and "Clicked: Book a call" on the
+   timeline is often the first sign that a quiet lead is coming back to life.
+
+   Deduped within the hour for the same reason downloads are: a mail client
+   that prefetches links would otherwise write the same line several times. */
+export async function recordClick(id: string, label: string): Promise<void> {
+  const cut = new Date(Date.now() - 3_600_000).toISOString();
+  await mutate(id, (lead) => {
+    const detail = `Clicked: ${label}`;
+    const repeat = (lead.history || []).some(
+      (h) => h.kind === 'click' && h.detail === detail && h.at > cut,
+    );
+    if (repeat) return;
+    logActivity(lead, 'click', detail);
+
+    // Only ever upgrades cold → warm. A human who judged this lead cold after
+    // a phone call knows more than a tap does, and must not be overruled.
+    if (SCORE_RANK.warm < SCORE_RANK[lead.score]) {
+      logActivity(lead, 'score', `Score ${cap(lead.score)} → Warm (clicked "${label}")`);
+      lead.score = 'warm';
     }
   });
 }

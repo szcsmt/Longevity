@@ -1,22 +1,33 @@
 import { isAuthed } from '@/lib/crm/auth';
 import { runSequence } from '@/lib/crm/automation';
+import { sendDigest } from '@/lib/crm/digest';
 import { autoEmailsEnabled } from '@/lib/crm/mailer';
+import { whatsappEnabled } from '@/lib/crm/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
-/* Daily follow-up sweep: advances every quiet lead by at most one step of the
-   minute-0 → day-60 sequence (day 3 nudge, day 10 story, day 24 viewing
-   invite, day 45 terms, day 60 closing note). Triggered by Vercel Cron
-   (Authorization: Bearer CRON_SECRET) or manually by a signed-in operator.
-   Inert while the mailer is dark. */
+/* The daily sweep, at 00:00 UTC — seven in the morning on Samui, which is the
+   point: the operator's day starts with the CRM having already done its round.
+
+   Two jobs in one run, deliberately. Vercel's plan allows few scheduled jobs,
+   and these two belong together anyway: advance the customer sequence first,
+   then report to the operator on what is left for a human to do.
+
+   Triggered by Vercel Cron (Authorization: Bearer CRON_SECRET) or by hand from
+   a signed-in session. Both halves are inert until their env is configured. */
 export async function GET(req: Request) {
   const bearer = req.headers.get('authorization');
   const cronOk = Boolean(process.env.CRON_SECRET && bearer === `Bearer ${process.env.CRON_SECRET}`);
   if (!cronOk && !(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
 
-  if (!autoEmailsEnabled()) {
-    return Response.json({ ok: true, enabled: false, sent: 0, note: 'auto-emails are dark (env not configured)' });
-  }
-  const result = await runSequence();
-  return Response.json({ ok: true, enabled: true, ...result });
+  const canSend = autoEmailsEnabled() || whatsappEnabled();
+  const sequence = canSend
+    ? await runSequence()
+    : { checked: 0, sent: 0, steps: {}, note: 'sequence is dark (env not configured)' };
+
+  /* The digest must run even when the sequence is dark: telling the operator
+     what needs doing has nothing to do with whether we are mailing customers. */
+  const digest = await sendDigest().catch(() => ({ sent: false, total: 0 }));
+
+  return Response.json({ ok: true, enabled: canSend, ...sequence, digest });
 }

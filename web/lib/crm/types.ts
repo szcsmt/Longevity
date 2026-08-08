@@ -10,6 +10,11 @@ export interface VillaPhase {
   paid: boolean;
   at?: string;      // ISO date the payment landed
   amount?: number;  // THB override
+  /* When this instalment is expected. Optional because most of the schedule is
+     governed by progress on site rather than by the calendar: a phase whose
+     construction gate has been passed is due whether or not anyone typed a
+     date. Set it when a specific date has actually been agreed. */
+  due?: string;     // ISO date
 }
 
 export type PhaseKey = 'slot' | 'foundation' | 'build' | 'furnish';
@@ -81,6 +86,9 @@ export interface Note {
   id: string;
   body: string;
   at: string; // ISO
+  /** Who wrote it. Unset on notes the CRM filed itself (an inbound reply, an
+      AI brief) and on everything written before there was more than one user. */
+  by?: string;
 }
 
 /* The automated customer sequence, minute 0 → day 60. Each step goes out at
@@ -108,6 +116,7 @@ export interface Task {
   due?: string;  // ISO date
   done: boolean;
   at: string;    // ISO created
+  by?: string;   // who added it
 }
 
 /* An automatic audit entry — recorded by the store whenever the lead itself
@@ -115,7 +124,10 @@ export interface Task {
    with notes in the lead timeline, so the full history reads in one place. */
 export interface Activity {
   id: string;
-  kind: 'created' | 'stage' | 'score' | 'contact' | 'value' | 'merged' | 'email' | 'message' | 'assigned' | 'download';
+  kind: 'created' | 'stage' | 'score' | 'contact' | 'value' | 'merged' | 'email' | 'message' | 'assigned' | 'download' | 'click' | 'document';
+  /** Who did it, when a signed-in person did. Absent for anything the system
+      or the customer did — those read as the CRM's own actions. */
+  by?: string;
   detail: string; // human line, e.g. "New → Contacted"
   at: string;     // ISO
 }

@@ -21,11 +21,18 @@ export interface CrmDocument {
 
 export const DOCUMENTS: CrmDocument[] = [
   {
+    id: 'overview',
+    title: 'Longevity Resort overview',
+    file: '/brochure/longevity-overview-2026.pdf',
+    note: '12 pages, 2.6 MB. The same story as the full brochure, cut to what a stranger needs.',
+    audience: 'First contact. Small enough to open on a phone over hotel wifi, which is where it is read.',
+  },
+  {
     id: 'brochure',
     title: 'Longevity Resort brochure',
     file: '/brochure/longevity-brochure-2026.pdf',
-    note: '52 pages: the resort, the residences, the villa types with prices.',
-    audience: 'Anyone asking for information — the default first document.',
+    note: '52 pages, 14 MB. The resort, the residences, the villa types with prices.',
+    audience: 'Someone who is already reading. Sent once they have shown interest, not on day one.',
   },
 ];
 

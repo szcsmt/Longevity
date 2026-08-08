@@ -9,18 +9,32 @@ export interface SequenceStepMeta {
   day: number;
   label: string;
   note: string; // what this letter is for, in one line
+  /* Which document this letter carries, if any (an id from documents.ts).
+     The escalation is deliberate: the 12-page overview opens instantly on a
+     phone and is what a stranger will actually read, so it goes first; the
+     52-page brochure is held back for someone who has already shown interest.
+     Steps with no document are the ones whose job is to ask, not to give. */
+  doc?: string;
 }
 
 export const SEQUENCE_STEPS: SequenceStepMeta[] = [
-  { step: 'welcome',  day: 0,  label: 'Welcome',        note: 'Instant thank-you, personalised to the form' },
+  { step: 'welcome',  day: 0,  label: 'Welcome',        note: 'Instant thank-you, personalised to the form',   doc: 'overview' },
   { step: 'reminder', day: 3,  label: 'Gentle nudge',   note: 'One follow-up if they never replied' },
-  { step: 'story',    day: 10, label: 'The story',      note: 'What Longevity is — a reason to care again' },
-  { step: 'viewing',  day: 24, label: 'Viewing invite', note: 'Come and see it, in person or by video' },
-  { step: 'terms',    day: 45, label: 'Terms',          note: 'Pricing and the 4-step payment schedule' },
+  { step: 'story',    day: 10, label: 'The story',      note: 'What Longevity is — a reason to care again',    doc: 'brochure' },
+  { step: 'viewing',  day: 24, label: 'Viewing invite', note: 'Come and see it, in person or by video',        doc: 'overview' },
+  { step: 'terms',    day: 45, label: 'Terms',          note: 'Pricing and the 4-step payment schedule',       doc: 'brochure' },
   { step: 'closing',  day: 60, label: 'Closing note',   note: 'A graceful last word — then we stop' },
 ];
 
 export const stepLabel = (s: EmailStep) => SEQUENCE_STEPS.find((x) => x.step === s)?.label || s;
+
+/* Which channel a step would go out on. E-mail carries the designed letter and
+   is always preferred; WhatsApp is the fallback for the leads that arrive with
+   a number and no address — until now those got nothing at all. */
+export type SequenceChannel = 'email' | 'whatsapp';
+
+export const channelFor = (l: Lead): SequenceChannel | null =>
+  l.email ? 'email' : (l.whatsapp || l.phone) ? 'whatsapp' : null;
 
 /* Why a lead is not (or no longer) in the sequence — the same conditions the
    engine applies, so what the operator reads is what actually happens. */
@@ -34,7 +48,7 @@ export function sequenceState(l: Lead): SequenceState {
   const started = box.find((e) => e.step === 'welcome');
 
   if (l.unsubscribed) return { active: false, sent, reason: 'The customer opted out' };
-  if (!l.email) return { active: false, sent, reason: 'No e-mail address on file' };
+  if (!channelFor(l)) return { active: false, sent, reason: 'No e-mail address or WhatsApp number on file' };
   if (!['new', 'contacted', 'qualified'].includes(l.stage))
     return { active: false, sent, reason: 'The deal has moved on — a person is handling it' };
   const engaged = (l.history || []).some(
