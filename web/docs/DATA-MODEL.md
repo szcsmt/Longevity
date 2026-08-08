@@ -32,8 +32,8 @@ villa seller 120, villa note 500.
 ## Lead
 
 One row per person in the pipeline (see the "one person = one lead" invariant below). Created
-by the public form intake (`/api/lead`), the authenticated ingest webhook (`/api/ingest`,
-WhatsApp/Bigin via make.com), or manually from the admin UI (`/api/crm/leads`).
+by the public form intake (`/api/lead`), the WhatsApp webhook (`/api/whatsapp`,
+WhatsApp via the Meta Cloud API), or manually from the admin UI (`/api/crm/leads`).
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -263,7 +263,7 @@ entries.
 
 ## Blocklist
 
-A flat set of contact keys; inbound WhatsApp/ingest from a blocked contact never creates a
+A flat set of contact keys; an inbound WhatsApp message from a blocked contact never creates a
 lead again (used by "Delete & block" on private/non-lead contacts). Key format:
 
 | Prefix | Value |

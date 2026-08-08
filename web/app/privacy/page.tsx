@@ -224,15 +224,9 @@ export default function PrivacyPage() {
           <strong>Database infrastructure:</strong> Neon, Inc. (managed database services used
           for the Company&rsquo;s enquiry-management records);
         </li>
-        <li>
-          <strong>Customer-relationship management:</strong> Zoho Corporation Pvt. Ltd. and its
-          affiliates, as provider of the Zoho Bigin CRM platform, in which enquiry and
-          customer-relationship records are maintained;
-        </li>
-        <li>
-          <strong>Workflow and integration services:</strong> Celonis, Inc. / make.com (Make),
-          used to route form submissions from the Website to the Company&rsquo;s CRM systems;
-        </li>
+        {/* Zoho Bigin and make.com were removed on 2026-08-08. Enquiries from
+            this website reach the Company's own CRM and nowhere else, so naming
+            them here would describe a transfer that does not happen. */}
         <li>
           <strong>Tag and consent management:</strong> Google Ireland Limited / Google LLC
           (Google Tag Manager and Google Analytics); Resend, Inc. (transactional e-mail,

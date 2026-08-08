@@ -12,7 +12,6 @@ All routes are declared `dynamic = 'force-dynamic'` — responses are never cach
 |---|---|---|
 | Public | No auth. `/api/lead` and `/api/event` are additionally protected by a per-IP rate limit; login/logout are not rate limited. | `/api/lead`, `/api/event`, `/api/crm/login`, `/api/crm/logout` |
 | Session cookie | `lr_crm` httpOnly cookie set by `/api/crm/login`. Value is `base64url(name).sha256(name:password:salt)`; verified against the env-configured accounts on every request (`lib/crm/auth.ts`). Password/token checks use constant-time comparison. | All `/api/crm/*` routes except login/logout |
-| `x-ingest-key` | Header (or `?key=` query param) compared to `INGEST_SECRET`. Fails closed: 401 when the env var is unset. | `/api/ingest` |
 | Body secret | `secret` field in the JSON body compared to `SHEET_SECRET`. Fails closed. | `/api/villa-sync` |
 | `x-api-key` | Header (preferred) or `?key=` query param compared to `ESTATE_API_KEY`. Fails closed. | `/api/3destate/units` |
 | `CRON_SECRET` bearer | `Authorization: Bearer <CRON_SECRET>`. A valid session cookie is accepted as an alternative (manual trigger by an operator) — any session for `/api/crm/cron`, an **admin** session for `/api/crm/backup`. | `/api/crm/cron`, `/api/crm/backup` |
@@ -44,7 +43,8 @@ Only the two fully public intake endpoints are rate limited. Both limits are in-
 
 Website form intake (enquiry, reserve, brochure, 3D-twin enquiry form). Public, rate limited
 (5/min/IP). Stores the lead in the CRM first (best-effort — a store failure never breaks the
-visitor's submit), then forwards the **raw, unmodified body** to the `MAKE_WEBHOOK` URL if set.
+visitor's submit). Nothing is forwarded anywhere: this CRM is the only destination a lead
+from this website has.
 
 Request body (JSON; invalid JSON → `400 {"ok":false,"error":"invalid json"}`). All string
 fields are control-character-cleaned and capped at **300 chars** on storage:
@@ -82,13 +82,13 @@ Side effects — **only when a lead was actually created** (never on a repeat en
   the mailer is enabled (`RESEND_API_KEY` + `CRM_AUTO_FROM` set and `CRM_AUTO_EMAILS` not
   `off`) and the lead has an e-mail. Recorded on the lead's `outbox` as step `welcome`.
 
-Note: this endpoint does **not** check the blocklist — only `/api/ingest` does.
+Note: this endpoint does **not** check the blocklist — only `/api/whatsapp` does.
 
 Responses:
 
 | Case | Response |
 |---|---|
-| Stored, `MAKE_WEBHOOK` unset | `200 {"ok":true,"forwarded":false}` |
+| Stored | `200 {"ok":true}` |
 | Forwarded | `200 {"ok":<webhook 2xx?>,"forwarded":true}` |
 | Webhook fetch threw | `502 {"ok":false,"forwarded":false}` |
 | Rate limited | `429 {"ok":false}` |
@@ -156,44 +156,6 @@ letter already sitting in somebody's inbox.
 ---
 
 ## Inbound integration endpoints
-
-### POST /api/ingest
-
-Inbound lead ingestion for make.com / Zoho Bigin (WhatsApp leads). Auth: `x-ingest-key`
-header or `?key=` = `INGEST_SECRET` (401 otherwise, incl. when the secret is unset). Stores
-straight into the CRM and deliberately does **not** forward to `MAKE_WEBHOOK` (loop
-avoidance). Body parsing is tolerant — invalid JSON is treated as `{}`.
-
-Flexible field mapping (first non-empty key wins):
-
-| Target | Accepted source keys | Default |
-|---|---|---|
-| name | `name`, `Full_Name`, `fullName`, `contact_name`, `Contact Name`; else `first_name`/`First Name`/`firstName`/`Owner_First_Name` + `last_name`/`Last Name`/`lastName`; else parsed from a message opener "my name is …" (max 3 words) | — |
-| email | `email`, `Email`, `email_address` | — |
-| phone | `phone`, `Phone`, `mobile`, `Mobile`, `phone_number`, `Phone Number`, `whatsapp`, `WhatsApp` | — |
-| whatsapp | `whatsapp`, `WhatsApp` | falls back to phone |
-| message | `message`, `Message`, `note`, `Note`, `Description`, `text`, `body`; else base64-decoded `message_b64` / `messageB64` | — |
-| form_type | `form_type` | `whatsapp` |
-| form_origin | `form_origin` | `bigin` |
-| source | `source`, `Source`, `utm_source`, `Lead Source` | `WhatsApp` |
-| utm_campaign | `utm_campaign`, `campaign`, `Campaign` | — |
-| page_url | `page_url`, `url` | — |
-| gdpr_consent | `gdpr_consent` (`true` boolean or string) | false |
-| submitted_at | `submitted_at`, `created_at`, `Created Time` | — |
-
-Behaviour (all "skip" cases return **200** so the make.com scenario never shows red):
-
-| Case | Response |
-|---|---|
-| No name, e-mail or phone at all | `200 {"ok":false,"skipped":"empty"}` (no-op) |
-| Sender is on the blocklist ("Delete & block") | `200 {"ok":true,"skipped":"blocked"}` (no-op) |
-| Upserted | `200 {"ok":true,"id":"<lead id>","created":<bool>}` |
-| Bad/missing key | `401 {"ok":false,"error":"unauthorized"}` |
-| Store failure | `500 {"ok":false,"error":"store error"}` |
-
-Same upsert/dedupe semantics as `/api/lead` (message → note, reply-flag clear, lost-lead
-revival, score upgrade only). `notifyNewLead` fires only for genuinely new contacts. The auto
-welcome e-mail is **not** sent from this route.
 
 ### GET · POST /api/whatsapp
 
@@ -347,7 +309,7 @@ All writes go through optimistic concurrency (per-lead `rev`; up to 4 retries on
 
 Deletes the lead. With `?block=1`, the lead's contact keys (`e:<lowercased email>`,
 `p:<last-9-digit phone key>` for phone and WhatsApp) are added to the blocklist **first**, so
-the person's next WhatsApp message through `/api/ingest` never recreates the lead (used for
+the person's next WhatsApp message through `/api/whatsapp` never recreates the lead (used for
 private/non-lead contacts, "Delete & block"). Response: `200 {"ok":true}` or `404 {"ok":false}`.
 
 ### GET /api/crm/leads/[id]/offer?value=&lt;THB&gt;
@@ -481,10 +443,9 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 
 | Target | Trigger | Payload | Failure handling |
 |---|---|---|---|
-| `MAKE_WEBHOOK` (make.com) | Every `POST /api/lead` after local store | The visitor's original JSON body, forwarded verbatim (`Content-Type: application/json`) | Unset → skipped with `forwarded:false`; fetch error → `502` to the caller. `/api/ingest` never forwards (loop avoidance). |
 | `SHEET_WEBHOOK` (Google Sheet Apps Script) | Villa status change from the CRM UI, or a payment-driven status advance | `{"secret": SHEET_SECRET, "id", "status", "seller", "note"}` | Requires both `SHEET_WEBHOOK` and `SHEET_SECRET`. Best-effort: 4 s timeout, errors swallowed, never blocks the save. Skipped for changes arriving **from** the sheet (`/api/villa-sync` applies silently — no loop). |
 | `PARTNER_WEBHOOK_URL` (3DEstate Smart Model push) | Every villa status change (CRM UI, sheet-originated via `/api/villa-sync`, or payment-driven) | `{"event":"unit.updated","id","status","price","at"}` — `status` maps `free` → `available`; `price` is the contract value or `null`; buyer identity is never exposed | Unset → skipped (the 3D twin falls back to polling `GET /api/3destate/units`). Best-effort: 4 s timeout, errors swallowed. |
-| Resend (`https://api.resend.com/emails`) — operator alert | New lead created via `/api/lead` or `/api/ingest` | Branded "New lead" HTML e-mail from `CRM_NOTIFY_FROM` (default `Longevity CRM <onboarding@resend.dev>`) to `CRM_NOTIFY_TO`, subject `New <kind> — <name>` (🔥 when hot) | No-op unless `RESEND_API_KEY` + `CRM_NOTIFY_TO` set; errors swallowed. |
+| Resend (`https://api.resend.com/emails`) — operator alert | New lead created via `/api/lead`, `/api/whatsapp` or `/api/booking` | Branded "New lead" HTML e-mail from `CRM_NOTIFY_FROM` (default `Longevity CRM <onboarding@resend.dev>`) to `CRM_NOTIFY_TO`, subject `New <kind> — <name>` (🔥 when hot) | No-op unless `RESEND_API_KEY` + `CRM_NOTIFY_TO` set; errors swallowed. |
 | Resend — customer auto e-mails | Welcome: new lead with e-mail via `/api/lead`. Reminder: `/api/crm/cron` | Plain-text-style HTML from `CRM_AUTO_FROM`, `reply_to` = `CRM_NOTIFY_TO`; welcome variant depends on `form_type` (brochure link inline for `brochure_request`; reservation copy for `reserve`/villa origins; generic thank-you otherwise), signed with `CRM_AGENT_NAME/TITLE/PHONE` or a neutral team signature | Dark by default — sends only when `RESEND_API_KEY` + `CRM_AUTO_FROM` set and `CRM_AUTO_EMAILS` ≠ `off`. 8 s timeout, never throws; only accepted sends are recorded on the lead's outbox. |
 | Resend — daily backup mail | `GET /api/crm/backup` (Vercel Cron 03:00 UTC, or manual admin trigger) | Full JSON snapshot (leads, villas, villa history, last 500 events) as an attachment, from `CRM_NOTIFY_FROM` to `CRM_NOTIFY_TO` | `503` when `RESEND_API_KEY`/`CRM_NOTIFY_TO` unset; `502` when Resend rejects the send. |
 
@@ -492,7 +453,6 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 
 | Variable | Purpose |
 |---|---|
-| `INGEST_SECRET` | Shared secret for `POST /api/ingest` (`x-ingest-key` header or `?key=`). Unset → the endpoint always 401s. |
 | `SHEET_SECRET` | Shared secret: validates inbound `/api/villa-sync` **and** is included in outbound sheet-sync payloads. |
 | `SHEET_WEBHOOK` | Apps Script URL that receives villa status changes made in the CRM. Both `SHEET_WEBHOOK` and `SHEET_SECRET` must be set for sync to run. |
 | `ESTATE_API_KEY` | API key for `GET /api/3destate/units` (`x-api-key` or `?key=`). Rotate by changing the env var. Unset → always 401. |
@@ -501,7 +461,8 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 | `CRM_USER` | Primary CRM account name (default `admin`). |
 | `CRM_PASSWORD` | Primary CRM account password. Unset in production → primary account disabled (fails closed); dev fallback password is `longevity`. |
 | `CRM_USERS` | Extra accounts, comma-separated. `name:password` = admin; `name:password:agent` = salesperson; `name:password:viewer` = read-only. An entry with no role stays admin, so existing accounts are unaffected. See the role table below. |
-| `INBOUND_SECRET` | Query-string secret for `POST /api/inbound` (`?key=`). Unset → always 401. |
+| `RESEND_WEBHOOK_SECRET` | Resend's Standard Webhooks signing secret (`whsec_…`). Set → `POST /api/inbound` requires a valid signature and the URL key is ignored. |
+| `INBOUND_SECRET` | Fallback query-string secret for `POST /api/inbound` (`?key=`), used only while no signing secret is set. |
 | `CRM_REPLY_TO` | The Resend inbound address customer replies should go to, e.g. `reply@….resend.app`. Set → the CRM sees replies and can stop the sequence. Unset → falls back to `CRM_NOTIFY_TO` and the CRM stays blind. |
 | `CRM_DIGEST_TO` | Morning-digest recipients, comma-separated. Falls back to `CRM_NOTIFY_TO`. |
 | `WHATSAPP_TOKEN` | Meta Cloud API permanent access token. |

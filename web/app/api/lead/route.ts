@@ -39,8 +39,8 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: 'invalid json' }, { status: 400 });
   }
 
-  // Persist into our own CRM first (best-effort — never break the form on error),
-  // then still forward to make.com for any existing automations.
+  // Persist into our own CRM. Best-effort: a store failure must never break
+  // the visitor's submit — they filled in a form and deserve the thank-you.
   try {
     if (body && typeof body === 'object') {
       // Free-text message (e.g. the 3D twin's enquiry form) lands as a note on
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         // Instant e-mail alert (no-op unless RESEND_API_KEY + CRM_NOTIFY_TO are set).
         await notifyNewLead(lead).catch(() => {});
         // Minute-0 thank-you to the customer — inert until CRM_AUTO_FROM is set
-        // (Bigin handles customer e-mail until then). Only for NEW people; a
+        // Only for NEW people; a
         // returning contact must never get a second welcome.
         await sendAutoWelcome(lead).catch(() => {});
       }
@@ -62,7 +62,9 @@ export async function POST(request: Request) {
     /* store failure must not affect the visitor's submit */
   }
 
-  // The make.com/Bigin forwarding was removed 2026-08-07 when the agency
-  // relationship ended — the CRM is the sole destination for leads.
+  /* Nothing is forwarded anywhere. The make.com/Bigin pipeline was cut on
+     2026-08-07 when the agency relationship ended, and the /api/ingest door it
+     used was removed on 2026-08-08. This CRM is the only destination a lead
+     from this website has. */
   return Response.json({ ok: true });
 }

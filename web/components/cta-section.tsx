@@ -68,7 +68,7 @@ export function CtaSection() {
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
-    // Real submission → forward to the CRM (via /api/lead → make.com), tagged with the
+    // Real submission → straight to our CRM via /api/lead, tagged with the
     // CTA it came from so the CRM can score it (reserve = warm, per the pipeline map).
     sendLead({
       form_type: 'reserve',

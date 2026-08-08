@@ -122,7 +122,7 @@ feltöltöd a sablonjaikat, ugyanezekből az adatokból ki tudjuk tölteni azoka
 
 **Danger zone** (csak admin):
 - **Delete lead** — végleges törlés.
-- **Delete & block contact** — törlés ÉS a kontakt (e-mail + telefonszám) tiltólistára tétele. Ezután az erről a számról/címről az üzenet-csatornán (WhatsApp / make.com) beérkező megkeresés soha többé nem hoz létre leadet. Magánszámokra, nem valódi érdeklődőkre való.
+- **Delete & block contact** — törlés ÉS a kontakt (e-mail + telefonszám) tiltólistára tétele. Ezután az erről a számról vagy címről WhatsAppon beérkező megkeresés soha többé nem hoz létre leadet. Magánszámokra, nem valódi érdeklődőkre való.
 
 ### Lost — elveszett üzlet
 

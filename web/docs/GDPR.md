@@ -52,7 +52,7 @@ per-instance rate limiter (`Map` in the route module); IPs are never persisted.
 Normalized contact keys, not full records: `e:<lowercased email>` and
 `p:<last 9 phone digits>` (`store.ts` `contactKeys`). Populated by "Delete & block"
 (`DELETE /api/crm/leads/[id]?block=1`). Purpose: an erased/objecting contact's next
-inbound WhatsApp message must **not** recreate a lead (`/api/ingest` checks
+inbound WhatsApp message must **not** recreate a lead (`/api/whatsapp` checks
 `isBlockedContact` first). Keeping a minimal suppression record after erasure is
 standard practice — honouring an objection or erasure requires remembering *whom*
 not to process (GDPR Art. 17(3)(b) / Art. 21 logic). Note the keys are stored in
@@ -89,7 +89,7 @@ should not be copied into it.
 | # | Flow | Personal data | Processors touched |
 |---|---|---|---|
 | 1 | Website forms (enquiry / reserve / brochure) → `POST /api/lead` → CRM store | name, email, phone, message, consent, UTM | Vercel → Neon; new-lead alert email with full contact details via **Resend** to `CRM_NOTIFY_TO` (a Google Workspace mailbox, e.g. crm@longevitysamui.com); minute-0 welcome email to the lead via Resend. The make.com forwarding was removed on 2026-08-07 — the CRM is the sole destination |
-| 2 | WhatsApp / Zoho Bigin (legacy) → make.com → `POST /api/ingest` (secret in the `x-ingest-key` header or `?key=` query param) → CRM store | name, phone, WhatsApp message body (base64-decoded) | make.com, Zoho Bigin, Vercel, Neon; alert email via Resend for new contacts only |
+| 2 | WhatsApp → `POST /api/whatsapp` (Meta Cloud API webhook, HMAC-SHA256 signed with `WHATSAPP_APP_SECRET`) → CRM store | name (WhatsApp profile), phone, message body | Meta, Vercel, Neon; alert email via Resend for new contacts only. The make.com / Zoho Bigin route was removed on 2026-08-08 |
 | 3 | Manual entry (phone call, walk-in, referral) → admin UI → `POST /api/crm/leads` | whatever the operator types | Vercel, Neon |
 | 4 | Site clicks → `POST /api/event` | none (anonymous events) | Vercel, Neon |
 | 5 | Villa status changes ↔ Google Sheet (outbound via the Apps Script webhook `SHEET_WEBHOOK`; inbound sheet edits arrive at `POST /api/villa-sync`; both directions authenticated by `SHEET_SECRET`) | villa id, status, **seller name, free-text note** | Google (Sheets / Apps Script) |
@@ -121,8 +121,9 @@ The engine also refuses to mail any lead that predates its activation. The one-c
 | Resend (eu-west-1) | Transactional email | Lead contact details in operator alerts; lead name+email in customer emails; the **full daily backup snapshot** as a JSON attachment (`/api/crm/backup`) |
 | Google Workspace | Operator mailboxes (`CRM_NOTIFY_TO`, reply-to) | Alert emails, customer replies, daily full-database backup attachments |
 | Google Sheets / Apps Script | Villa availability mirror | Villa status, seller names, notes |
-| make.com | Automation hub (form forwarding out; WhatsApp/Bigin ingestion in) | Full form payloads; WhatsApp sender name, phone, message |
-| Zoho Bigin | Legacy CRM / customer email sender (being phased out) | Leads it originated; customer email until the CRM mailer is switched on |
+| Meta Platforms (WhatsApp Business) | Inbound and outbound WhatsApp messages | Sender name, phone number, message content |
+| Cal.com | Appointment scheduling | Name, email, timezone, booking notes |
+| Anthropic | Reading inbound replies to brief the operator | The reply text and the lead's context, when `ANTHROPIC_API_KEY` is set |
 | 3DEstate | 3D masterplan integration | **No personal data** (unit availability/pricing only) |
 
 Action item: confirm a DPA (or equivalent SCC coverage) exists with each of the above.
@@ -134,10 +135,9 @@ Action item: confirm a DPA (or equivalent SCC coverage) exists with each of the 
 - The website forms (`components/enquiry-modal.tsx`, `components/brochure-download.tsx`,
   `components/cta-section.tsx`) include a **required consent checkbox** linking to the
   `/privacy` page, and submit `gdpr_consent: true` with the lead.
-- `/api/lead` stores `gdpr_consent` strictly as `payload === true`; `/api/ingest`
-  accepts `true` or the string `'true'` (`p.gdpr_consent === true || p.gdpr_consent
-  === 'true'`). Consent is never inferred from anything else.
-- WhatsApp-ingested leads normally arrive **without** the flag (the person messaged us;
+- `/api/lead` stores `gdpr_consent` strictly as `payload === true`. Consent is never
+  inferred from anything else.
+- WhatsApp leads arrive **without** the flag (the person messaged us;
   the applicable basis is more likely legitimate interest / pre-contractual steps —
   document this in the privacy policy).
 - Consent survives merges: `mergeLeads` in `store.ts` carries it forward
@@ -163,8 +163,12 @@ Action item: confirm a DPA (or equivalent SCC coverage) exists with each of the 
 | Withdraw consent | No self-service; handled manually by an operator (edit or delete the lead) |
 
 Known gaps in erasure are listed in the TODO section (villa `buyerName`, villa history,
-previously mailed daily backup snapshots, and copies held by make.com / Bigin /
-Google Sheet / mailboxes are outside this system).
+previously mailed daily backup snapshots, and copies held by the Google Sheet or the
+operator mailboxes are outside this system).
+
+Historic copies also sit in **Zoho Bigin** and any **make.com** scenarios from the agency
+period, which ended on 2026-08-07. Nothing has flowed to either since; erasing a person
+properly still means erasing them there too, for as long as those accounts exist.
 
 ---
 
@@ -197,9 +201,12 @@ in the code implements this today.
   constant-time comparison;
   production fails closed when `CRM_PASSWORD` is missing (the primary account is
   disabled; only accounts from `CRM_USERS` remain).
-- Role-based access: `viewer` accounts are read-only — every mutating `/api/crm/*`
-  endpoint checks `isAdmin()` and returns 403 for them.
-- Machine endpoints each have their own rotatable secret: `INGEST_SECRET` (make.com),
+- Role-based access: three roles. `viewer` is read-only; `agent` may work leads but not
+  delete, export or see the sales ledger; `admin` may do everything. Enforced in the API
+  (`canEdit()` / `isAdmin()`), not merely hidden in the UI.
+- Machine endpoints each have their own rotatable secret or signature check:
+  `RESEND_WEBHOOK_SECRET` (inbound e-mail, Standard Webhooks signature),
+  `WHATSAPP_APP_SECRET` (Meta, HMAC), `CAL_WEBHOOK_SECRET` (Cal.com, HMAC),
   `SHEET_SECRET` (Google Sheet), `ESTATE_API_KEY` (3DEstate), `CRON_SECRET` (Vercel cron).
 - Public endpoints are rate-limited per IP; inbound lead strings are length-capped and
   control-character-stripped (`cleanText` in `store.ts`); event fields are length-capped
@@ -213,8 +220,9 @@ in the code implements this today.
 ## 9. Breach response — basics
 
 1. **Contain:** rotate the affected secrets immediately — all are env vars on Vercel:
-   `DATABASE_URL`, `CRM_PASSWORD` / `CRM_USERS`, `RESEND_API_KEY`, `INGEST_SECRET`,
-   `SHEET_SECRET`, `ESTATE_API_KEY`, `CRON_SECRET`, `MAKE_WEBHOOK`,
+   `DATABASE_URL`, `CRM_PASSWORD` / `CRM_USERS`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`,
+   `INBOUND_SECRET`, `SHEET_SECRET`, `ESTATE_API_KEY`, `CRON_SECRET`, `CAL_WEBHOOK_SECRET`,
+   `WHATSAPP_TOKEN`, `WHATSAPP_APP_SECRET`, `ANTHROPIC_API_KEY`,
    `PARTNER_WEBHOOK_URL`. Rotating
    `CRM_PASSWORD`/`CRM_USERS` invalidates every session cookie (the token is derived
    from the password).
@@ -226,8 +234,8 @@ in the code implements this today.
    message content — a leak of `crm_leads` would generally meet the notification bar.
 4. **Record:** keep an internal breach log regardless of whether notification was
    required.
-5. Remember the copies outside this system: make.com scenarios, Zoho Bigin, the Google
-   Sheet, Resend logs, and the operator mailboxes — including the daily
+5. Remember the copies outside this system: the legacy Zoho Bigin and make.com accounts,
+   the Google Sheet, Resend logs, and the operator mailboxes — including the daily
    `crm-backup-*.json` attachments, each of which is the entire database.
 
 ---
@@ -240,7 +248,7 @@ in the code implements this today.
    plus reading the UI; the CSV exports note *counts*, not note bodies, so a complete
    Art. 15 response requires manual assembly.
 3. **The public form intake does not check the blocklist** — `isBlockedContact` is only
-   called in `/api/ingest` (WhatsApp path). A blocked contact who submits the website
+   called in `/api/whatsapp`. A blocked contact who submits the website
    form again gets a new lead. Decide whether that is intended (a fresh form submission
    is arguably fresh consent) and document it either way.
 4. **Blocklist keys are plain normalized text** (`e:<email>`, `p:<digits>`), not hashed.
@@ -251,11 +259,10 @@ in the code implements this today.
 6. **Consent record is a bare boolean** — no consent-text version, timestamp, or
    purpose granularity.
 7. **Single shared DB credential** (`DATABASE_URL`) and env-configured operator accounts
-   with plaintext passwords in env vars; no per-operator audit of who edited a lead
-   (the auth layer knows *who* is signed in, but `logActivity` does not record it).
-8. **Full form payloads are forwarded verbatim to make.com** (`/api/lead`); verify the
-   make.com (and Zoho, Resend, Neon, Vercel, Google) DPAs and data locations, and drop
-   the forward once Bigin is retired.
+   with plaintext passwords in env vars. (Per-operator audit is now in place: notes,
+   tasks and history entries carry `by`.)
+8. **Confirm the DPAs** for the processors actually in use: Resend, Neon, Vercel, Google,
+   Meta (WhatsApp Business), Cal.com and Anthropic.
 9. **No login rate-limiting** on `/api/crm/login` (the constant-time check helps, but
    brute force is unthrottled).
 10. **Privacy policy alignment** — the `/privacy` page the consent checkbox links to

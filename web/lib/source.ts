@@ -3,7 +3,7 @@
    (or the simpler ?source=...) has the full UTM set stored for the whole session, so
    every form can send it on submit — even if the visitor scrolls or navigates first
    (the query string may be gone by then). Leads are POSTed to our own /api/lead route,
-   which forwards them server-side to the make.com webhook (keeps the webhook URL off
+   which stores them server-side in our own CRM (keeps everything off
    the client). */
 export const SOURCE_KEY = 'lr-source';
 const UTM_KEY = 'lr-utm';
@@ -42,7 +42,7 @@ export function captureSource(): string {
   return u.source || u.utm_source || '';
 }
 
-/** Fire-and-forget lead POST to our API route (which forwards to make.com). Never throws
+/** Fire-and-forget lead POST to our own API route. Never throws
  *  and never blocks the UI — the visitor sees the thank-you regardless of network. */
 export async function sendLead(payload: Record<string, unknown>): Promise<void> {
   try {

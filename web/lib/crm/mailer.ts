@@ -1,7 +1,7 @@
 /* Outbound e-mail via Resend. DARK BY DEFAULT: without RESEND_API_KEY +
    CRM_AUTO_FROM the engine is fully inert — nothing is ever sent. This is
-   deliberate while Bigin still handles customer e-mail; flipping the two env
-   vars (and turning Bigin's sender off) activates the sequence. */
+   deliberate: setting the two env vars is what activates the sequence, and
+   until then nothing can reach a customer by accident. */
 
 export function autoEmailsEnabled(): boolean {
   return Boolean(

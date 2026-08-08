@@ -207,7 +207,7 @@ export interface UpsertResult { lead: Lead; created: boolean }
 
 const SCORE_RANK: Record<Score, number> = { hot: 0, warm: 1, cold: 2 };
 
-/* The intake used by every automated channel (website forms, make.com/Bigin,
+/* The intake used by every automated channel (website forms, WhatsApp,
    WhatsApp): a NEW person gets a new lead; a KNOWN person gets the message and
    context appended to their existing lead. An inbound message also counts as a
    reply (clears the waiting flag) and revives a lost lead. */

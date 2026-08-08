@@ -1,6 +1,7 @@
 import { upsertLeadFromPayload, recordInboundReply } from '@/lib/crm/store';
 import { forwardToOperator } from '@/lib/crm/forward';
 import { readReply, readingAsNote } from '@/lib/crm/triage';
+import { svixHeaders, verifySvix } from '@/lib/crm/svix';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,8 +11,15 @@ export const dynamic = 'force-dynamic';
    `email.received`). The payload carries metadata only, so the body is fetched
    back over the Receiving API before anything is filed.
 
-   Auth: `?key=<INBOUND_SECRET>`. Unset → the endpoint always 401s, so a
-   half-configured deployment can't be fed forged replies.
+   Auth, in order of preference:
+     · `RESEND_WEBHOOK_SECRET` set → the Standard Webhooks signature must
+       verify. This is the real check: it proves the body came from Resend
+       and has not been altered on the way.
+     · otherwise `?key=<INBOUND_SECRET>`, which only proves the caller once
+       saw the URL. Kept as the fallback so the endpoint keeps working while
+       the signing secret is being set up.
+     · neither configured → always 401, so a half-configured deployment can't
+       be fed forged replies.
 
    Everything downstream is best-effort by design: a reply from a real customer
    must never be lost because a lookup or a reading failed. */
@@ -69,11 +77,19 @@ function justTheReply(text: string): string {
 }
 
 export async function POST(request: Request) {
-  const secret = process.env.INBOUND_SECRET;
-  const key = new URL(request.url).searchParams.get('key');
-  if (!secret || key !== secret) return Response.json({ ok: false }, { status: 401 });
+  /* The signature covers the raw bytes, so the body is read as text and parsed
+     afterwards — parsing first and re-serialising would not reproduce them. */
+  const raw = await request.text();
 
-  const event = (await request.json().catch(() => null)) as ReceivedEvent | null;
+  const signing = process.env.RESEND_WEBHOOK_SECRET;
+  const urlKey = process.env.INBOUND_SECRET;
+  const authorised = signing
+    ? verifySvix(raw, svixHeaders(request.headers), signing)
+    : Boolean(urlKey && new URL(request.url).searchParams.get('key') === urlKey);
+  if (!authorised) return Response.json({ ok: false }, { status: 401 });
+
+  let event: ReceivedEvent | null = null;
+  try { event = raw ? (JSON.parse(raw) as ReceivedEvent) : null; } catch { event = null; }
   if (!event || event.type !== 'email.received' || !event.data?.email_id) {
     return Response.json({ ok: true, ignored: true });
   }
