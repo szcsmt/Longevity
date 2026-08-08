@@ -624,6 +624,70 @@ export async function recordInboundReply(id: string, r: InboundReply): Promise<L
 
 const REPLY_NOW_TASK = 'Answer today — they are waiting';
 
+/* ── A call was booked ──
+
+   Someone picking a slot out of the calendar is the strongest signal short of
+   money: they are hot, the deal is at least Contacted, and there is now a
+   fixed time a human must show up for. The video link goes on the timeline so
+   the operator never has to dig for it. */
+export interface BookingEvent {
+  action: 'booked' | 'rescheduled' | 'cancelled';
+  at?: string;         // ISO start time
+  timeZone?: string;
+  title?: string;
+  videoUrl?: string;
+  note?: string;       // what they wrote when booking, or why they cancelled
+}
+
+const BOOKED_CALL_TASK = 'Call booked — be there';
+
+export async function recordBooking(id: string, b: BookingEvent): Promise<Lead | null> {
+  const when = b.at ? new Date(b.at) : null;
+  const whenText = when
+    ? `${when.toISOString().slice(0, 16).replace('T', ' ')} UTC${b.timeZone ? ` (their time: ${b.timeZone})` : ''}`
+    : 'time unknown';
+
+  return mutate(id, (lead) => {
+    if (b.action === 'cancelled') {
+      logActivity(lead, 'message', `Call cancelled${b.note ? ` — ${b.note}` : ''}`);
+      const task = lead.tasks.find((t) => t.title === BOOKED_CALL_TASK && !t.done);
+      if (task) task.done = true;
+      return;
+    }
+
+    logActivity(lead, 'message', `Call ${b.action} for ${whenText}`);
+    lead.notes.unshift({
+      id: randomUUID(),
+      body: [
+        `📞 Call ${b.action}: ${whenText}`,
+        b.title ? `About: ${b.title}` : '',
+        b.videoUrl ? `Join: ${b.videoUrl}` : '',
+        b.note ? `\nThey wrote: ${b.note}` : '',
+      ].filter(Boolean).join('\n'),
+      at: now(),
+    });
+
+    // Booking a call is engagement — it ends the automated sequence too.
+    if (lead.awaiting_reply_since) {
+      lead.awaiting_reply_since = undefined;
+      const chase = lead.tasks.find((t) => t.title === REPLY_TASK_TITLE && !t.done);
+      if (chase) chase.done = true;
+    }
+    if (SCORE_RANK.hot < SCORE_RANK[lead.score]) {
+      logActivity(lead, 'score', `Score ${cap(lead.score)} → Hot (booked a call)`);
+      lead.score = 'hot';
+    }
+    if (lead.stage === 'new' || lead.stage === 'lost') {
+      logActivity(lead, 'stage', `${stageLabel(lead.stage)} → ${stageLabel('contacted')} (call booked)`);
+      lead.stage = 'contacted';
+      lead.lost_reason = undefined;
+    }
+    const open = lead.tasks.find((t) => t.title === BOOKED_CALL_TASK && !t.done);
+    if (open) open.due = b.at || open.due;
+    else lead.tasks.push({ id: randomUUID(), title: BOOKED_CALL_TASK, due: b.at, done: false, at: now() });
+  });
+}
+
 /* A lead opened one of our documents (the tracked /d/<id> link). Recorded on
    the timeline, which is the whole point: an operator can see that the person
    who went quiet did in fact read the brochure twice.

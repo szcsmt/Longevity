@@ -243,6 +243,21 @@ function shell(l: Lead, letter: Letter): string {
 /** "Book a call" has no calendar behind it yet, so it opens a reply to the
     person who owns the lead — which is what a call request turns into anyway. */
 const callHref = (l: Lead) => {
+  /* With a booking page configured (CRM_BOOKING_URL — a Cal.com link), the
+     button opens the calendar with the lead's details pre-filled, and the
+     booking comes back to /api/booking. Without one it falls back to opening
+     a reply, which is what a call request turns into anyway. */
+  const booking = process.env.CRM_BOOKING_URL;
+  if (booking) {
+    try {
+      const u = new URL(booking);
+      if (l.name) u.searchParams.set('name', l.name);
+      if (l.email) u.searchParams.set('email', l.email);
+      return u.toString();
+    } catch {
+      /* misconfigured URL — fall through to the mailto */
+    }
+  }
   const to = letterIdentity(l).email || 'info@longevitysamui.com';
   const subject = encodeURIComponent(`Call about Longevity Resort${l.villa ? ` — ${l.villa}` : ''}`);
   return `mailto:${to}?subject=${subject}`;
