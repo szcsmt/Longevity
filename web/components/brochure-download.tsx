@@ -48,7 +48,16 @@ export function BrochureDownload({ variant }: { variant: 'cta' | 'footer' }) {
     setErrors(errs);
     if (Object.keys(errs).length) return;
     // Lead only — the team sends the brochure by email (no direct download).
-    sendLead({ form_type: 'brochure_request', name: name.trim(), email: email.trim(), gdpr_consent: true });
+    // form_origin records WHICH brochure button was used, so the CRM can tell a
+    // request made from the closing CTA (further down the funnel) from one made
+    // in the footer. Without it every brochure lead reads as "direct".
+    sendLead({
+      form_type: 'brochure_request',
+      form_origin: `brochure: ${variant}`,
+      name: name.trim(),
+      email: email.trim(),
+      gdpr_consent: true,
+    });
     // Real page navigation to a unique thank-you URL (clean conversion pageview for GTM).
     window.location.href = '/thank-you/brochure';
   }
