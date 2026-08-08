@@ -29,10 +29,11 @@ const PANEL = '#0A140C';
 const GOLD = '#C9A46A';        // rules, buttons, links, figures
 const GOLD_HI = '#D8B87C';     // headings, highlights
 const EYEBROW = '#E4C48F';
-const BODY = '#E4DED2';      // body copy: warm, but light enough to read at length
-const BODY_2 = '#D3CDC2';    // secondary lines, one step back from the body
-const MUTED = '#94896F';
-const LEGAL = '#6E6555';
+const BODY = '#E6DFD1';        // intro/lead copy
+const BODY_ROW = '#DBD3C3';    // the essentials table's right column
+const BODY_2 = '#C9BFAC';      // price line, one step back from the body
+const MUTED = '#8B8371';        // location line, sign-off detail
+const LEGAL = '#6A6353';        // legal footer, outside the panel
 const HAIR = 'rgba(201,164,106,0.26)';
 const SERIF = "Georgia,'Times New Roman',serif";
 const SANS = 'Helvetica,Arial,sans-serif';
@@ -76,7 +77,7 @@ const p = (html: string) => `
 /** The opening line, centred under the headline, as in the hand-off. */
 const intro = (html: string) => `
   <tr><td class="px" style="padding:20px 56px 0 56px;" align="center">
-    <p style="margin:0;font-family:${SANS};font-size:16px;line-height:28px;color:${BODY};">${html}</p>
+    <p class="lead" style="margin:0;font-family:${SANS};font-size:16px;line-height:30px;color:${BODY};">${html}</p>
   </td></tr>`;
 
 /** THE ESSENTIALS — the four-figure table from the hand-off. */
@@ -84,7 +85,7 @@ const essentials = () => {
   const rows: [string, string][] = [
     ['10%', 'Fixed annual ROI, contracted'],
     ['100%', 'Buyback guaranteed'],
-    ['1&ndash;2 BR', 'Residences with a private pool'],
+    ['1 &amp; 2 BR', 'Residences with a private pool'],
     ['5 min', 'To the beach, 24/7 gated security'],
   ];
   return `
@@ -94,8 +95,8 @@ const essentials = () => {
       <tr><td style="padding:0 0 22px 0;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
           ${rows.map(([k, v]) => `
-          <tr><td width="120" style="width:120px;padding:12px 0 0 0;font-family:${SERIF};font-size:22px;line-height:26px;color:${GOLD};">${k}</td>
-              <td style="padding:12px 0 0 0;font-family:${SANS};font-size:15px;line-height:26px;color:${BODY};">${v}</td></tr>`).join('')}
+          <tr><td width="120" class="num" style="width:120px;padding:12px 0 0 0;font-family:${SERIF};font-size:22px;line-height:26px;color:${GOLD};">${k}</td>
+              <td style="padding:12px 0 0 0;font-family:${SANS};font-size:15px;line-height:26px;color:${BODY_ROW};">${v}</td></tr>`).join('')}
         </table>
       </td></tr>
     </table>
@@ -115,15 +116,15 @@ interface Button { label: string; href: string }
 /** Primary (solid gold) and optional secondary (outlined) button, side by side. */
 const buttons = (primary: Button, secondary?: Button) => `
   <tr><td class="px" style="padding:34px 56px 0 56px;" align="center">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
-      <tr>
-        <td align="center" bgcolor="${GOLD}" style="${bg(GOLD)}border-radius:2px;">
-          <a href="${primary.href}" style="display:block;padding:16px 34px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${PANEL};text-decoration:none;">${primary.label}</a>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btnwrap" style="margin:0 auto;">
+      <tr class="btnrow">
+        <td align="center" bgcolor="${GOLD}" class="btn" style="${bg(GOLD)}border-radius:999px;">
+          <a href="${primary.href}" style="display:block;padding:17px 40px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${PANEL};text-decoration:none;">${primary.label}</a>
         </td>
         ${secondary ? `
-        <td width="14" style="width:14px;">&nbsp;</td>
-        <td align="center" style="border:1px solid rgba(201,164,106,0.5);border-radius:2px;">
-          <a href="${secondary.href}" style="display:block;padding:15px 30px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${GOLD};text-decoration:none;">${secondary.label}</a>
+        <td width="14" class="gap" style="width:14px;font-size:1px;line-height:1px;">&nbsp;</td>
+        <td align="center" class="btn" style="border:1px solid rgba(201,164,106,0.5);border-radius:999px;">
+          <a href="${secondary.href}" style="display:block;padding:16px 36px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${GOLD};text-decoration:none;">${secondary.label}</a>
         </td>` : ''}
       </tr>
     </table>
@@ -197,8 +198,14 @@ function shell(l: Lead, letter: Letter): string {
   }
   @media only screen and (max-width:620px){
     .container{width:100% !important;}
-    .px{padding-left:24px !important;padding-right:24px !important;}
-    .h1{font-size:30px !important;line-height:38px !important;}
+    .px{padding-left:26px !important;padding-right:26px !important;}
+    .h1{font-size:28px !important;line-height:38px !important;}
+    .lead{font-size:16px !important;line-height:29px !important;}
+    .mark{width:88px !important;height:84px !important;}
+    .num{width:88px !important;font-size:20px !important;}
+    .btnwrap{width:100% !important;}
+    .btnrow td{display:block !important;width:100% !important;box-sizing:border-box !important;}
+    .gap{height:12px !important;line-height:12px !important;font-size:12px !important;width:auto !important;}
   }
 </style>
 </head>
@@ -211,8 +218,8 @@ function shell(l: Lead, letter: Letter): string {
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container panel" style="width:600px;max-width:600px;${bg(PANEL)}">
 
   <tr><td class="px" style="padding:44px 56px 0 56px;" align="center">
-    <img src="${SITE}/email/logo.png" width="134" height="100" alt="Longevity Resort" style="display:block;width:134px;height:100px;border:0;outline:none;text-decoration:none;margin:0 auto;">
-    <div style="font-family:${SANS};font-size:10px;line-height:16px;letter-spacing:0.30em;text-transform:uppercase;color:${MUTED};padding-top:16px;">Plai Laem &middot; Koh Samui &middot; Thailand</div>
+    <img src="${SITE}/email/logo.png" width="134" height="128" alt="Longevity Resort" class="mark" style="display:block;width:134px;height:128px;border:0;outline:none;text-decoration:none;margin:0 auto;">
+    <div style="font-family:${SANS};font-size:10px;line-height:16px;letter-spacing:0.30em;text-transform:uppercase;color:${MUTED};padding-top:18px;">Plai Laem &middot; Koh Samui &middot; Thailand</div>
   </td></tr>
 
   <tr><td class="px" style="padding:34px 56px 0 56px;" align="center">${rule}</td></tr>
@@ -399,8 +406,8 @@ export function termsEmail(l: Lead): { subject: string; html: string } {
       <tr><td style="padding:0 0 22px 0;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
           ${steps.map(([k, v]) => `
-          <tr><td width="120" style="width:120px;padding:12px 0 0 0;font-family:${SERIF};font-size:22px;line-height:26px;color:${GOLD};">${k}</td>
-              <td style="padding:12px 0 0 0;font-family:${SANS};font-size:15px;line-height:26px;color:${BODY};">${v}</td></tr>`).join('')}
+          <tr><td width="120" class="num" style="width:120px;padding:12px 0 0 0;font-family:${SERIF};font-size:22px;line-height:26px;color:${GOLD};">${k}</td>
+              <td style="padding:12px 0 0 0;font-family:${SANS};font-size:15px;line-height:26px;color:${BODY_ROW};">${v}</td></tr>`).join('')}
         </table>
       </td></tr>
     </table>
