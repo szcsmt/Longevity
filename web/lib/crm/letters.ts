@@ -124,22 +124,47 @@ const buttons = (primary: Button, secondary?: Button) => `
     </table>
   </td></tr>`;
 
-/* Sign-off: the hand-off ends on "Longevity Resort Sales Office", but a lead
-   that has an owner gets that person's name instead — the whole point of the
-   sequence is that a human is writing. */
-const signOff = (l: Lead) => {
+/* Who the letter is signed by. Two modes:
+
+     · By default the lead's owner signs it — name, title, phone — because a
+       letter from a person outperforms one from an organisation.
+     · Set CRM_SIGNATURE_NAME and the office signs instead, with no personal
+       name anywhere. Useful while there is one salesperson and no number to
+       publish yet. The lead's OWNER is untouched either way: the CRM still
+       knows who is responsible, it just isn't printed in the letter.
+
+   Env: CRM_SIGNATURE_NAME, _TITLE, _PHONE, _EMAIL. */
+function letterIdentity(l: Lead): { name: string; title: string; phone?: string; email?: string } {
+  const office = process.env.CRM_SIGNATURE_NAME;
+  if (office) {
+    return {
+      name: office,
+      title: process.env.CRM_SIGNATURE_TITLE || 'Plai Laem, Koh Samui, Thailand',
+      phone: process.env.CRM_SIGNATURE_PHONE || undefined,
+      email: process.env.CRM_SIGNATURE_EMAIL || agents()[0]?.email,
+    };
+  }
   const me = signer(l);
-  const name = me?.name || 'Longevity Resort Sales Office';
-  const title = me ? (me.title || 'Longevity Samui') : 'Plai Laem, Koh Samui, Thailand';
-  const wa = me?.phone ? `https://wa.me/${me.phone.replace(/[^\d]/g, '')}` : null;
-  const mail = me?.email;
+  return {
+    name: me?.name || 'Longevity Resort Sales Office',
+    title: me ? (me.title || 'Longevity Samui') : 'Plai Laem, Koh Samui, Thailand',
+    phone: me?.phone,
+    email: me?.email,
+  };
+}
+
+const signOff = (l: Lead) => {
+  const me = letterIdentity(l);
+  const { name, title } = me;
+  const wa = me.phone ? `https://wa.me/${me.phone.replace(/[^\d]/g, '')}` : null;
+  const mail = me.email;
   return `
   <tr><td class="px" style="padding:46px 56px 0 56px;" align="center">${rule}</td></tr>
   <tr><td class="px" style="padding:26px 56px 44px 56px;" align="center">
     <div style="font-family:${SERIF};font-size:20px;line-height:28px;color:${GOLD_HI};">${esc(name)}</div>
     <div style="font-family:${SANS};font-size:13px;line-height:24px;color:${MUTED};padding-top:8px;">${esc(title)}<br>
       <a href="${SITE}" style="color:${GOLD};text-decoration:none;">longevitysamui.com</a>${mail ? ` &middot;
-      <a href="mailto:${mail}" style="color:${GOLD};text-decoration:none;">${mail}</a>` : ''}${me?.phone ? `<br>${esc(me.phone)}${wa ? ` &middot; <a href="${wa}" style="color:${GOLD};text-decoration:none;">WhatsApp</a>` : ''}` : ''}
+      <a href="mailto:${mail}" style="color:${GOLD};text-decoration:none;">${mail}</a>` : ''}${me.phone ? `<br>${esc(me.phone)}${wa ? ` &middot; <a href="${wa}" style="color:${GOLD};text-decoration:none;">WhatsApp</a>` : ''}` : ''}
     </div>
   </td></tr>`;
 };
@@ -213,7 +238,7 @@ function shell(l: Lead, letter: Letter): string {
 /** "Book a call" has no calendar behind it yet, so it opens a reply to the
     person who owns the lead — which is what a call request turns into anyway. */
 const callHref = (l: Lead) => {
-  const to = signer(l)?.email || 'info@longevitysamui.com';
+  const to = letterIdentity(l).email || 'info@longevitysamui.com';
   const subject = encodeURIComponent(`Call about Longevity Resort${l.villa ? ` — ${l.villa}` : ''}`);
   return `mailto:${to}?subject=${subject}`;
 };
