@@ -4,8 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
 
 const FRAME_COUNT = 73;
-const POSTER = '/hero/poster.webp';
-const framePath = (i: number) => `/hero/f-${String(i + 1).padStart(3, '0')}.webp`;
+/* Two cuts of the same scroll-scrub render. The landscape original, and a portrait
+   slice of it for phones: cover-fitting a 1916-wide frame onto an upright phone
+   shows only its centre ~470px, so the rest is bytes downloaded to be thrown away.
+   Same pixels on screen, 39% of the weight. */
+const SRC    = { dir: '/hero',   w: 1916, h: 1010 };
+const MOBILE = { dir: '/hero-m', w:  700, h: 1010 };
+const framePath = (dir: string, i: number) => `${dir}/f-${String(i + 1).padStart(3, '0')}.webp`;
 
 export function HeroSection() {
   const t = useT();
@@ -41,33 +46,39 @@ export function HeroSection() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
-    // 'low' keeps each scrub frame cheap — 'high' re-samples the whole frame on
-    // every scroll tick, which is what made the hero feel laggy.
-    ctx.imageSmoothingQuality = 'low';
+
+    // Pick the frame set from the viewport shape, not the device label: an upright
+    // phone needs a narrow slice, so it gets the pre-cropped one. Held sideways it
+    // needs the full width, and the landscape set is used instead.
+    const vpAR  = window.innerWidth / window.innerHeight;
+    const needs = vpAR >= SRC.w / SRC.h ? SRC.w : SRC.h * vpAR;   // source px across the viewport
+    const src   = coarse && needs <= MOBILE.w ? MOBILE : SRC;
 
     const frames: (HTMLImageElement | null)[] = new Array(FRAME_COUNT).fill(null);
     let poster: HTMLImageElement | null = null;
     let drawn = -1;            // index of frame currently painted (-1 = canvas needs repaint)
     let targetFrame = 0;
-    // Keep the backing store modest so each scrub frame is cheap to draw — a big
-    // canvas is what lags the scroll on phones. drawImage cost scales with the
-    // DESTINATION pixel count, so on touch we cap harder: 1.25× still reads sharp
-    // (the 1916px source is far bigger than any phone canvas) while cutting the
-    // per-frame paint ~30% vs 1.5×. Desktop keeps 1.5× for crispness.
-    const dprCap = coarse ? 1.25 : 1.5;
-    let dpr = Math.min(window.devicePixelRatio || 1, dprCap);
     let maxScroll = 0;         // cached — avoids layout reads on scroll
     let lastW = 0;             // last canvas width we sized to (for the height-only resize guard)
     let looping = false, lastY = -1, idle = 0, rafId = 0;   // continuous-rAF scrub loop
+    // The overlay reveals are latched here rather than pushed at React on every
+    // frame. Re-setting a state to the value it already holds still costs a trip
+    // through the dispatcher 60 times a second, right on the scroll path.
+    let cueOff = false, titleOn = false, ctaOn = false;
 
-    // cover-fit a source image onto the full canvas
+    // Cover-fit the source onto the canvas bitmap. resize() sizes that bitmap to the
+    // very pixels the source actually holds for this viewport, so in the common case
+    // this is a 1:1 blit — the cheapest path drawImage has, and what keeps the scrub
+    // smooth. Scaling up to the real screen size is left to the compositor, which
+    // does it on the GPU for free and no worse than the canvas would.
     function paint(img: HTMLImageElement) {
       const cw = canvas!.width, ch = canvas!.height;
       const iw = img.naturalWidth, ih = img.naturalHeight;
-      if (!iw || !ih) return;
-      const s = Math.max(cw / iw, ch / ih);
-      const w = iw * s, h = ih * s;
-      ctx!.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+      if (!iw || !ih || !cw || !ch) return;
+      const ar = cw / ch;
+      let sw = iw, sh = ih;
+      if (iw / ih > ar) sw = ih * ar; else sh = iw / ar;
+      ctx!.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, cw, ch);
     }
 
     function nearest(idx: number): HTMLImageElement | null {
@@ -94,9 +105,10 @@ export function HeroSection() {
       const prog = Math.min(1, Math.max(0, window.scrollY / maxScroll));
       targetFrame = Math.round(prog * (FRAME_COUNT - 1));
       render(targetFrame);
-      if (window.scrollY > 30) setCueHidden(true);
-      if (prog >= (coarse ? 0.03 : 0.12)) setTitleVisible(true);
-      setCtaVisible(prog >= (coarse ? 0.06 : 0.25) && prog < 0.78);   // fade out near the end → FAB takes over
+      if (!cueOff && window.scrollY > 30) { cueOff = true; setCueHidden(true); }
+      if (!titleOn && prog >= (coarse ? 0.03 : 0.12)) { titleOn = true; setTitleVisible(true); }
+      const cta = prog >= (coarse ? 0.06 : 0.25) && prog < 0.78;      // fades out near the end → FAB takes over
+      if (cta !== ctaOn) { ctaOn = cta; setCtaVisible(cta); }
     }
 
     function resize() {
@@ -104,16 +116,22 @@ export function HeroSection() {
       if (!cw || !ch) return;     // not laid out yet — the ResizeObserver will re-fire
       const widthChanged = cw !== lastW;
 
-      // Always keep the canvas BITMAP matched to its displayed box — including the
-      // height-only change when the mobile URL bar shows/hides on first scroll.
-      // If we skip it, the browser CSS-scales the old (shorter) bitmap into the new
-      // (taller) box and the whole frame visibly STRETCHES. Re-sizing + re-painting
-      // cover-fit instead only ever re-crops a hair, never distorts.
-      dpr = Math.min(window.devicePixelRatio || 1, dprCap);
-      canvas!.width  = Math.round(cw * dpr);
-      canvas!.height = Math.round(ch * dpr);
-      ctx!.imageSmoothingQuality = 'low';
-      drawn = -1;                 // setting canvas.width cleared it — force a repaint
+      // The bitmap is the smaller of what the source holds and what the screen can
+      // show. Never more: every extra pixel is paid on every scrub frame, and the
+      // source has no further detail to give. It always carries the box's aspect
+      // ratio, so CSS only ever scales it — never stretches it, not even when the
+      // mobile URL bar changes the height mid-scroll.
+      const dpr   = Math.min(window.devicePixelRatio || 1, 2);
+      const boxAR = cw / ch;
+      const crop  = boxAR >= src.w / src.h ? src.w : src.h * boxAR;
+      const bw    = Math.max(2, Math.round(Math.min(crop, cw * dpr)));
+      const bh    = Math.max(2, Math.round(bw / boxAR));
+      if (canvas!.width !== bw || canvas!.height !== bh) {
+        canvas!.width  = bw;
+        canvas!.height = bh;
+        ctx!.imageSmoothingQuality = bw < crop ? 'medium' : 'low';
+        drawn = -1;               // setting canvas.width cleared it — force a repaint
+      }
 
       // Only re-measure the scroll→frame mapping on a real WIDTH change. Recomputing
       // maxScroll on every URL-bar height change is what used to snap the frame.
@@ -143,7 +161,7 @@ export function HeroSection() {
     const p = new Image();
     p.decoding = 'async';
     p.onload = () => { poster = p; if (drawn === -1) render(targetFrame, true); };
-    p.src = POSTER;
+    p.src = `${src.dir}/poster.webp`;
 
     resize();   // synchronous first attempt (may be skipped if not laid out yet)
 
@@ -162,13 +180,14 @@ export function HeroSection() {
 
     // ── Reduced-motion only: static poster, no scrub, no sequence load ──
     if (reduce) {
+      titleOn = ctaOn = true;
       setTitleVisible(true);
       setCtaVisible(true);
       return () => detachSizer();
     }
 
     // ── Concurrency-limited progressive frame load ──
-    // The full sequence is ~8MB. The poster paints instantly, so we hold the
+    // The full sequence is ~8MB (~3MB for the phone cut). The poster paints instantly, so we hold the
     // frame load until the browser is idle (first paint, fonts and nav done) and
     // run it 4-wide instead of 8 — otherwise it saturates the connection and the
     // whole page feels slow to load. Until a frame arrives, the scrub falls back
@@ -191,7 +210,7 @@ export function HeroSection() {
         else store();
       };
       img.onerror = loadOne;
-      img.src = framePath(i);
+      img.src = framePath(src.dir, i);
     }
     const startLoad = () => { for (let k = 0; k < CONCURRENCY; k++) loadOne(); };
     const hasRIC = typeof window.requestIdleCallback === 'function';
@@ -239,6 +258,9 @@ export function HeroSection() {
           zIndex:3, pointerEvents:'none',
           background:'radial-gradient(ellipse at center, rgba(201,169,110,0.11) 0%, transparent 68%)',
           filter:'blur(36px)',
+          // Its own layer: the 36px blur is then rasterised once, instead of being
+          // re-blurred every time the canvas underneath it paints a new frame.
+          willChange:'opacity',
           opacity: titleVisible ? 1 : 0,
           transition:'opacity 2.6s cubic-bezier(0.06,1,0.18,1)',
         }} />

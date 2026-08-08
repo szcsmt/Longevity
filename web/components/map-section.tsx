@@ -21,22 +21,52 @@ interface Poi {
   descKey: string;
   primary: boolean;
   img:     string;
+  /* Driving minutes from the estate gate. Shown on the card when a marker is
+     tapped — the first thing anyone asks about a location. Left undefined where
+     we have no measured figure; the badge is then simply omitted rather than
+     guessed at. */
+  drive?:  number;
 }
 
 const POIS: Poi[] = [
   { id:'resort',     lat:9.568083, lng:100.076056, primary:true,  img:'/images/streets/entrance.webp',  name:'Longevity Resort',                descKey:'map.poi.resort' },
-  { id:'bigbuddha',  lat:9.570853, lng:100.059840, primary:false, img:'/images/poi/temple.webp',    name:'Wat Phra Yai · Big Buddha',       descKey:'map.poi.bigbuddha' },
-  { id:'legacyspa',  lat:9.565938, lng:100.083438, primary:false, img:'/images/poi/spa.webp',       name:'Legacy Spa Bophut',               descKey:'map.poi.legacyspa' },
+  { id:'bigbuddha',  lat:9.570853, lng:100.059840, primary:false, img:'/images/poi/temple.webp',    name:'Wat Phra Yai · Big Buddha',       descKey:'map.poi.bigbuddha',  drive:5 },
+  { id:'legacyspa',  lat:9.565938, lng:100.083438, primary:false, img:'/images/poi/spa.webp',       name:'Legacy Spa Bophut',               descKey:'map.poi.legacyspa',  drive:3 },
   { id:'khunsi',     lat:9.522938, lng:100.013188, primary:false, img:'/images/poi/waterfall.webp', name:'Khun Si Waterfall',               descKey:'map.poi.khunsi' },
   { id:'elephant',   lat:9.548065, lng:100.038457, primary:false, img:'/images/poi/elephant.webp',  name:'Samui Elephant Sanctuary',        descKey:'map.poi.elephant' },
   { id:'tarnim',     lat:9.482938, lng: 99.994438, primary:false, img:'/images/poi/temple.webp',    name:'Tarnim Magic Garden',             descKey:'map.poi.tarnim' },
   { id:'theroof',    lat:9.517000, lng:100.050500, primary:false, img:'/images/poi/rooftop.webp',   name:'The Roof Samui',                  descKey:'map.poi.theroof' },
-  { id:'bophut',     lat:9.561102, lng:100.028013, primary:false, img:'/images/poi/beach.webp',     name:'Bo Phut Beach',                   descKey:'map.poi.bophut' },
-  { id:'airport',    lat:9.547790, lng:100.061997, primary:false, img:'/images/poi/airport.webp',   name:'Samui Airport',                   descKey:'map.poi.airport' },
-  { id:'choengmon',  lat:9.573770, lng:100.080686, primary:false, img:'/images/poi/beach.webp',     name:'Choeng Mon Beach',                descKey:'map.poi.choengmon' },
-  { id:'chaweng',    lat:9.529000, lng:100.062000, primary:false, img:'/images/poi/beach.webp',     name:'Chaweng Beach',                   descKey:'map.poi.chaweng' },
-  { id:'fishermans', lat:9.558438, lng:100.031438, primary:false, img:'/images/poi/market.webp',    name:"Fisherman's Village Night Market",descKey:'map.poi.fishermans' },
+  { id:'airport',    lat:9.547790, lng:100.061997, primary:false, img:'/images/poi/airport.webp',   name:'Samui Airport',                   descKey:'map.poi.airport',    drive:12 },
+  { id:'choengmon',  lat:9.573770, lng:100.080686, primary:false, img:'/images/poi/beach.webp',     name:'Choeng Mon Beach',                descKey:'map.poi.choengmon',  drive:3 },
+  { id:'chaweng',    lat:9.529000, lng:100.062000, primary:false, img:'/images/poi/beach.webp',     name:'Chaweng Beach',                   descKey:'map.poi.chaweng',    drive:10 },
+  { id:'fishermans', lat:9.558438, lng:100.031438, primary:false, img:'/images/poi/market.webp',    name:"Fisherman's Village Night Market",descKey:'map.poi.fishermans', drive:11 },
 ];
+
+/* "12 min drive" — a gold pill with a small car. Two sizes: the roomy one for the
+   desktop card, the compact one for the card that overlays the map on phones. */
+function DriveBadge({ minutes, label, compact = false }: { minutes: number; label: string; compact?: boolean }) {
+  const s = compact ? 11 : 13;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: compact ? 5 : 7,
+      padding: compact ? '3px 9px' : '5px 13px',
+      borderRadius: 100, whiteSpace: 'nowrap',
+      border: '1px solid rgba(201,169,110,0.30)',
+      background: 'rgba(201,169,110,0.10)',
+      fontFamily: ffs, fontSize: compact ? 9.5 : 11, fontWeight: 400,
+      letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--gold)',
+    }}>
+      <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor"
+        strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 10.6V8.2l1.5-3.3a1.3 1.3 0 0 1 1.2-.8h4.6a1.3 1.3 0 0 1 1.2.8L13 8.2v2.4" />
+        <path d="M2.4 8.2h11.2" />
+        <circle cx="5.2" cy="11.1" r="1.15" />
+        <circle cx="10.8" cy="11.1" r="1.15" />
+      </svg>
+      {minutes} {label}
+    </span>
+  );
+}
 
 export function MapSection() {
   const t = useT();
@@ -241,9 +271,12 @@ export function MapSection() {
                   }}>{t('map.estate')}</span>
                 )}
               </div>
-              <h3 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(22px,2.3vw,32px)', color: 'var(--cream)', lineHeight: 1.2, margin: 'clamp(16px,2.2vw,26px) 0 10px' }}>
-                {poi.name}
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', margin: 'clamp(16px,2.2vw,26px) 0 10px' }}>
+                <h3 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(22px,2.3vw,32px)', color: 'var(--cream)', lineHeight: 1.2, margin: 0 }}>
+                  {poi.name}
+                </h3>
+                {poi.drive != null && <DriveBadge minutes={poi.drive} label={t('map.drive')} />}
+              </div>
               <p style={{ fontFamily: ffs, fontSize: 'clamp(13px,1.2vw,16px)', fontWeight: 300, lineHeight: 1.75, color: 'var(--cr70)', margin: 0 }}>
                 {t(poi.descKey)}
               </p>
@@ -293,7 +326,10 @@ export function MapSection() {
               <img src={poi.img} alt={poi.name} decoding="async"
                 style={{ width: 78, height: 78, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}>
-                <span style={{ display: 'block', fontFamily: ff, fontSize: 16, color: 'var(--cream)', lineHeight: 1.2, marginBottom: 5 }}>{poi.name}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
+                  <span style={{ fontFamily: ff, fontSize: 16, color: 'var(--cream)', lineHeight: 1.2 }}>{poi.name}</span>
+                  {poi.drive != null && <DriveBadge minutes={poi.drive} label={t('map.drive')} compact />}
+                </div>
                 <p className="lr-map-info-desc" style={{ fontFamily: ffs, fontSize: 11.5, fontWeight: 300, lineHeight: 1.5, color: 'var(--cr70)', margin: 0 }}>{t(poi.descKey)}</p>
               </div>
             </div>

@@ -22,7 +22,11 @@ const TOUR_UNIT = { M: 'TH-KOH-0001_13', L: 'TH-KOH-0001_10', XL: 'TH-KOH-0001_1
 interface VillaData {
   index: string;
   name: string;
-  size: string;
+  /* Two separate figures, both pre-formatted with the unit. `built` is the
+     residence itself and is the number the compact places (chips, dropdowns)
+     quote; `plot` is the land it sits on, shown beside it in the spec grid. */
+  built: string;
+  plot: string;
   /* List price, pre-formatted (currency + grouped digits). Same string across all
      locales — only the "Price" label is translated. */
   price: string;
@@ -50,7 +54,7 @@ interface VillaData {
 
 const villas: VillaData[] = [
   {
-    index: '01', name: 'Residence M', size: '76.46 m²', price: 'THB 7,650,000',
+    index: '01', name: 'Residence M', built: '80.5 m²', plot: '105 m²', price: 'THB 7,650,000',
     bedroomsKey: 'v.bed1', guestsKey: 'v.guests2', poolKey: 'vM.pool',
     taglineKey: 'vM.tag', descKey: 'vM.desc', hlKey: 'vM.hl',
     img: '/images/villa-m/m-1.webp',
@@ -71,7 +75,7 @@ const villas: VillaData[] = [
     tourUnitId: TOUR_UNIT.M,
   },
   {
-    index: '02', name: 'Residence L', size: '79.19 m²', price: 'THB 8,050,000',
+    index: '02', name: 'Residence L', built: '83.72 m²', plot: '116 m²', price: 'THB 8,050,000',
     bedroomsKey: 'v.bed1', guestsKey: 'v.guests2', poolKey: 'vL.pool',
     taglineKey: 'vL.tag', descKey: 'vL.desc', hlKey: 'vL.hl',
     img: '/images/villa-l/l-1.webp',
@@ -95,7 +99,7 @@ const villas: VillaData[] = [
     tourUnitId: TOUR_UNIT.L,
   },
   {
-    index: '03', name: 'Residence XL', size: '126.65 m²', price: 'THB 11,200,000',
+    index: '03', name: 'Residence XL', built: '110.1 m²', plot: '144.9 m²', price: 'THB 11,200,000',
     bedroomsKey: 'v.bed2', guestsKey: 'v.guests4', poolKey: 'vXL.pool',
     taglineKey: 'vXL.tag', descKey: 'vXL.desc', hlKey: 'vXL.hl',
     img: '/images/villa-2br/x-1.webp',
@@ -575,8 +579,10 @@ function VillaModal({ villa, onClose, onOpen3D }: { villa: VillaData; onClose: (
             <span style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(22px,2.4vw,30px)', color: 'var(--cream)', letterSpacing: '0.005em' }}>{villa.price}</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: 'rgba(201,169,110,0.08)', border: '1px solid rgba(201,169,110,0.08)', borderRadius: 12, overflow: 'hidden' }}>
-            {[{k:t('v.spec.size'),v:villa.size},{k:t('v.spec.rooms'),v:t(villa.bedroomsKey)},{k:t('v.spec.guests'),v:t(villa.guestsKey)},{k:t('v.spec.pool'),v:t(villa.poolKey)}].map(({k,v}) => (
-              <div key={k} style={{ padding: '12px 14px', background: 'rgba(6,14,8,0.6)' }}>
+            {/* Built and plot area lead the grid — the two figures buyers compare first.
+                The pool line runs the full width; its value is a sentence, not a number. */}
+            {[{k:t('v.spec.built'),v:villa.built},{k:t('v.spec.plot'),v:villa.plot},{k:t('v.spec.rooms'),v:t(villa.bedroomsKey)},{k:t('v.spec.guests'),v:t(villa.guestsKey)},{k:t('v.spec.pool'),v:t(villa.poolKey),wide:true}].map(({k,v,wide}) => (
+              <div key={k} style={{ padding: '12px 14px', background: 'rgba(6,14,8,0.6)', gridColumn: wide ? '1 / -1' : undefined }}>
                 <span style={{ display: 'block', fontFamily: ffs, fontSize: 7, fontWeight: 300, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--gold)', opacity: 0.6, marginBottom: 3 }}>{k}</span>
                 <span style={{ fontFamily: ff, fontSize: 'clamp(12px,1.2vw,14px)', color: 'var(--cream)' }}>{v}</span>
               </div>
@@ -773,7 +779,7 @@ export function VillasSection() {
             </h3>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 22px', margin: 'clamp(16px,2.5vw,28px) 0 0' }}>
-              {[t(villa.bedroomsKey), villa.size, t(villa.guestsKey)].map(s => (
+              {[t(villa.bedroomsKey), villa.built, t(villa.guestsKey)].map(s => (
                 <span key={s} style={{ fontFamily: ffs, fontSize: 'clamp(11px,1.05vw,13px)', fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--cream)', borderLeft: '2px solid var(--gold-40)', paddingLeft: 12 }}>{s}</span>
               ))}
             </div>

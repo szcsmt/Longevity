@@ -326,9 +326,9 @@ export function CtaSection() {
                   <span style={labelStyle}>{t('cta.form.villa')}</span>
                   <select className="cta-input" style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }} value={form.villa} onChange={update('villa')}>
                     <option value="">{t('cta.ph.anyVilla')}</option>
-                    <option value="M">Villa M · 76.46 m²</option>
-                    <option value="L">Villa L · 79.19 m²</option>
-                    <option value="XL">Villa XL · 126.65 m²</option>
+                    <option value="M">Villa M · 80.5 m²</option>
+                    <option value="L">Villa L · 83.72 m²</option>
+                    <option value="XL">Villa XL · 110.1 m²</option>
                   </select>
                 </div>
 
