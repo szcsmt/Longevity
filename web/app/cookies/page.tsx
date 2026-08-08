@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { LegalPage } from '@/components/legal-page';
 import { CookieReset } from '@/components/cookie-reset';
+import { CookieTable } from '@/components/cookie-table';
 
 export const metadata: Metadata = {
   title: 'Cookie Policy — Longevity Resort',
@@ -31,31 +32,27 @@ export default function CookiePage() {
 
       <h2>2. Consent management</h2>
       <p>
-        On your first visit, a consent banner operated by the <strong>CookieYes</strong>{' '}
-        consent-management platform (deployed via Google Tag Manager) asks for your choices.
-        Strictly necessary storage operates without consent, as permitted by applicable law; all
-        non-essential categories remain disabled unless and until you enable them. Your consent
-        state, including the categories accepted or refused and the time of the consent event,
-        is recorded by the consent-management platform in order to demonstrate compliance. Tags
-        managed through Google Tag Manager are conditioned on your consent state and are not
-        fired for categories you have not accepted.
+        On your first visit, a consent banner operated by us on this website asks for your
+        choices. Strictly necessary storage operates without consent, as permitted by applicable
+        law; all non-essential categories remain disabled unless and until you enable them.
+        Refusing is a single click, presented as prominently as accepting. Your choices are
+        stored in a first-party cookie on your device for twelve months, and the decision itself
+        (the categories accepted or refused, the time, and a one-way hash of your IP address that
+        cannot be used to identify you) is recorded on our own servers in order to demonstrate
+        compliance. Google&rsquo;s consent signals are set to &ldquo;denied&rdquo; before any tag
+        loads and are updated only once you have chosen, so tags managed through Google Tag
+        Manager do not fire for categories you have not accepted. You can change or withdraw
+        your choices at any time using the control below.
       </p>
 
       <h2>3. Cookies used on this website</h2>
       <p>
-        The table below is generated and kept up to date automatically by our consent-management
-        platform on the basis of periodic scans of this website, and reflects the cookies and
-        similar technologies currently in use, their providers, purposes and retention periods.
-        It is the same declaration that is accessible from the consent banner.
+        The table below lists the cookies and similar technologies in use on this website, their
+        providers, purposes and retention periods. We maintain it ourselves and keep it in step
+        with what the site actually runs; when it changes materially, the consent banner asks
+        again rather than relying on a previous answer.
       </p>
-      {/* CookieYes auto-populated cookie declaration — the CookieYes script (loaded
-          via GTM) fills this element with the live, categorised cookie audit table. */}
-      <div className="cky-audit-table-element" />
-      <p>
-        If the table is not visible, your browser or an extension may be blocking the
-        consent-management script; the declaration can also be viewed through the consent
-        banner itself via the &ldquo;Manage cookie preferences&rdquo; control below.
-      </p>
+      <CookieTable />
 
       <h2>4. Third-party content</h2>
       <p>

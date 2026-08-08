@@ -192,8 +192,12 @@ export default function PrivacyPage() {
       <p>
         The Website uses strictly necessary storage by default and deploys optional cookies and
         similar technologies only in accordance with the choices you express through the
-        consent-management facility made available on the Website (operated using the CookieYes
-        consent-management platform, deployed via Google Tag Manager). Tag-management
+        consent-management facility made available on the Website, which the Company operates
+        itself rather than through a third-party platform. Consent signals are set to
+        &ldquo;denied&rdquo; before any measurement tag loads and are updated only once you have
+        chosen; your choices are stored in a first-party cookie for twelve months, and each
+        decision is logged by the Company (categories, time, and a one-way hash of the IP address
+        that does not identify you) so that consent can be demonstrated. Tag-management
         infrastructure provided by Google Tag Manager (Google Ireland Limited / Google LLC) is
         used to control the deployment of measurement and, where applicable, marketing tags in
         accordance with your consent state. First-party, cookieless aggregate usage measurement
@@ -231,7 +235,9 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Tag and consent management:</strong> Google Ireland Limited / Google LLC
-          (Google Tag Manager) and CookieYes Limited (consent management);
+          (Google Tag Manager and Google Analytics); Resend, Inc. (transactional e-mail,
+          sending region eu-west-1); Cal.com, Inc. (appointment scheduling, where you book a
+          call with us); Anthropic PBC (assisting our staff in reading and answering enquiries);
         </li>
         <li>
           <strong>Communications providers:</strong> providers of email and messaging services

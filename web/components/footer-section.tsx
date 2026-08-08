@@ -1,6 +1,7 @@
 'use client';
 
 import { BrochureDownload } from '@/components/brochure-download';
+import { openConsent } from '@/components/consent-banner';
 import { useT } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
@@ -118,8 +119,8 @@ export function FooterSection() {
                   letterSpacing: '0.04em',
                 }}>{t(tk)}</a>
               ))}
-              {/* Reopen the CookieYes consent banner (class is CookieYes's settings trigger) */}
-              <button type="button" className="ft-link cky-banner-element" style={{
+              {/* Reopen our own consent banner (lib/consent.ts) */}
+              <button type="button" className="ft-link" onClick={openConsent} style={{
                 fontFamily: ffs, fontSize: 'clamp(11px,1vw,13px)', fontWeight: 300,
                 letterSpacing: '0.04em', background: 'none', border: 'none', padding: 0,
                 textAlign: 'left', cursor: 'pointer', color: 'inherit',

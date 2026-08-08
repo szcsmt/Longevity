@@ -657,3 +657,57 @@ body {
    Cookie Policy page (footer link), so withdrawing consent remains one click
    away as GDPR requires — just without the off-brand floating button. */
 .cky-btn-revisit-wrapper { display: none !important; }
+/* ── Cookie consent banner ──
+   Our own CMP (see lib/consent.ts). Sits above everything, at the bottom on
+   desktop and full-width on mobile. Accept and reject are visually equal by
+   design: a reject that is harder to press is not valid consent. */
+.lr-consent {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+  padding: 16px;
+  background: rgba(6, 14, 8, 0.97);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(201, 164, 106, 0.28);
+  animation: lr-consent-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes lr-consent-in { from { transform: translateY(100%); opacity: 0 } to { transform: none; opacity: 1 } }
+
+.lr-consent-inner { max-width: 1100px; margin: 0 auto; }
+
+.lr-consent-title {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-size: 17px; line-height: 24px; color: #D8B87C; margin-bottom: 6px;
+}
+.lr-consent-body {
+  margin: 0 0 12px;
+  font-family: var(--font-raleway), Helvetica, Arial, sans-serif;
+  font-size: 13px; line-height: 21px; color: #C9BFAC; max-width: 70ch;
+}
+
+.lr-consent-cats { display: grid; gap: 10px; margin: 0 0 14px; }
+@media (min-width: 760px) { .lr-consent-cats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lr-consent-cat { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.lr-consent-cat input { margin-top: 3px; accent-color: #C9A46A; width: 16px; height: 16px; flex: none; }
+.lr-consent-cat input:disabled { opacity: 0.5; cursor: default; }
+.lr-consent-cat span { display: block; font-family: var(--font-raleway), Helvetica, Arial, sans-serif; }
+.lr-consent-cat b { display: block; font-size: 13px; font-weight: 400; color: #E4D9C3; }
+.lr-consent-cat em { display: block; font-style: normal; font-size: 12px; line-height: 18px; color: #94896F; margin-top: 2px; }
+
+.lr-consent-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.lr-consent-btn {
+  font-family: var(--font-raleway), Helvetica, Arial, sans-serif;
+  font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+  padding: 11px 20px; border-radius: 2px; cursor: pointer;
+  background: transparent; color: #C9A46A; border: 1px solid rgba(201, 164, 106, 0.5);
+  transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+.lr-consent-btn:hover { background: rgba(201, 164, 106, 0.12); }
+.lr-consent-btn.primary { background: #C9A46A; color: #0A140C; border-color: #C9A46A; }
+.lr-consent-btn.primary:hover { background: #D8B87C; border-color: #D8B87C; }
+.lr-consent-link {
+  font-family: var(--font-raleway), Helvetica, Arial, sans-serif;
+  font-size: 12px; color: #94896F; text-decoration: underline; text-underline-offset: 3px;
+  background: none; border: none; cursor: pointer; padding: 6px 2px;
+}
+.lr-consent-link:hover { color: #C9A46A; }

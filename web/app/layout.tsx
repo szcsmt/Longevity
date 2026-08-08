@@ -5,6 +5,7 @@ import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { EnquiryModal } from '@/components/enquiry-modal';
 import { SourceTracker } from '@/components/source-tracker';
+import { ConsentBanner } from '@/components/consent-banner';
 import { LanguageProvider } from '@/lib/i18n';
 
 // latin-ext covers German/Hungarian/French accents; cyrillic covers Russian.
@@ -41,10 +42,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${playfair.variable} ${raleway.variable}`}>
       <body>
-        {/* CookieYes (Google-certified CMP) is now added via GTM (client_data id
-            2926553fd3e7d76877f91545cb4ce7c3) — do NOT also load it here, or the banner
-            loads twice. NOTE for consent timing: in GTM it loads after GTM, so make
-            sure the Consent Mode default (denied) is set before tags fire. */}
+        {/* ── Consent Mode default: DENIED, before anything else ──
+
+            This must run before GTM, and it does: beforeInteractive puts it in
+            the document head while the GTM loader below is afterInteractive.
+            Until the visitor decides, Google measures nothing.
+
+            This replaced CookieYes, which was loaded from inside GTM — i.e.
+            after GTM itself, which is exactly the timing problem this fixes.
+            When removing the CookieYes tag from the GTM container, nothing here
+            needs to change. */}
+        <Script id="consent-default" strategy="beforeInteractive">
+          {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
+window.gtag=gtag;
+gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',
+analytics_storage:'denied',functionality_storage:'denied',personalization_storage:'denied',
+security_storage:'granted',wait_for_update:500});`}
+        </Script>
         {/* Google Tag Manager (noscript) — immediately after <body> per GTM install */}
         <noscript>
           <iframe
@@ -63,6 +77,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <LanguageProvider>
           {children}
           <EnquiryModal />
+          <ConsentBanner />
         </LanguageProvider>
         <SourceTracker />
         <Analytics />
