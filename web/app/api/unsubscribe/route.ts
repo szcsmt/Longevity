@@ -33,3 +33,16 @@ export async function GET(request: Request) {
     { headers: { 'content-type': 'text/html; charset=utf-8' } },
   );
 }
+
+/* The machine half of the same door. Every letter carries the
+   `List-Unsubscribe` / `List-Unsubscribe-Post` headers, and a mailbox provider
+   that shows its own "Unsubscribe" control POSTs here when it is pressed —
+   the customer never sees a page. Honouring it properly matters: a provider
+   that offers the button and then finds it does not work counts that against
+   the sending domain, which is the opposite of why we added the header. */
+export async function POST(request: Request) {
+  const id = new URL(request.url).searchParams.get('l') || '';
+  if (id) await unsubscribeLead(id).catch(() => null);
+  // No body expected in the response; the client only reads the status.
+  return new Response(null, { status: 200 });
+}

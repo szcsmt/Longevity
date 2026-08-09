@@ -33,9 +33,15 @@ const docUrl = (l: Lead, id = 'brochure') => `${SITE}${docHref(id, l.id)}`;
    Two exemptions. A /d/ document link already records the open, and one tap
    should read as one line of history rather than two. And mailto: cannot be
    redirected to, so it goes out untouched. */
-const track = (l: Lead, label: string, href: string) => {
+const track = (l: Lead, label: string, href: string, dest?: string) => {
   if (href.startsWith(`${SITE}/d/`) || href.startsWith('mailto:')) return href;
-  const q = new URLSearchParams({ l: l.id, t: label, u: href });
+  const q = new URLSearchParams({ l: l.id, t: label });
+  /* A named destination keeps the whole address off the query string. Carrying
+     a full encoded URL there is the exact shape a phishing link takes, and
+     filters score it accordingly — which matters more than it sounds when the
+     letter is already a first contact from an unknown domain. The /c route
+     resolves the name server-side and fills in the customer's details. */
+  if (dest) q.set('d', dest); else q.set('u', href);
   return `${SITE}/c?${q.toString()}`;
 };
 
@@ -151,7 +157,7 @@ const priceLine = () => `
       Wellness access is included with ownership.</p>
   </td></tr>`;
 
-interface Button { label: string; href: string }
+interface Button { label: string; href: string; dest?: string }
 
 /** Primary (solid gold) and optional secondary (outlined) button, side by side.
     Takes the lead so every destination can leave through the click tracker. */
@@ -160,12 +166,12 @@ const buttons = (l: Lead, primary: Button, secondary?: Button) => `
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btnwrap" style="margin:0 auto;">
       <tr class="btnrow">
         <td align="center" bgcolor="${GOLD}" class="btn" style="${bg(GOLD)}border-radius:999px;">
-          <a href="${track(l, primary.label, primary.href)}" style="display:block;padding:17px 40px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${PANEL};text-decoration:none;">${primary.label}</a>
+          <a href="${track(l, primary.label, primary.href, primary.dest)}" style="display:block;padding:17px 40px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${PANEL};text-decoration:none;">${primary.label}</a>
         </td>
         ${secondary ? `
         <td width="14" class="gap" style="width:14px;font-size:1px;line-height:1px;">&nbsp;</td>
         <td align="center" class="btn" style="border:1px solid rgba(201,164,106,0.5);border-radius:999px;">
-          <a href="${track(l, secondary.label, secondary.href)}" style="display:block;padding:16px 36px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${GOLD};text-decoration:none;">${secondary.label}</a>
+          <a href="${track(l, secondary.label, secondary.href, secondary.dest)}" style="display:block;padding:16px 36px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${GOLD};text-decoration:none;">${secondary.label}</a>
         </td>` : ''}
       </tr>
     </table>
@@ -291,6 +297,14 @@ ${DARK_SCHEME_META}
 
 /** "Book a call" has no calendar behind it yet, so it opens a reply to the
     person who owns the lead — which is what a call request turns into anyway. */
+/** The booking button, as a Button — named destination when a calendar is
+    configured, plain mailto when it is not. */
+const callButton = (l: Lead, label: string): Button => ({
+  label,
+  href: callHref(l),
+  dest: process.env.CRM_BOOKING_URL ? 'booking' : undefined,
+});
+
 const callHref = (l: Lead) => {
   /* With a booking page configured (CRM_BOOKING_URL — a Cal.com link), the
      button opens the calendar with the lead's details pre-filled, and the
@@ -329,7 +343,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
             Owners receive a fixed return and full management; guests receive the medical programme.`) +
           essentials() +
           priceLine() +
-          buttons(l, { label: 'Download brochure', href: docUrl(l, 'overview') }, { label: 'Book a call', href: callHref(l) }) +
+          buttons(l, { label: 'Download brochure', href: docUrl(l, 'overview') }, callButton(l, 'Book a call')) +
           p(`If any of the residences catches your eye, just reply to this e-mail. I am happy to walk
             you through availability, pricing and how reservation works.`),
       }),
@@ -348,7 +362,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
             exact pricing and our four-step payment schedule.`) +
           essentials() +
           priceLine() +
-          buttons(l, { label: 'Book a call', href: callHref(l) }, { label: 'The brochure', href: docUrl(l, 'overview') }) +
+          buttons(l, callButton(l, 'Book a call'), { label: 'The brochure', href: docUrl(l, 'overview') }) +
           p(`I will come back to you personally within a few hours. If you would rather talk sooner,
             simply reply to this e-mail.`),
       }),
@@ -366,7 +380,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
           physician-led longevity centre.`) +
         essentials() +
         priceLine() +
-        buttons(l, { label: 'Book a call', href: callHref(l) }, { label: 'The brochure', href: docUrl(l, 'overview') }) +
+        buttons(l, callButton(l, 'Book a call'), { label: 'The brochure', href: docUrl(l, 'overview') }) +
         p(`In the meantime, feel free to reply with anything you would like to know. This inbox comes
           straight to me.`),
     }),
@@ -385,7 +399,7 @@ export function reminderEmail(l: Lead): { subject: string; html: string } {
         p(`If any questions have come up about the residences, the pricing or the reservation process,
           simply reply and I will answer them. And if the timing is not right, a one-line reply saying
           so is absolutely fine too.`) +
-        buttons(l, { label: 'Book a call', href: callHref(l) }),
+        buttons(l, callButton(l, 'Book a call')),
     }),
   };
 }
@@ -410,7 +424,7 @@ export function storyEmail(l: Lead): { subject: string; html: string } {
           simply the timing. I will send you exactly that and nothing else.`) +
         /* The full 52-page brochure lands here rather than on day 0. Someone who
            has read this far will open it; a stranger on day one would not. */
-        buttons(l, { label: 'The full brochure', href: docUrl(l, 'brochure') }, { label: 'Book a call', href: callHref(l) }),
+        buttons(l, { label: 'The full brochure', href: docUrl(l, 'brochure') }, callButton(l, 'Book a call')),
     }),
   };
 }
@@ -430,7 +444,7 @@ export function viewingEmail(l: Lead): { subject: string; html: string } {
           time properly, so it is never a rushed walk-through.`) +
         p(`If travelling is not practical right now, I will do a live video tour with you instead. The
           same thing from your sofa, and you can ask anything as we go.`) +
-        buttons(l, { label: 'Arrange a viewing', href: callHref(l) }, { label: 'The brochure', href: docUrl(l, 'overview') }),
+        buttons(l, callButton(l, 'Arrange a viewing'), { label: 'The brochure', href: docUrl(l, 'overview') }),
     }),
   };
 }
@@ -469,7 +483,7 @@ export function termsEmail(l: Lead): { subject: string; html: string } {
         schedule +
         p(`Nothing moves until the step before it is genuinely finished, which is the whole point of
           doing it this way.`) +
-        buttons(l, { label: 'Ask for the figures', href: callHref(l) }, { label: 'The full brochure', href: docUrl(l, 'brochure') }) +
+        buttons(l, callButton(l, 'Ask for the figures'), { label: 'The full brochure', href: docUrl(l, 'brochure') }) +
         p(`Reply and I will send the current availability${l.villa ? ` and the exact figures for ${esc(l.villa)}` : ' and the exact figures'},
           plus the reservation agreement to read at your own pace.`),
     }),

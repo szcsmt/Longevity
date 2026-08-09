@@ -1,4 +1,4 @@
-import { recordClick } from '@/lib/crm/store';
+import { getLead, recordClick } from '@/lib/crm/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,11 +37,37 @@ function allowed(target: URL): boolean {
   return ALLOWED_HOSTS.has(host) || host.endsWith(`.${SITE_HOST}`);
 }
 
+/* ── Named destinations ──
+
+   `?d=booking` instead of `?u=<the whole encoded URL>`. The letters use this
+   for the booking button, which keeps the address out of the query string:
+   a full encoded URL sitting in a link is the shape a phishing link takes,
+   and filters score it accordingly. Resolving the name here also means the
+   calendar can be moved without touching a letter already in an inbox.
+
+   The customer's details are filled in from the lead rather than carried
+   through the link, so the calendar still opens prefilled. */
+async function namedDestination(name: string, leadId: string | null): Promise<string | null> {
+  if (name !== 'booking') return null;
+  const booking = process.env.CRM_BOOKING_URL;
+  if (!booking) return null;
+  try {
+    const u = new URL(booking);
+    const lead = leadId ? await getLead(leadId).catch(() => null) : null;
+    if (lead?.name) u.searchParams.set('name', lead.name);
+    if (lead?.email) u.searchParams.set('email', lead.email);
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   const q = new URL(request.url).searchParams;
-  const raw = q.get('u');
   const leadId = q.get('l');
   const label = (q.get('t') || 'a link').slice(0, 120);
+  const named = q.get('d');
+  const raw = named ? await namedDestination(named, leadId) : q.get('u');
 
   if (!raw) return new Response('Missing destination', { status: 400 });
 

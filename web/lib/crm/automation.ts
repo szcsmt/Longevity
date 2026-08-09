@@ -56,7 +56,7 @@ async function deliver(l: Lead, step: EmailStep): Promise<string | null> {
 
   if (channel === 'email' && autoEmailsEnabled()) {
     const mail = LETTERS[step](l);
-    return (await sendEmail({ to: l.email!, ...mail })) ? mail.subject : null;
+    return (await sendEmail({ to: l.email!, leadId: l.id, ...mail })) ? mail.subject : null;
   }
 
   if (channel === 'whatsapp' && whatsappEnabled()) {
