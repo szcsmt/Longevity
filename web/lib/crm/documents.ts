@@ -22,11 +22,15 @@ export interface CrmDocument {
 export const DOCUMENTS: CrmDocument[] = [
   {
     id: 'overview',
-    title: 'Longevity Resort overview',
-    file: '/brochure/longevity-overview-2026.pdf',
-    note: '12 pages, 2.6 MB. The same story as the full brochure, cut to what a stranger needs.',
-    audience: 'First contact. Small enough to open on a phone over hotel wifi, which is where it is read.',
+    title: 'Longevity Resort brochure',
+    file: '/brochure/longevity-brochure-short-2026.pdf',
+    note: '13 pages, 9.9 MB. The short edition — the story cut to what a stranger needs.',
+    audience: 'First contact. This is the one that goes out with the welcome.',
   },
+  /* A 12-page, 2.6 MB cut of the same story is on disk at
+     /brochure/longevity-overview-2026.pdf. It opens roughly four times faster
+     on a phone, which matters more than it sounds when the mail is read on
+     hotel wifi. Kept, unlinked, in case that trade is ever worth revisiting. */
   {
     id: 'brochure',
     title: 'Longevity Resort brochure',

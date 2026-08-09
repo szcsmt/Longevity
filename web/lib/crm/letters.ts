@@ -309,7 +309,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
             Owners receive a fixed return and full management; guests receive the medical programme.`) +
           essentials() +
           priceLine() +
-          buttons(l, { label: 'Download brochure', href: docUrl(l, 'brochure') }, { label: 'Book a call', href: callHref(l) }) +
+          buttons(l, { label: 'Download brochure', href: docUrl(l, 'overview') }, { label: 'Book a call', href: callHref(l) }) +
           p(`If any of the residences catches your eye, just reply to this e-mail. I am happy to walk
             you through availability, pricing and how reservation works.`),
       }),
@@ -328,7 +328,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
             exact pricing and our four-step payment schedule.`) +
           essentials() +
           priceLine() +
-          buttons(l, { label: 'Book a call', href: callHref(l) }, { label: 'The overview', href: docUrl(l, 'overview') }) +
+          buttons(l, { label: 'Book a call', href: callHref(l) }, { label: 'The brochure', href: docUrl(l, 'overview') }) +
           p(`I will come back to you personally within a few hours. If you would rather talk sooner,
             simply reply to this e-mail.`),
       }),
@@ -346,7 +346,7 @@ export function welcomeEmail(l: Lead): { subject: string; html: string } {
           physician-led longevity centre.`) +
         essentials() +
         priceLine() +
-        buttons(l, { label: 'Book a call', href: callHref(l) }, { label: 'The overview', href: docUrl(l, 'overview') }) +
+        buttons(l, { label: 'Book a call', href: callHref(l) }, { label: 'The brochure', href: docUrl(l, 'overview') }) +
         p(`In the meantime, feel free to reply with anything you would like to know. This inbox comes
           straight to me.`),
     }),
@@ -410,7 +410,7 @@ export function viewingEmail(l: Lead): { subject: string; html: string } {
           time properly, so it is never a rushed walk-through.`) +
         p(`If travelling is not practical right now, I will do a live video tour with you instead. The
           same thing from your sofa, and you can ask anything as we go.`) +
-        buttons(l, { label: 'Arrange a viewing', href: callHref(l) }, { label: 'The overview', href: docUrl(l, 'overview') }),
+        buttons(l, { label: 'Arrange a viewing', href: callHref(l) }, { label: 'The brochure', href: docUrl(l, 'overview') }),
     }),
   };
 }
@@ -497,7 +497,7 @@ export function whatsappMessage(step: EmailStep, l: Lead): string | null {
     case 'welcome':
       return `${hi}, thank you for your enquiry about Longevity Resort on Koh Samui.\n\n` +
         why(l) +
-        `Here is a short overview, 12 pages: ${overview}\n\n` +
+        `Here is the brochure, 13 pages: ${overview}\n\n` +
         `What would be most useful to know first — the residences, the returns, or the timing?\n\n${office}`;
 
     case 'reminder':
