@@ -5,11 +5,11 @@ import { VILLAS } from './villas';
 
 /* ── The letters the automatic sequence sends ──
 
-   The brand hand-off ("Direction A, Editorial") in its light setting: a 600px
-   centred column, the letter on an ivory sheet, Georgia headings in deep gold,
-   hairline rules, the gold pill button, legal footer outside the sheet. The
-   palette block below explains why it is ink on paper rather than the original
-   light-on-black, and what that cost.
+   Built to the approved brand hand-off ("Direction A, Editorial"): a 600px
+   centred column on #060E08, the letter on a #0A140C panel, gold scale type,
+   Georgia headings, hairline rules, 2px-radius gold buttons, legal footer
+   outside the panel. Pure white text is prohibited by the brand — everything
+   comes from the warm gold scale.
 
    Content only: no store, no mailer, no Node APIs, so the wording and markup
    can be rendered and reviewed on their own. automation.ts decides WHEN each
@@ -39,58 +39,49 @@ const track = (l: Lead, label: string, href: string) => {
   return `${SITE}/c?${q.toString()}`;
 };
 
-/* ── Ink on paper, not light on black ──
-
-   The hand-off was a dark design and it rendered beautifully everywhere except
-   the one place these letters are actually read: the Gmail app on a phone in
-   dark mode. That app runs its own colour transform and does not reliably
-   honour `color-scheme`, so it darkened our type and left it on a near-black
-   panel. Two rounds of tuning the sand tones changed nothing, because the
-   colours leaving our server were never the colours arriving.
-
-   A light letter cannot be broken the same way. Where a client insists on a
-   dark rendering it inverts the whole thing consistently — dark sheet, light
-   type — which stays readable, and that is the difference: consistent
-   inversion is survivable, partial rewriting is not.
-
-   It also suits the brief better than it looks. The reference the brand keeps
-   reaching for is editorial and printed, and a letter on good paper is not
-   black. The offer document already reads this way, so the two now match.
-
-   Contrast on the sheet: body 15.0:1, secondary 7.0:1, heading 5.8:1,
-   links 4.9:1, the gold button 7.3:1. */
-const PAGE = '#EFEBE2';        // the surround, a shade darker than the sheet
-const PANEL = '#FFFDF9';       // the sheet itself
-const INK = '#23271F';         // body copy
-const GOLD = '#8A6A2C';        // rules, links, figures — deep enough to read on ivory
-const GOLD_HI = '#7E5F26';     // headings, highlights
-const EYEBROW = '#8A6A2C';
-const BODY = INK;              // intro/lead copy
-const BODY_ROW = INK;          // the essentials table's right column
-const BODY_2 = '#5A5850';      // price line, one step back from the body
-const MUTED = '#5A5850';       // location line, sign-off detail
-const LEGAL = '#5A5850';       // legal footer, outside the panel
-/* The gold pill from the hand-off survives unchanged: gold ground, dark ink
-   label. It was the one element that already worked on either background. */
-const BUTTON = '#C9A46A';
-const HAIR = 'rgba(138,106,44,0.28)';
+/* Design tokens, straight from the hand-off. */
+const PAGE = '#060E08';
+const PANEL = '#0A140C';
+const GOLD = '#C9A46A';        // rules, buttons, links, figures
+const GOLD_HI = '#D8B87C';     // headings, highlights
+const EYEBROW = '#E4C48F';
+const BODY = '#E6DFD1';        // intro/lead copy
+const BODY_ROW = '#DBD3C3';    // the essentials table's right column
+const BODY_2 = '#C9BFAC';      // price line, one step back from the body
+/* Sand, not grey. These two carry the sign-off and the footer — the smallest
+   type in the letter — and the olive-grey they replace measured 5.0:1 and
+   3.1:1 against the panel, which is unreadable at 11px on a phone in daylight.
+   Same family as the body copy, two steps back rather than five: 10.0:1 and
+   7.6:1, so they still recede without disappearing. */
+const MUTED = '#C6BCA6';        // location line, sign-off detail
+const LEGAL = '#B0A488';        // legal footer, outside the panel
+const HAIR = 'rgba(201,164,106,0.26)';
 const SERIF = "Georgia,'Times New Roman',serif";
 const SANS = 'Helvetica,Arial,sans-serif';
 
-/* Every surface sets background-color AND a background-image resolving to the
-   same colour. Clients that repaint backgrounds leave background-image alone,
-   so the sheet keeps its colour even where the rest is being rewritten. */
+/* Gmail's dark mode repaints a flat dark background into sand — it did exactly
+   that to the first version of this design. A background-image that resolves to
+   the same colour survives the repaint, so every dark surface sets both. */
 const bg = (c: string) => `background-color:${c};background-image:linear-gradient(${c},${c});`;
 
-/* One scheme, declared plainly: this letter is light and has no dark cut.
-   Both spellings are given because clients split on which one they read, and
-   :root repeats it in CSS for the ones that ignore <meta> entirely.
+/* ── Telling the client this letter is ALREADY dark ──
 
-   A client may still render it dark anyway — the Gmail app does. The point of
-   a light design is that doing so inverts the whole letter consistently, which
-   stays readable, rather than rewriting half of it, which does not. */
-const SCHEME_META = `<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">`;
+   The Gmail app on a phone in dark mode was rewriting these letters, and the
+   cause was here: the design declared `color-scheme: light dark`, which reads
+   as "this mail has a light version, adapt it as you see fit". Gmail took the
+   invitation and ran its own transform, which darkens text it assumes is sitting
+   on a light background — dark type on our near-black panel, unreadable.
+
+   Declaring `dark` alone withdraws the invitation. A client that honours it
+   leaves the letter exactly as sent. Both spellings are given because clients
+   split on which one they read, and `:root { color-scheme: dark }` repeats it in
+   CSS for the ones that ignore <meta> entirely.
+
+   Honest limit: a phone set to force full inversion overrides all of this. That
+   case inverts consistently, so the letter stays readable — it is the partial
+   rewrite this prevents, which is the one that breaks it. */
+const DARK_SCHEME_META = `<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">`;
 
 const firstName = (l: Lead) => (l.name || '').trim().split(/\s+/)[0] || 'there';
 
@@ -168,12 +159,12 @@ const buttons = (l: Lead, primary: Button, secondary?: Button) => `
   <tr><td class="px" style="padding:34px 56px 0 56px;" align="center">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="btnwrap" style="margin:0 auto;">
       <tr class="btnrow">
-        <td align="center" bgcolor="${BUTTON}" class="btn" style="${bg(BUTTON)}border-radius:999px;">
-          <a href="${track(l, primary.label, primary.href)}" style="display:block;padding:17px 40px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${INK};text-decoration:none;">${primary.label}</a>
+        <td align="center" bgcolor="${GOLD}" class="btn" style="${bg(GOLD)}border-radius:999px;">
+          <a href="${track(l, primary.label, primary.href)}" style="display:block;padding:17px 40px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${PANEL};text-decoration:none;">${primary.label}</a>
         </td>
         ${secondary ? `
         <td width="14" class="gap" style="width:14px;font-size:1px;line-height:1px;">&nbsp;</td>
-        <td align="center" class="btn" style="border:1px solid rgba(138,106,44,0.45);border-radius:999px;">
+        <td align="center" class="btn" style="border:1px solid rgba(201,164,106,0.5);border-radius:999px;">
           <a href="${track(l, secondary.label, secondary.href)}" style="display:block;padding:16px 36px;font-family:${SANS};font-size:13px;line-height:16px;letter-spacing:0.18em;text-transform:uppercase;color:${GOLD};text-decoration:none;">${secondary.label}</a>
         </td>` : ''}
       </tr>
@@ -238,14 +229,11 @@ function shell(l: Lead, letter: Letter): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${SCHEME_META}
+${DARK_SCHEME_META}
 <title>Longevity Resort, Koh Samui</title>
 <style>
   /* Same message as the <meta> above, for clients that read CSS and not tags. */
-  :root { color-scheme: light; supported-color-schemes: light; }
-  /* Where a client offers a dark preference, re-assert the sheet rather than
-     let it choose one for us. Clients that force their own transform ignore
-     this, which is expected and survivable. */
+  :root { color-scheme: dark; supported-color-schemes: dark; }
   @media (prefers-color-scheme: dark){
     body, .page{background-color:${PAGE} !important;}
     .panel{background-color:${PANEL} !important;}
@@ -272,7 +260,7 @@ ${SCHEME_META}
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container panel" style="width:600px;max-width:600px;${bg(PANEL)}">
 
   <tr><td class="px" style="padding:44px 56px 0 56px;" align="center">
-    <img src="${SITE}/email/logo-dark.png" width="134" height="128" alt="Longevity Resort" class="mark" style="display:block;width:134px;height:128px;border:0;outline:none;text-decoration:none;margin:0 auto;">
+    <img src="${SITE}/email/logo.png" width="134" height="128" alt="Longevity Resort" class="mark" style="display:block;width:134px;height:128px;border:0;outline:none;text-decoration:none;margin:0 auto;">
     <div style="font-family:${SANS};font-size:10px;line-height:16px;letter-spacing:0.30em;text-transform:uppercase;color:${MUTED};padding-top:18px;">Plai Laem &middot; Koh Samui &middot; Thailand</div>
   </td></tr>
 
