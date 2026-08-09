@@ -146,6 +146,8 @@ export function digestHtml(d: Digest): string {
   const bg = (c: string) => `background-color:${c};background-image:linear-gradient(${c},${c});`;
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
 <title>Today at Longevity</title></head>
 <body style="margin:0;padding:0;${bg('#060E08')}">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="${bg('#060E08')}">

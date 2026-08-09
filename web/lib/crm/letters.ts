@@ -64,6 +64,25 @@ const SANS = 'Helvetica,Arial,sans-serif';
    the same colour survives the repaint, so every dark surface sets both. */
 const bg = (c: string) => `background-color:${c};background-image:linear-gradient(${c},${c});`;
 
+/* ── Telling the client this letter is ALREADY dark ──
+
+   The Gmail app on a phone in dark mode was rewriting these letters, and the
+   cause was here: the design declared `color-scheme: light dark`, which reads
+   as "this mail has a light version, adapt it as you see fit". Gmail took the
+   invitation and ran its own transform, which darkens text it assumes is sitting
+   on a light background — dark type on our near-black panel, unreadable.
+
+   Declaring `dark` alone withdraws the invitation. A client that honours it
+   leaves the letter exactly as sent. Both spellings are given because clients
+   split on which one they read, and `:root { color-scheme: dark }` repeats it in
+   CSS for the ones that ignore <meta> entirely.
+
+   Honest limit: a phone set to force full inversion overrides all of this. That
+   case inverts consistently, so the letter stays readable — it is the partial
+   rewrite this prevents, which is the one that breaks it. */
+const DARK_SCHEME_META = `<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">`;
+
 const firstName = (l: Lead) => (l.name || '').trim().split(/\s+/)[0] || 'there';
 
 const esc = (s: string) =>
@@ -210,10 +229,11 @@ function shell(l: Lead, letter: Letter): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<meta name="supported-color-schemes" content="light dark">
+${DARK_SCHEME_META}
 <title>Longevity Resort, Koh Samui</title>
 <style>
+  /* Same message as the <meta> above, for clients that read CSS and not tags. */
+  :root { color-scheme: dark; supported-color-schemes: dark; }
   @media (prefers-color-scheme: dark){
     body, .page{background-color:${PAGE} !important;}
     .panel{background-color:${PANEL} !important;}
