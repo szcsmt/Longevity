@@ -85,11 +85,19 @@ export async function sendEmail(mail: OutgoingEmail): Promise<boolean> {
       body: JSON.stringify({
         from: process.env.CRM_AUTO_FROM,
         to: [mail.to],
-        /* Where replies go. With Resend inbound configured, set CRM_REPLY_TO to
-           that inbound address so the CRM sees answers and can stop the sequence;
-           the inbound route forwards a copy to the operator's mailbox either way.
-           Unset, replies go straight to the operator and the CRM stays blind. */
-        reply_to: process.env.CRM_REPLY_TO || process.env.CRM_NOTIFY_TO || undefined,
+        /* Where replies go — and, just as importantly, how many addresses the
+           customer is shown. A Reply-To that differs from the From makes the
+           client print both, which reads like a forwarded mail rather than a
+           letter from a person.
+
+           So: only set it when it earns its place. With Resend inbound
+           configured, CRM_REPLY_TO points at that address so the CRM sees
+           answers and can stop the sequence — worth the second line. Unset,
+           we send nothing at all and replies go to the From address, which is
+           a real mailbox somebody reads. The old fallback to CRM_NOTIFY_TO
+           bought nothing: the CRM was blind to those replies either way, and
+           it cost a second address on every letter. */
+        reply_to: process.env.CRM_REPLY_TO || undefined,
         subject: mail.subject,
         html: mail.html,
         text: plainText(mail.html),
