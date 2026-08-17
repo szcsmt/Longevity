@@ -109,6 +109,40 @@ a second record existed, and where it went, is part of the history.
 archived — two deliberate steps, never one click. Route:
 `DELETE /api/crm/leads/[id]?purge=1`, admin only. There is no bulk purge.
 
+## Prices, and the units that have none
+
+`VILLAS` in `lib/crm/villas.ts` is the only place a price is written down. Each
+entry carries its tier code (`M` / `L` / `XL`), which is what joins it to the
+unit catalogue, and `priceForSize(tier)` is the single lookup. `unitListPrice(id)`
+in the store resolves a unit through it.
+
+A second copy used to live in `analytics.ts`, keyed by tier. Nothing would have
+failed if the two drifted apart — every financial chart would simply have shown
+the old figure.
+
+**The A block has no tier.** A1 to A11 carry no `size`, `type` or `area` in
+`lib/villas.json`, so they have no list price, and inventing one would be a
+guess about money. Consequences, all deliberate:
+
+- `unitListPrice` returns `undefined` for them.
+- They contribute nothing to `totalInventoryValue`, which is why the analytics
+  tile says how many units it excludes rather than presenting the total as the
+  whole development.
+- A sale there still counts, at whatever `contractValue` was agreed.
+- One that is reserved or sold with neither is reported as `unit-without-price`.
+
+Supplying the A block's types in `lib/villas.json` is all it would take; nothing
+in the code needs to change for them to start being priced.
+
+### One pass over the inventory
+
+`analytics.ts` used to run two loops: the money over the 58 units with a tier,
+the status over all 69. Selling an A-block villa moved `villaStatus.sold` and
+left `financial.soldCount` behind — two figures on one screen disagreeing, with
+nothing to announce it. There is one loop now, so they cannot come apart, and
+each unit is valued at `contractValue ?? listPrice`, the same rule the masterplan
+ledger uses.
+
 ## Referential integrity: a unit and its buyer
 
 `VillaRecord.buyerLeadId` is a reference with nothing enforcing it — the store

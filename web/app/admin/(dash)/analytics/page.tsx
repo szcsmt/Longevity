@@ -78,7 +78,12 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <div className="fin-tile"><div className="k">Elért bevétel</div><div className="v">{fmtTHBshort(f.soldRevenue)}</div><div className="s">{f.soldCount} eladott villa · a készlet {f.realizedPct}%-a</div></div>
           <div className="fin-tile"><div className="k">Foglalások értéke</div><div className="v">{fmtTHBshort(f.reservedValue)}</div><div className="s">{f.reservedCount} lefoglalt villa</div></div>
           <div className="fin-tile"><div className="k">Átlag üzletméret</div><div className="v">{f.avgDealSize != null ? fmtTHBshort(f.avgDealSize) : '—'}</div><div className="s">eladott villánként</div></div>
-          <div className="fin-tile"><div className="k">Teljes készlet-érték</div><div className="v">{fmtTHBshort(f.totalInventoryValue)}</div><div className="s">{f.bySize.reduce((s, x) => s + x.total, 0)} árazott villa</div></div>
+          <div className="fin-tile"><div className="k">Teljes készlet-érték</div><div className="v">{fmtTHBshort(f.totalInventoryValue)}</div><div className="s">
+            {f.bySize.reduce((s, x) => s + x.total, 0)} árazott villa
+            {/* Say what the total does NOT cover. Without this the figure reads
+                as the whole development, and the A block has no list price. */}
+            {f.unpricedCount > 0 && ` · ${f.unpricedCount} árazatlan kimarad`}
+          </div></div>
         </div>
 
         <div className="fin-progress" title={`Eladva ${f.realizedPct}% · lekötve ${f.committedPct}%`}>

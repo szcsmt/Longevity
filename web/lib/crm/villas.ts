@@ -4,16 +4,32 @@
 
 export interface Villa {
   name: string;
+  size: string;   // the tier code used by the unit catalogue: M / L / XL
   built: string;  // the residence itself
   plot: string;   // the land it sits on
   price: number;  // THB
 }
 
+/* ── The one price table ──
+
+   These three numbers used to exist twice: here, keyed by name, and again in
+   analytics.ts keyed by size tier. Two sources of truth for the same figure,
+   and changing one would have left the other quietly reporting the old price
+   in every financial chart. `size` is what joins this to the unit catalogue,
+   so the tier lookup no longer needs a second copy of the numbers. */
 export const VILLAS: Villa[] = [
-  { name: 'Residence M',  built: '80.5 m²',  plot: '105 m²',   price: 7_650_000 },
-  { name: 'Residence L',  built: '83.72 m²', plot: '116 m²',   price: 8_050_000 },
-  { name: 'Residence XL', built: '110.1 m²', plot: '144.9 m²', price: 11_200_000 },
+  { name: 'Residence M',  size: 'M',  built: '80.5 m²',  plot: '105 m²',   price: 7_650_000 },
+  { name: 'Residence L',  size: 'L',  built: '83.72 m²', plot: '116 m²',   price: 8_050_000 },
+  { name: 'Residence XL', size: 'XL', built: '110.1 m²', plot: '144.9 m²', price: 11_200_000 },
 ];
+
+/** List price for a tier code (M / L / XL). Undefined for anything else — the
+    A block carries no tier, and inventing one for it would be a guess about
+    money. */
+export const priceForSize = (size?: string): number | undefined =>
+  size ? VILLAS.find((v) => v.size === size)?.price : undefined;
+
+export const SIZES: string[] = VILLAS.map((v) => v.size);
 
 /** Match a lead's free-text villa field to the catalogue (case-insensitive). */
 export function villaByName(name?: string): Villa | undefined {

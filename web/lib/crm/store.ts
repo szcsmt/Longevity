@@ -8,7 +8,7 @@ import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel } from './language';
 import { ACTIVE_STAGES, STAGE_MAX_DAYS, hasNoNextStep, isStalled } from './rules';
-import { VILLAS, fmtTHB, phaseAmount, villaByName } from './villas';
+import { fmtTHB, phaseAmount, priceForSize, villaByName } from './villas';
 import unitCatalog from '../villas.json';
 export { STAGE_MAX_DAYS, stageAgeDays, stageEnteredAt, isStalled, hasNoNextStep } from './rules';
 import { hasDatabase, type Backend } from './backend';
@@ -1026,9 +1026,11 @@ const UNIT_SIZE: Record<string, string> = Object.fromEntries(
 );
 
 export function unitListPrice(id: string): number | undefined {
-  const size = UNIT_SIZE[id];
-  return size ? VILLAS.find((v) => v.name === `Residence ${size}`)?.price : undefined;
+  return priceForSize(UNIT_SIZE[id]);
 }
+
+/** The tier a unit belongs to, or '' for the A block, which has none. */
+export const unitSize = (id: string): string => UNIT_SIZE[id] || '';
 
 /** Fill the contract value from the list price when a deal starts and none is
     set yet. Returns true when it defaulted (caller logs it). */
@@ -1338,7 +1340,8 @@ export type IntegrityKind =
   | 'dangling-buyer'      // the unit points at a lead that no longer exists
   | 'archived-buyer'      // the buyer is out of every view while the unit still holds them
   | 'held-without-buyer'  // reserved or sold, and nobody is named
-  | 'lead-without-owner'; // an active lead nobody is responsible for
+  | 'lead-without-owner'  // an active lead nobody is responsible for
+  | 'unit-without-price'; // sold or reserved with no figure attached to it
 
 export interface IntegrityIssue {
   kind: IntegrityKind;
@@ -1374,6 +1377,17 @@ export async function integrityIssues(): Promise<IntegrityIssue[]> {
       issues.push({
         kind: 'held-without-buyer', villaId,
         detail: `${villaId} is ${rec.status} with no buyer named.`,
+      });
+    }
+
+    /* A unit with neither a contract value nor a list price contributes zero to
+       every revenue figure while still counting as sold. The A block is the
+       reason this can happen: its units carry no size tier, so there is no list
+       price to fall back on, and nothing prompts for one. */
+    if (!rec.contractValue && !unitListPrice(villaId)) {
+      issues.push({
+        kind: 'unit-without-price', villaId,
+        detail: `${villaId} is ${rec.status} with no price on it, so it counts as zero revenue.`,
       });
     }
   }

@@ -4,15 +4,16 @@
    (M / L / XL) priced below. Time-ranged sections respect the selected window;
    villa/financial figures are an as-of-now snapshot. */
 import villaGeo from '@/lib/villas.json';
-import { listLeads, getVillaData, listEvents } from './store';
+import { listLeads, getVillaData, listEvents, unitListPrice, unitSize } from './store';
+import { SIZES, priceForSize } from './villas';
 import { STAGES, type Stage, type VillaStatus } from './types';
 
-// Residence list prices (THB) by size tier — keep in sync with the site.
-export const PRICE: Record<string, number> = { M: 7_650_000, L: 8_050_000, XL: 11_200_000 };
-
+/* Prices come from villas.ts, which is the only place they are written down.
+   A second copy lived here, keyed by size tier, and the two could have drifted
+   apart without anything failing — every financial chart would simply have
+   shown the old number. */
 type Geo = { id: string; block: string; size?: string };
 const GEO = (villaGeo.villas as Geo[]);
-const SIZE_OF: Record<string, string | undefined> = Object.fromEntries(GEO.map((v) => [v.id, v.size]));
 const BLOCK_OF: Record<string, string> = Object.fromEntries(GEO.map((v) => [v.id, v.block]));
 
 export type Range = 7 | 30 | 90 | 'all';
@@ -36,7 +37,8 @@ export interface AnalyticsData {
     soldRevenue: number;
     reservedCount: number;
     reservedValue: number;
-    freeCount: number;              // sized, still available
+    freeCount: number;              // priced, still available
+    unpricedCount: number;          // units with no list price — the A block has no tier
     totalInventoryValue: number;
     realizedPct: number;            // soldRevenue / totalInventoryValue
     committedPct: number;           // (sold+reserved value) / total
@@ -142,48 +144,72 @@ export async function analytics(rangeInput?: string): Promise<AnalyticsData> {
   const closeRatePct = leads.length ? Math.round((wonN / leads.length) * 100) : 0;
   const reservationRatePct = leads.length ? Math.round((reservedN / leads.length) * 100) : 0;
 
-  // ── Financial (snapshot over sized villas) ──
-  const sizes = ['M', 'L', 'XL'];
-  const bySize = sizes.map((size) => ({ size, price: PRICE[size], total: 0, sold: 0, reserved: 0 }));
-  const sizeIdx: Record<string, number> = { M: 0, L: 1, XL: 2 };
-  let soldCount = 0, soldRevenue = 0, reservedCount = 0, reservedValue = 0, freeSized = 0, totalInventoryValue = 0;
-  for (const [id, size] of Object.entries(SIZE_OF)) {
-    if (!size || !(size in PRICE)) continue;
-    const price = PRICE[size];
-    totalInventoryValue += price;
-    const row = bySize[sizeIdx[size]];
-    row.total++;
-    const status = (vdata.villas[id]?.status || 'free') as VillaStatus;
-    if (status === 'sold') { soldCount++; soldRevenue += price; row.sold++; }
-    else if (status === 'reserved') { reservedCount++; reservedValue += price; row.reserved++; }
-    else freeSized++;
-  }
-  const realizedPct = totalInventoryValue ? Math.round((soldRevenue / totalInventoryValue) * 100) : 0;
-  const committedPct = totalInventoryValue ? Math.round(((soldRevenue + reservedValue) / totalInventoryValue) * 100) : 0;
-  const avgDealSize = soldCount ? Math.round(soldRevenue / soldCount) : null;
+  /* ── One pass over the inventory ──
 
-  // ── Villa status over ALL villas (incl. A-block) ──
+     This used to be two loops: the money counted only units with a size tier
+     (58 of 69), the status counted all of them. So selling an A-block villa
+     incremented "Sold" and left "soldCount" behind — two figures on the same
+     screen disagreeing, and neither of them announcing it.
+
+     One loop now, so they cannot come apart. Each unit is valued at its own
+     contract value where a sale recorded one, and at the list price otherwise
+     — the same rule the masterplan ledger uses. The A block carries no tier
+     and therefore no list price; a sale there still counts, at whatever was
+     actually agreed, and a unit with neither is counted as unpriced rather
+     than silently dropped. */
+  const bySize = SIZES.map((size) => ({ size, price: priceForSize(size) ?? 0, total: 0, sold: 0, reserved: 0 }));
+  const sizeIdx: Record<string, number> = Object.fromEntries(SIZES.map((s, i) => [s, i]));
+
+  let soldCount = 0, soldRevenue = 0, reservedCount = 0, reservedValue = 0;
+  let freeSized = 0, totalInventoryValue = 0, unpricedCount = 0;
   let vFree = 0, vRes = 0, vSold = 0;
   const blockMap: Record<string, { free: number; reserved: number; sold: number }> = {};
   const agentMap: Record<string, { sold: number; revenue: number }> = {};
+
   for (const g of GEO) {
     const rec = vdata.villas[g.id];
     const status = (rec?.status || 'free') as VillaStatus;
+    const size = unitSize(g.id);
+    const list = unitListPrice(g.id);
+    const value = rec?.contractValue ?? list;
+
+    // Status, over every unit.
     const block = BLOCK_OF[g.id] || '?';
     blockMap[block] = blockMap[block] || { free: 0, reserved: 0, sold: 0 };
     if (status === 'sold') { vSold++; blockMap[block].sold++; }
     else if (status === 'reserved') { vRes++; blockMap[block].reserved++; }
     else { vFree++; blockMap[block].free++; }
-    // Agent attribution: the leaderboard counts CLOSED sales only — a
-    // reservation is not a result yet. Revenue prefers the actual contract
-    // value over the list price when the sale has one recorded.
+
+    // Tier breakdown, over the units that have a tier.
+    if (size && size in sizeIdx) {
+      const row = bySize[sizeIdx[size]];
+      row.total++;
+      if (status === 'sold') row.sold++;
+      else if (status === 'reserved') row.reserved++;
+    }
+
+    // Money. The portfolio total is what the untouched inventory is worth, so
+    // it uses the list price; a unit with no list price contributes nothing to
+    // it and is counted separately instead.
+    if (list) totalInventoryValue += list; else unpricedCount++;
+
+    if (status === 'sold') { soldCount++; soldRevenue += value ?? 0; }
+    else if (status === 'reserved') { reservedCount++; reservedValue += value ?? 0; }
+    else if (list) freeSized++;
+
+    /* Agent attribution: the leaderboard counts CLOSED sales only — a
+       reservation is not a result yet. Revenue prefers the actual contract
+       value over the list price when the sale has one recorded. */
     if (status === 'sold' && rec?.seller) {
       const a = (agentMap[rec.seller] = agentMap[rec.seller] || { sold: 0, revenue: 0 });
-      const listPrice = SIZE_OF[g.id] && PRICE[SIZE_OF[g.id]!] ? PRICE[SIZE_OF[g.id]!] : 0;
       a.sold++;
-      a.revenue += rec.contractValue ?? listPrice;
+      a.revenue += value ?? 0;
     }
   }
+
+  const realizedPct = totalInventoryValue ? Math.round((soldRevenue / totalInventoryValue) * 100) : 0;
+  const committedPct = totalInventoryValue ? Math.round(((soldRevenue + reservedValue) / totalInventoryValue) * 100) : 0;
+  const avgDealSize = soldCount ? Math.round(soldRevenue / soldCount) : null;
 
   // ── Distributions (ranged leads) ──
   const srcMap: Record<string, number> = {};
@@ -240,7 +266,7 @@ export async function analytics(rangeInput?: string): Promise<AnalyticsData> {
     rangeLabel: RANGE_LABEL[String(range)],
     kpis: { totalLeads: leads.length, leadsInRange, leadsTrendPct, hotLeads, reservationRatePct, closeRatePct, visitsInRange: rangedVisits.length },
     financial: {
-      soldCount, soldRevenue, reservedCount, reservedValue, freeCount: freeSized,
+      soldCount, soldRevenue, reservedCount, reservedValue, freeCount: freeSized, unpricedCount,
       totalInventoryValue, realizedPct, committedPct, avgDealSize, bySize,
     },
     leadsOverTime: buildSeries(rangedLeads.map((l) => parse(l.created_at)), effFrom, nowMs),
