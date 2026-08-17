@@ -1,6 +1,6 @@
 import { isAdmin, isAuthed } from '@/lib/crm/auth';
 import {
-  getVillaData, setVillaStatus, updateVillaSale,
+  VillaConflict, getVillaData, setVillaStatus, updateVillaSale,
   type VillaSaleOp, type VillaStatus,
 } from '@/lib/crm/store';
 
@@ -18,19 +18,29 @@ export async function PATCH(req: Request) {
   const id = String(b.id || '').trim();
   if (!id) return Response.json({ ok: false, error: 'missing id' }, { status: 400 });
 
-  // Sales ops (payment phases, buyer link, extras…) ride on `op`; a plain
-  // status change (the original masterplan drawer contract) has none.
-  if (typeof b.op === 'string' && ['sale', 'phase', 'extraAdd', 'extraRemove'].includes(b.op)) {
-    const data = await updateVillaSale(id, b as unknown as VillaSaleOp);
-    if (!data) return Response.json({ ok: false, error: 'invalid op' }, { status: 400 });
-    return Response.json({ ok: true, ...data });
-  }
+  /* 409 with the reason in `error`, so the drawer can say WHICH buyer already
+     holds the unit. A conflict is the one failure here the operator can act
+     on, and it deserves a sentence rather than a red border. */
+  try {
+    // Sales ops (payment phases, buyer link, extras…) ride on `op`; a plain
+    // status change (the original masterplan drawer contract) has none.
+    if (typeof b.op === 'string' && ['sale', 'phase', 'extraAdd', 'extraRemove'].includes(b.op)) {
+      const data = await updateVillaSale(id, b as unknown as VillaSaleOp);
+      if (!data) return Response.json({ ok: false, error: 'invalid op' }, { status: 400 });
+      return Response.json({ ok: true, ...data });
+    }
 
-  const status = String(b.status || '') as VillaStatus;
-  const data = await setVillaStatus(id, status, {
-    seller: b.seller ? String(b.seller) : undefined,
-    note: b.note ? String(b.note) : undefined,
-  });
-  if (!data) return Response.json({ ok: false, error: 'invalid status' }, { status: 400 });
-  return Response.json({ ok: true, ...data });
+    const status = String(b.status || '') as VillaStatus;
+    const data = await setVillaStatus(id, status, {
+      seller: b.seller ? String(b.seller) : undefined,
+      note: b.note ? String(b.note) : undefined,
+    });
+    if (!data) return Response.json({ ok: false, error: 'invalid status' }, { status: 400 });
+    return Response.json({ ok: true, ...data });
+  } catch (err) {
+    if (err instanceof VillaConflict) {
+      return Response.json({ ok: false, error: err.message }, { status: 409 });
+    }
+    throw err;
+  }
 }

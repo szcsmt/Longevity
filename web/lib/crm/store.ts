@@ -905,14 +905,90 @@ function hasSaleData(rec: VillaRecord): boolean {
   );
 }
 
-async function persistVilla(id: string, rec: VillaRecord): Promise<void> {
+async function persistVilla(id: string, rec: VillaRecord, expectedRev: number): Promise<boolean> {
   const be = await backend();
-  if (rec.status === 'free' && !hasSaleData(rec)) await be.setVilla(id, null);
-  else await be.setVilla(id, rec);
+  if (rec.status === 'free' && !hasSaleData(rec)) return be.setVilla(id, null, expectedRev);
+  return be.setVilla(id, rec, expectedRev);
 }
 
-async function logVilla(villaId: string, from: VillaStatus, to: VillaStatus, seller?: string, note?: string) {
-  await (await backend()).addVillaHistory({ id: randomUUID(), villaId, from, to, seller, note, at: now() });
+/* ── Refusing to sell the same villa twice ──
+
+   The revision guard above stops a write being lost. It does not stop somebody
+   deliberately reserving a unit that another salesperson reserved an hour ago,
+   because that is not a race — it is two people who each believe the unit is
+   theirs to sell. Only a business rule catches that, and it has to be a refusal
+   rather than a warning: a warning in a drawer is a warning nobody reads.
+
+   Thrown, not returned, because it is exceptional and every caller wants it
+   surfaced rather than folded into a null. Thrown inside the transaction body,
+   so nothing is persisted and no audit line is written. */
+export class VillaConflict extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'VillaConflict';
+  }
+}
+
+/** The buyer already on a unit, for a conflict message. */
+const heldBy = (rec: VillaRecord): string | undefined => rec.buyerName || rec.buyerLeadId;
+
+/* ── One unit, one writer at a time ──
+
+   A villa is the single record two salespeople can genuinely reach for in the
+   same second, and until this existed the second write simply overwrote the
+   first: two reservations taken, one kept, and no trace that the other ever
+   happened. Leads have been guarded by a revision since v3; this brings units
+   up to the same standard.
+
+   Read, change, save conditionally, and if somebody saved in between, read
+   again and redo the whole change on the fresh record.
+
+   The reason this needs a helper rather than a loop at each call site is the
+   side effects. Both write paths log to the villa history as they go and push
+   to the Google Sheet and the 3D twin at the end. Redoing a change that has
+   already written half its audit trail would double it, so `t.log` and
+   `t.after` QUEUE those and they are flushed only once the save has won. A
+   retried attempt throws its queue away with the attempt. */
+interface VillaTxn {
+  /** Queue an audit line. Written only after the save wins. */
+  log(from: VillaStatus, to: VillaStatus, seller?: string, note?: string): void;
+  /** Queue an outward sync. Run only after the save wins, best-effort. */
+  after(fn: () => Promise<void>): void;
+}
+
+async function villaTxn(
+  id: string,
+  body: (rec: VillaRecord, from: VillaStatus, t: VillaTxn) => Promise<'abort' | void> | 'abort' | void,
+): Promise<VillaData | null> {
+  const be = await backend();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const stored = (await be.getVillas())[id];
+    const expectedRev = stored?.rev || 0;
+    const from: VillaStatus = stored?.status || 'free';
+    // Work on a copy: an aborted or lost attempt must leave nothing behind.
+    const rec: VillaRecord = stored
+      ? (JSON.parse(JSON.stringify(stored)) as VillaRecord)
+      : { status: 'free', updatedAt: '' };
+
+    const logs: VillaHistoryEntry[] = [];
+    const afters: (() => Promise<void>)[] = [];
+    const t: VillaTxn = {
+      log: (f, to, seller, note) =>
+        logs.push({ id: randomUUID(), villaId: id, from: f, to, seller, note, at: now() }),
+      after: (fn) => afters.push(fn),
+    };
+
+    if ((await body(rec, from, t)) === 'abort') return null;
+
+    rec.updatedAt = now();
+    rec.rev = expectedRev + 1;
+    if (!(await persistVilla(id, rec, expectedRev))) continue; // lost the race — redo
+
+    for (const entry of logs) await be.addVillaHistory(entry).catch(() => {});
+    for (const fn of afters) await fn().catch(() => {});
+    return getVillaData();
+  }
+  throw new Error(`villa ${id}: too many concurrent updates`);
 }
 
 /* Mirror a status change to the Google Sheet — unless the change CAME from the
@@ -964,28 +1040,39 @@ export async function setVillaStatus(
   opts?: { silent?: boolean },
 ): Promise<VillaData | null> {
   if (!VALID_STATUS.includes(status)) return null;
-  const be = await backend();
-  const existing = (await be.getVillas())[id];
-  const from = existing?.status || 'free';
   const seller = meta?.seller?.trim().slice(0, 120) || undefined;
   const note = meta?.note?.trim().slice(0, 500) || undefined;
 
-  const rec: VillaRecord = { ...(existing || { updatedAt: '' }), status, seller, note, updatedAt: now() };
-  if (status === 'free') {
-    // Back to free = the deal is off. Clear sales data (the audit trail keeps it).
-    delete rec.buyerLeadId; delete rec.buyerName; delete rec.contractValue;
-    delete rec.promisedDate; delete rec.construction; delete rec.phases; delete rec.extras;
-    await be.setVilla(id, null);
-  } else {
-    // A deal just started — price it from the list automatically.
-    if (defaultContractValue(id, rec))
-      await logVilla(id, from, status, seller, `Contract value set from list price (${fmtTHB(rec.contractValue!)})`);
-    await persistVilla(id, rec);
-  }
-  await logVilla(id, from, status, seller, note);
-  if (!opts?.silent) await sheetSync(id, status, seller, note);
-  await partnerPush(id, status, rec);
-  return getVillaData();
+  return villaTxn(id, (rec, from, t) => {
+    /* Starting a reservation on a unit that is already reserved or sold to
+       somebody is the mistake this exists to prevent. Releasing it to free
+       first is the deliberate act that makes it available again, and
+       reserved → sold is ordinary progress, so neither is blocked. */
+    if (status === 'reserved' && (from === 'reserved' || from === 'sold') && heldBy(rec)) {
+      throw new VillaConflict(
+        `${id} is already ${from} for ${heldBy(rec)}. Release it to free first if that reservation is over.`,
+      );
+    }
+
+    rec.status = status;
+    rec.seller = seller;
+    rec.note = note;
+
+    if (status === 'free') {
+      /* Back to free = the deal is off. Clear the sales data; the audit trail
+         keeps what it was. persistVilla drops the row entirely once nothing
+         worth keeping is left on it. */
+      delete rec.buyerLeadId; delete rec.buyerName; delete rec.contractValue;
+      delete rec.promisedDate; delete rec.construction; delete rec.phases; delete rec.extras;
+    } else if (defaultContractValue(id, rec)) {
+      // A deal just started — price it from the list automatically.
+      t.log(from, status, seller, `Contract value set from list price (${fmtTHB(rec.contractValue!)})`);
+    }
+
+    t.log(from, status, seller, note);
+    if (!opts?.silent) t.after(() => sheetSync(id, status, seller, note));
+    t.after(() => partnerPush(id, status, rec));
+  });
 }
 
 export type VillaSaleOp =
@@ -1003,26 +1090,30 @@ const num = (v: unknown): number | undefined =>
 
 export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<VillaData | null> {
   const be = await backend();
-  const existing = (await be.getVillas())[id];
-  const rec: VillaRecord = existing || { status: 'free', updatedAt: '' };
-  const from = rec.status;
-
+  return villaTxn(id, async (rec, from, t) => {
   switch (action.op) {
     case 'sale': {
       const p = action.patch;
       if ('buyerLeadId' in p) {
         if (p.buyerLeadId) {
+          // Linking a second buyer over the first is the same mistake as
+          // reserving a reserved unit, and is refused for the same reason.
+          if (rec.buyerLeadId && rec.buyerLeadId !== p.buyerLeadId) {
+            throw new VillaConflict(
+              `${id} is already linked to ${heldBy(rec)}. Unlink that buyer first.`,
+            );
+          }
           const lead = await be.getLead(p.buyerLeadId);
           if (lead) {
             rec.buyerLeadId = lead.id;
             rec.buyerName = lead.name || lead.email || 'Unknown';
             rec.contractValue ||= lead.value || villaByName(lead.villa)?.price || unitListPrice(id);
-            await logVilla(id, from, rec.status, undefined, `Buyer linked: ${rec.buyerName}`);
+            t.log(from, rec.status, undefined, `Buyer linked: ${rec.buyerName}`);
           }
         } else {
           rec.buyerLeadId = undefined;
           rec.buyerName = undefined;
-          await logVilla(id, from, rec.status, undefined, 'Buyer unlinked');
+          t.log(from, rec.status, undefined, 'Buyer unlinked');
         }
       }
       if ('buyerName' in p && p.buyerName !== undefined) rec.buyerName = p.buyerName.trim().slice(0, 120) || undefined;
@@ -1032,7 +1123,7 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
         const valid = ['not_started', 'foundation', 'structure', 'furnishing', 'done'];
         if (valid.includes(p.construction)) {
           if (p.construction !== rec.construction)
-            await logVilla(id, from, rec.status, undefined, `Construction: ${p.construction.replace('_', ' ')}`);
+            t.log(from, rec.status, undefined, `Construction: ${p.construction.replace('_', ' ')}`);
           rec.construction = p.construction;
         }
       }
@@ -1040,47 +1131,45 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
     }
     case 'phase': {
       const def = PHASES.find((ph) => ph.key === action.key);
-      if (!def) return null;
+      if (!def) return 'abort';
       // Money arriving without a price on record: default from the list so the
       // 7/43/40/10 amounts compute immediately.
       if (action.paid && defaultContractValue(id, rec))
-        await logVilla(id, from, rec.status, undefined, `Contract value set from list price (${fmtTHB(rec.contractValue!)})`);
+        t.log(from, rec.status, undefined, `Contract value set from list price (${fmtTHB(rec.contractValue!)})`);
       rec.phases ??= {};
       const amount = num(action.amount);
       rec.phases[action.key] = action.paid
         ? { paid: true, at: now(), amount }
         : { paid: false };
       const amt = phaseAmount(rec, action.key);
-      await logVilla(id, from, rec.status, undefined,
+      t.log(from, rec.status, undefined,
         action.paid ? `${def.label} paid${amt ? ` (${fmtTHB(amt)})` : ''}` : `${def.label} unmarked`);
       // Money changes availability: first payment reserves, full schedule = sold.
       if (action.paid && rec.status === 'free') rec.status = 'reserved';
       if (PHASES.every((ph) => rec.phases?.[ph.key]?.paid)) rec.status = 'sold';
       if (rec.status !== from) {
-        await logVilla(id, from, rec.status, rec.seller, 'Status advanced by payment');
-        await sheetSync(id, rec.status, rec.seller, rec.note);
-        await partnerPush(id, rec.status, rec);
+        t.log(from, rec.status, rec.seller, 'Status advanced by payment');
+        const advanced = rec.status;
+        t.after(() => sheetSync(id, advanced, rec.seller, rec.note));
+        t.after(() => partnerPush(id, advanced, rec));
       }
       break;
     }
     case 'extraAdd': {
       const label = action.label.trim().slice(0, 120);
-      if (!label) return null;
+      if (!label) return 'abort';
       (rec.extras ??= []).push({ id: randomUUID(), label, price: num(action.price) });
-      await logVilla(id, from, rec.status, undefined, `Extra added: ${label}`);
+      t.log(from, rec.status, undefined, `Extra added: ${label}`);
       break;
     }
     case 'extraRemove': {
       const extra = (rec.extras || []).find((e) => e.id === action.extraId);
       rec.extras = (rec.extras || []).filter((e) => e.id !== action.extraId);
-      if (extra) await logVilla(id, from, rec.status, undefined, `Extra removed: ${extra.label}`);
+      if (extra) t.log(from, rec.status, undefined, `Extra removed: ${extra.label}`);
       break;
     }
   }
-
-  rec.updatedAt = now();
-  await persistVilla(id, rec);
-  return getVillaData();
+  });
 }
 
 // ── Interaction events ──

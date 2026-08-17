@@ -116,15 +116,26 @@ export const fileBackend: Backend = {
   async getVillas() {
     return (await read()).villas;
   },
-  async setVilla(id, rec) {
+  async setVilla(id, rec, expectedRev) {
+    let won = false;
     await locked(async () => {
       const db = await read();
+      // Same revision guard as the Postgres twin, so a race behaves identically
+      // in development and in production.
+      const stored = db.villas[id];
+      if ((stored?.rev || 0) !== expectedRev) {
+        // A unit with no row is already in the state a delete asks for.
+        won = !rec && !stored;
+        return;
+      }
       // The domain layer decides what a deletable record is (a free villa may
       // still carry sale-prep data) — here null means delete, nothing else.
       if (!rec) delete db.villas[id];
       else db.villas[id] = rec;
       await write(db);
+      won = true;
     });
+    return won;
   },
   async getVillaHistory(limit) {
     return (await read()).villaHistory.slice(0, limit);

@@ -126,17 +126,31 @@ export const pgBackend: Backend = {
     }
     return m;
   },
-  async setVilla(id, rec) {
+  async setVilla(id, rec, expectedRev) {
     await init();
-    // null deletes; a record is stored as-is — the domain layer already
-    // decided whether a free villa still carries sale data worth keeping.
+    /* Conditional on the stored revision, exactly as saveLead is. null deletes;
+       a record is stored as-is — the domain layer already decided whether a
+       free villa still carries sale data worth keeping.
+
+       On INSERT the row does not exist yet, so there is nothing to conflict
+       with and the insert simply wins. On conflict the WHERE decides: if
+       somebody saved in between, no row comes back and the caller retries. */
     if (!rec) {
-      await sql()`DELETE FROM crm_villas WHERE id = ${id}`;
-    } else {
-      await sql()`INSERT INTO crm_villas (id, status, data, updated_at)
-        VALUES (${id}, ${rec.status}, ${JSON.stringify(rec)}::jsonb, now())
-        ON CONFLICT (id) DO UPDATE SET status = ${rec.status}, data = ${JSON.stringify(rec)}::jsonb, updated_at = now()`;
+      const rows = await sql()`DELETE FROM crm_villas
+        WHERE id = ${id} AND COALESCE((data->>'rev')::int, 0) = ${expectedRev}
+        RETURNING id`;
+      // A unit with no row is already in the state a delete asks for.
+      if (rows.length) return true;
+      const still = await sql()`SELECT 1 FROM crm_villas WHERE id = ${id}`;
+      return still.length === 0;
     }
+    const rows = await sql()`INSERT INTO crm_villas (id, status, data, updated_at)
+      VALUES (${id}, ${rec.status}, ${JSON.stringify(rec)}::jsonb, now())
+      ON CONFLICT (id) DO UPDATE
+        SET status = ${rec.status}, data = ${JSON.stringify(rec)}::jsonb, updated_at = now()
+        WHERE COALESCE((crm_villas.data->>'rev')::int, 0) = ${expectedRev}
+      RETURNING id`;
+    return rows.length > 0;
   },
   async getVillaHistory(limit) {
     await init();

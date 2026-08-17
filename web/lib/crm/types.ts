@@ -59,6 +59,15 @@ export interface VillaRecord {
   construction?: Construction;
   phases?: Partial<Record<PhaseKey, VillaPhase>>;
   extras?: VillaExtra[];
+
+  /* Optimistic-concurrency revision, bumped on every save — the same guard the
+     Lead has carried since v3. A unit is the one record two salespeople can
+     genuinely reach for at the same second, and without this the second write
+     silently overwrote the first: two reservations, one kept, no trace of the
+     other. The backend refuses a save whose expected revision no longer
+     matches, and the domain layer re-reads and redoes the change.
+     Absent on rows written before this existed (treated as 0). */
+  rev?: number;
 }
 
 export interface VillaHistoryEntry {

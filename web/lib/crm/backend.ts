@@ -19,7 +19,12 @@ export interface Backend {
       findable however many visits were logged after it. */
   findEventByRef(ref: string, since: string): Promise<CrmEvent | null>;
   getVillas(): Promise<Record<string, VillaRecord>>;
-  setVilla(id: string, rec: VillaRecord | null): Promise<void>;
+  /** Persist (or, with `rec === null`, delete) a unit only if the stored
+      revision still equals `expectedRev` (0 covers rows written before the
+      revision existed, and a unit that has no row yet). Returns false on a
+      lost race — the caller re-reads and redoes the change. This is what
+      stops two people reserving the same villa at the same moment. */
+  setVilla(id: string, rec: VillaRecord | null, expectedRev: number): Promise<boolean>;
   getVillaHistory(limit: number): Promise<VillaHistoryEntry[]>;
   addVillaHistory(entry: VillaHistoryEntry): Promise<void>;
   /** Blocked contact keys ("e:<email>" / "p:<phone-key>") — inbound WhatsApp

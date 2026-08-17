@@ -37,6 +37,10 @@ export function Masterplan({
   const [editingValue, setEditingValue] = useState(false);
   const [extraLabel, setExtraLabel] = useState('');
   const [extraPrice, setExtraPrice] = useState('');
+  /* Why a refusal has to be visible: the server now declines to reserve a unit
+     somebody else already holds, and it says which buyer holds it. Swallowing
+     that turns a deliberate safeguard into a button that appears broken. */
+  const [err, setErr] = useState<string | null>(null);
 
   // The layout auto-refreshes every few seconds; adopt the fresh server
   // snapshot so the board always shows current data — except mid-save, when
@@ -80,11 +84,13 @@ export function Masterplan({
     setEditingValue(false);
     setExtraLabel(''); setExtraPrice('');
     setSel(id);
+    setErr(null);
   }
 
   async function api(body: Record<string, unknown>) {
-    if (readOnly) { alert('Read-only account — changes are disabled.'); return false; }
+    if (readOnly) { setErr('Csak megtekintésre jogosult fiók, a módosítás le van tiltva.'); return false; }
     setSaving(true);
+    setErr(null);
     try {
       const res = await fetch('/api/crm/villas', {
         method: 'PATCH',
@@ -93,7 +99,15 @@ export function Masterplan({
       });
       const data = await res.json().catch(() => null);
       if (data?.villas) { setRecords(data.villas); setHistory(data.history || []); }
-      return Boolean(data?.ok);
+      if (!data?.ok) {
+        setErr(data?.error || 'A mentés nem sikerült. Próbáld újra.');
+        return false;
+      }
+      return true;
+    } catch {
+      // A dropped connection must not read as a saved change.
+      setErr('Nem sikerült elérni a szervert. A módosítás nem mentődött el.');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -309,6 +323,11 @@ export function Masterplan({
                 style={{ width: '100%', justifyContent: 'center' }}>
                 {saving ? 'Mentés…' : 'Státusz mentése'}
               </button>
+              {err && (
+                <div className="crm-meta" style={{ marginTop: 8, color: 'var(--c-hot)', lineHeight: 1.5 }}>
+                  {err}
+                </div>
+              )}
               {form.status !== 'free' && !form.seller.trim() && (
                 <div className="crm-meta" style={{ marginTop: 8, color: 'var(--c-hot)' }}>Add meg, ki adta el / foglalta le.</div>
               )}
