@@ -53,7 +53,14 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
         body: JSON.stringify({ ids, action, value }),
       });
       const data = await res.json().catch(() => ({ ok: false, failed: ids.length }));
-      if (data.failed) alert(`${data.failed} ${data.failed === 1 ? 'lead' : 'leads'} could not be updated — the list below shows the current state.`);
+      if (data.failed) {
+        // Refusals carry a reason (a lead holding a unit, most often). Showing
+        // the count alone leaves the operator guessing which ones, and why.
+        const why = Array.isArray(data.refused) && data.refused.length
+          ? `\n\n${data.refused.join('\n')}`
+          : '';
+        alert(`${data.failed} ${data.failed === 1 ? 'lead' : 'leads'} could not be updated — the list below shows the current state.${why}`);
+      }
       setSel(new Set());
       setBulkStage('');
       setBulkScore('');

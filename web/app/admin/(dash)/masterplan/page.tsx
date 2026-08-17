@@ -11,15 +11,26 @@ type Villa = {
 };
 
 export default async function MasterplanPage() {
-  const [{ villas: records, history }, leads, admin] = await Promise.all([getVillaData(), listLeads(), isAdmin()]);
+  /* Archived leads are read too, and then filtered back down. A buyer already
+     linked to a unit MUST stay in the picker even if their lead was archived
+     before that became impossible: otherwise the select finds no matching
+     option, shows an empty box, and reads as though the buyer had been
+     unlinked — a silent inconsistency on the one screen where the money is. */
+  const [{ villas: records, history }, leads, admin] = await Promise.all([
+    getVillaData(), listLeads({ archived: 'include' }), isAdmin(),
+  ]);
   const villas = villaData.villas as Villa[];
+
+  const linkedBuyers = new Set(
+    Object.values(records).map((r) => r.buyerLeadId).filter(Boolean) as string[],
+  );
 
   // Light projection for the buyer picker + the awaiting-reply flag on plots.
   const leadOptions: LeadOption[] = leads
-    .filter((l) => l.stage !== 'lost')
+    .filter((l) => linkedBuyers.has(l.id) || (!l.archived_at && l.stage !== 'lost'))
     .map((l) => ({
       id: l.id,
-      name: l.name || l.email || 'Unknown',
+      name: `${l.name || l.email || 'Unknown'}${l.archived_at ? ' (archived)' : ''}`,
       awaitingSince: l.awaiting_reply_since || null,
       villa: (l.villa || '').trim(),
       stage: l.stage,

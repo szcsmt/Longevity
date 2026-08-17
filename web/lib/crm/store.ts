@@ -7,7 +7,7 @@ import { CARD_COLORS, PHASES, SCORES, STAGES } from './types';
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel } from './language';
-import { STAGE_MAX_DAYS, hasNoNextStep, isStalled } from './rules';
+import { ACTIVE_STAGES, STAGE_MAX_DAYS, hasNoNextStep, isStalled } from './rules';
 import { VILLAS, fmtTHB, phaseAmount, villaByName } from './villas';
 import unitCatalog from '../villas.json';
 export { STAGE_MAX_DAYS, stageAgeDays, stageEnteredAt, isStalled, hasNoNextStep } from './rules';
@@ -456,6 +456,21 @@ export async function mergeLeads(primaryId: string, otherId: string, actor?: str
     }
   });
   if (!merged) return null;
+
+  /* If the duplicate was the one holding a unit, the unit moves with it. The
+     two records are the same person, so this is not a competing claim and the
+     ordinary "already linked to somebody else" refusal does not apply — which
+     is why this goes through its own path rather than updateVillaSale. Without
+     it, a merge would simply fail on any buyer who had reserved something. */
+  const held = await unitHeldBy(otherId);
+  if (held) {
+    await villaTxn(held, (rec, from, t) => {
+      rec.buyerLeadId = merged.id;
+      rec.buyerName = merged.name || merged.email || 'Unknown';
+      t.log(from, rec.status, undefined, `Buyer record merged: now ${rec.buyerName}`);
+    });
+  }
+
   /* The husk is archived, not deleted. Everything on it was copied across, so
      it holds nothing unique — but the fact that a second record existed, and
      what it was folded into, is part of the history a merge must not erase.
@@ -614,7 +629,35 @@ export async function toggleTask(id: string, taskId: string): Promise<Lead | nul
 
    Archiving replaces it. The lead leaves every view, count, report and the
    automated sequence, and everything about it survives. */
+/* ── The unit a lead is holding ──
+
+   `VillaRecord.buyerLeadId` is a reference with nothing enforcing it, so the
+   two records can drift apart in silence. The worst version: archive the buyer
+   and the unit still points at them, while they are gone from every list —
+   including the masterplan's own buyer picker, which would then show an empty
+   box as though the buyer had been unlinked.
+
+   Free units are ignored on purpose: sale data lingers on a released unit by
+   design, and a lead that once looked at something is not holding it. */
+export async function unitHeldBy(leadId: string): Promise<string | null> {
+  const villas = await (await backend()).getVillas();
+  for (const [villaId, rec] of Object.entries(villas)) {
+    if (rec.buyerLeadId === leadId && rec.status !== 'free') return villaId;
+  }
+  return null;
+}
+
 export async function archiveLead(id: string, reason?: string, actor?: string): Promise<Lead | null> {
+  /* A buyer who holds a reserved or sold unit is a live customer, whatever the
+     lead list looks like. Setting them aside would leave the unit pointing at
+     somebody nobody can see, which is exactly how a sold villa ends up with an
+     "Unnamed buyer" against eight million baht. */
+  const unit = await unitHeldBy(id);
+  if (unit) {
+    throw new CrmConflict(
+      `This lead is the buyer of ${unit}. Unlink them on the masterplan first, or release the unit.`,
+    );
+  }
   const why = cleanText(reason || '').trim().slice(0, 300) || undefined;
   return mutate(id, (lead) => {
     if (isArchived(lead)) return; // already set aside; keep the first record of why
@@ -637,26 +680,37 @@ export async function unarchiveLead(id: string, actor?: string): Promise<Lead | 
 
 export async function bulkArchive(
   ids: string[], reason?: string, actor?: string,
-): Promise<{ done: number; failed: number }> {
+): Promise<{ done: number; failed: number; refused: string[] }> {
   let done = 0, failed = 0;
+  /* A lead holding a unit is refused, and the caller is told which — a silent
+     "3 of 5 archived" leaves the operator guessing which two, and why. */
+  const refused: string[] = [];
   for (const id of ids) {
     try {
       if (await archiveLead(id, reason, actor)) done++; else failed++;
-    } catch {
+    } catch (err) {
       failed++;
+      if (err instanceof CrmConflict) refused.push(err.message);
     }
   }
-  return { done, failed };
+  return { done, failed, refused };
 }
 
 /* The real deletion, for a genuine erasure request. Two deliberate steps: a
    lead has to be archived first, so the destructive act can never be the same
    click as the tidy-up one. Returns 'not-archived' rather than throwing so the
    route can say why instead of failing blankly. */
-export async function purgeLead(id: string): Promise<'purged' | 'not-found' | 'not-archived'> {
+export async function purgeLead(
+  id: string,
+): Promise<'purged' | 'not-found' | 'not-archived' | 'holds-unit'> {
   const lead = await (await backend()).getLead(id);
   if (!lead) return 'not-found';
   if (!isArchived(lead)) return 'not-archived';
+  /* Belt and braces: archiving already refuses a lead holding a unit, so this
+     should be unreachable. It is checked anyway, because a reference left
+     pointing at a row that no longer exists is unrecoverable, and a record
+     imported or edited outside the normal path could still get here. */
+  if (await unitHeldBy(id)) return 'holds-unit';
   return (await (await backend()).removeLead(id)) ? 'purged' : 'not-found';
 }
 
@@ -1013,7 +1067,14 @@ async function persistVilla(id: string, rec: VillaRecord, expectedRev: number): 
    Thrown, not returned, because it is exceptional and every caller wants it
    surfaced rather than folded into a null. Thrown inside the transaction body,
    so nothing is persisted and no audit line is written. */
-export class VillaConflict extends Error {
+export class CrmConflict extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CrmConflict';
+  }
+}
+
+export class VillaConflict extends CrmConflict {
   constructor(message: string) {
     super(message);
     this.name = 'VillaConflict';
@@ -1261,6 +1322,74 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
     }
   }
   });
+}
+
+/* ── Broken references, found before somebody trips over one ──
+
+   Nothing enforces the link between a unit and its buyer, so the checks have to
+   be run rather than relied upon. All four of these are silent failures: none
+   throws, none shows up as an error, and each one first appears as a number
+   that is quietly wrong on a page somebody is making a decision from.
+
+   Read-only by design. It reports; a person decides what to do, because every
+   fix here is a business judgement — which of two records is the real buyer,
+   whether a unit was actually sold. */
+export type IntegrityKind =
+  | 'dangling-buyer'      // the unit points at a lead that no longer exists
+  | 'archived-buyer'      // the buyer is out of every view while the unit still holds them
+  | 'held-without-buyer'  // reserved or sold, and nobody is named
+  | 'lead-without-owner'; // an active lead nobody is responsible for
+
+export interface IntegrityIssue {
+  kind: IntegrityKind;
+  villaId?: string;
+  leadId?: string;
+  /** What is wrong, in a sentence the operator can act on. */
+  detail: string;
+}
+
+export async function integrityIssues(): Promise<IntegrityIssue[]> {
+  const be = await backend();
+  const [villas, leads] = await Promise.all([be.getVillas(), be.allLeads()]);
+  const byId = new Map(leads.map((l) => [l.id, l]));
+  const issues: IntegrityIssue[] = [];
+
+  for (const [villaId, rec] of Object.entries(villas)) {
+    if (rec.status === 'free') continue; // a released unit keeps its history, and that is fine
+
+    if (rec.buyerLeadId) {
+      const lead = byId.get(rec.buyerLeadId);
+      if (!lead) {
+        issues.push({
+          kind: 'dangling-buyer', villaId, leadId: rec.buyerLeadId,
+          detail: `${villaId} is ${rec.status} to a lead that no longer exists${rec.buyerName ? ` (recorded as ${rec.buyerName})` : ''}.`,
+        });
+      } else if (isArchived(lead)) {
+        issues.push({
+          kind: 'archived-buyer', villaId, leadId: lead.id,
+          detail: `${villaId} is ${rec.status} to ${lead.name || lead.email || 'a buyer'}, whose lead is archived.`,
+        });
+      }
+    } else if (!rec.buyerName) {
+      issues.push({
+        kind: 'held-without-buyer', villaId,
+        detail: `${villaId} is ${rec.status} with no buyer named.`,
+      });
+    }
+  }
+
+  /* An unowned active lead is nobody's job, and the round-robin only assigns at
+     intake — a lead that arrived before a roster existed stays unowned until
+     somebody notices. */
+  for (const lead of leads) {
+    if (isArchived(lead) || !ACTIVE_STAGES.includes(lead.stage) || lead.owner) continue;
+    issues.push({
+      kind: 'lead-without-owner', leadId: lead.id,
+      detail: `${lead.name || lead.email || 'A lead'} is ${lead.stage} with no salesperson responsible for it.`,
+    });
+  }
+
+  return issues;
 }
 
 // ── Interaction events ──

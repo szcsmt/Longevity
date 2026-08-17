@@ -124,6 +124,7 @@ feltöltöd a sablonjaikat, ugyanezekből az adatokból ki tudjuk tölteni azoka
 - **Archive lead** — a lead kikerül minden listából, számból, riportból, és leállnak rajta az automata levelek. **Semmi nem veszik el:** az idővonal, a jegyzetek, a forrás és a gazda-előzmény mind megmarad, és bármikor visszahozható. Ez az, amit a régi „törlés" helyett használj.
 - **Archive & block contact** — ugyanez, plusz a kontakt tiltólistára kerül. Ezután az erről a számról vagy címről WhatsAppon beérkező megkeresés soha többé nem hoz létre leadet. Magánszámokra, nem valódi érdeklődőkre való.
 - **Az archivált leadek** a Leads oldal jobb felső **Archive** gombjával érhetők el. Ott megnyitva egy **Restore** gomb hozza vissza.
+- **Nem archiválható** az a lead, aki egy foglalt vagy eladott villa vevője. A rendszer megmondja melyiké. Előbb a masterplanon le kell választani róla, vagy a villát felszabadítani. Enélkül a villa egy olyan vevőre mutatna, akit senki nem lát.
 - **Delete permanently** — csak archivált leaden jelenik meg, és **véglegesen megszünteti** az idővonalat, a jegyzeteket és a forrás-adatot. Nincs visszaút, az éjszakai mentésen kívül nincs másolat. Kizárólag valódi törlési kérésre (GDPR) használd.
 
 ### Lost — elveszett üzlet
@@ -217,6 +218,8 @@ alap elkészül**, nem egy naptári napon. Ezért ha a Masterplanon átállítod
 dátumban is megállapodtatok a vevővel, azt beírhatod a részlethez, és onnantól **késhet** is.
 
 Minden sorból link visz a vevő leadjére. Ez a nézet csak a tulajdonosi fióknak látszik.
+
+**Needs a decision.** Ha a lap alján megjelenik egy piros doboz, az olyan eltéréseket sorol fel, amiktől a fenti számok csendben hibásak: egy villa nem létező vevőre mutat, egy foglalt villán nincs vevő megnevezve, vagy egy aktív leadért senki nem felel. Egyik sem hibaüzenet, ezért nem tűnne fel magától. A rendszer nem javítja őket automatikusan, mert mindegyik üzleti döntés.
 
 ---
 

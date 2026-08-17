@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { isAdmin } from '@/lib/crm/auth';
-import { getVillaData } from '@/lib/crm/store';
+import { getVillaData, integrityIssues } from '@/lib/crm/store';
 import { financeReport, type DueState, type Instalment } from '@/lib/crm/finance';
 import { fmtTHB, fmtTHBShort } from '@/lib/crm/villas';
 
@@ -81,7 +81,7 @@ export default async function FinancePage() {
     );
   }
 
-  const { villas } = await getVillaData();
+  const [{ villas }, issues] = await Promise.all([getVillaData(), integrityIssues()]);
   const r = financeReport(villas);
   const by = (s: DueState) => r.instalments.filter((i) => i.state === s);
   const collected = r.contracted ? Math.round((r.received / r.contracted) * 100) : 0;
@@ -121,6 +121,30 @@ export default async function FinancePage() {
           <Group state="later" items={by('later')} />
         </div>
       </div>
+
+      {issues.length > 0 && (
+        <div className="crm-card" style={{ marginTop: 16, borderColor: 'var(--c-hot)' }}>
+          <h3 style={{ color: 'var(--c-hot)' }}>Needs a decision · {issues.length}</h3>
+          <p className="crm-meta" style={{ marginTop: 4, marginBottom: 10 }}>
+            Nothing here is broken loudly. Each one is a figure on this page that is
+            quietly wrong until somebody says which record is right.
+          </p>
+          {issues.map((i, n) => (
+            <div key={`${i.kind}-${i.villaId || i.leadId}-${n}`} className="task" style={{ alignItems: 'center' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="task-title">{i.detail}</div>
+                <div className="crm-meta">{i.kind.replace(/-/g, ' ')}</div>
+              </div>
+              {i.leadId && (
+                <Link href={`/admin/leads/${i.leadId}`} className="crm-btn ghost sm">Open lead</Link>
+              )}
+              {!i.leadId && i.villaId && (
+                <Link href="/admin/masterplan" className="crm-btn ghost sm">Masterplan</Link>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <p className="crm-meta" style={{ marginTop: 16 }}>
         An instalment counts as due once the work it is tied to is finished on site,

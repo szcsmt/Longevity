@@ -109,6 +109,46 @@ a second record existed, and where it went, is part of the history.
 archived — two deliberate steps, never one click. Route:
 `DELETE /api/crm/leads/[id]?purge=1`, admin only. There is no bulk purge.
 
+## Referential integrity: a unit and its buyer
+
+`VillaRecord.buyerLeadId` is a reference with nothing enforcing it — the store
+is JSONB documents, so there is no foreign key to lean on. The two records can
+drift apart in silence, and the first sign is a figure on the Payments page that
+is quietly wrong, or a masterplan drawer with an empty buyer box that reads as
+though somebody had unlinked them.
+
+Three guards, in `store.ts`:
+
+| Rule | Where | Behaviour |
+|---|---|---|
+| A lead holding a reserved or sold unit cannot be archived | `archiveLead` | Throws `CrmConflict` naming the unit; the route answers `409` |
+| …nor permanently deleted | `purgeLead` | Returns `'holds-unit'`. Unreachable through the normal path, kept because a dangling reference is unrecoverable |
+| Merging carries the unit across | `mergeLeads` | Re-points `buyerLeadId` at the surviving record and logs it on the unit's own history, then archives the husk |
+
+`unitHeldBy(leadId)` is the shared check. **Free units are ignored**: sale data
+lingers on a released unit by design, and a lead that once looked at something
+is not holding it.
+
+The merge case is the subtle one. The husk is the record that holds the unit
+about half the time, and archiving a holder is refused — so without the
+re-point, merging any buyer who had reserved something would simply fail. It
+goes through its own `villaTxn` rather than `updateVillaSale` because the two
+records are the same person, so the "already linked to somebody else" refusal
+does not apply.
+
+### integrityIssues()
+
+Read-only, reported on the Payments page. Nothing here throws or shows up as an
+error; each one is a number that is wrong until a person decides which record is
+right, which is why it reports rather than repairs.
+
+| Kind | Meaning |
+|---|---|
+| `dangling-buyer` | The unit points at a lead that no longer exists |
+| `archived-buyer` | The buyer is out of every view while the unit still holds them |
+| `held-without-buyer` | Reserved or sold with nobody named |
+| `lead-without-owner` | An active, non-archived lead nobody is responsible for |
+
 ## Note
 
 | Field | Type | Meaning |

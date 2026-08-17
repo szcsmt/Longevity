@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   if (!ids.length) return Response.json({ ok: false, error: 'no ids' }, { status: 400 });
 
   const value = typeof body.value === 'string' ? body.value : '';
-  let result: { done: number; failed: number };
+  let result: { done: number; failed: number; refused?: string[] };
   switch (body.action) {
     case 'stage':
       if (!STAGES.some((s) => s.id === value)) return Response.json({ ok: false, error: 'bad stage' }, { status: 400 });
@@ -47,5 +47,10 @@ export async function POST(req: Request) {
     default:
       return Response.json({ ok: false, error: 'unknown action' }, { status: 400 });
   }
-  return Response.json({ ok: result.failed === 0, count: result.done, failed: result.failed });
+  return Response.json({
+    ok: result.failed === 0,
+    count: result.done,
+    failed: result.failed,
+    ...(result.refused?.length ? { refused: result.refused } : {}),
+  });
 }

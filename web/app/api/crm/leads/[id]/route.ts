@@ -1,8 +1,8 @@
 import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import {
-  addNote, addTask, archiveLead, blockContactOf, getLead, mergeLeads, purgeLead,
-  setAwaitingReply, toggleTask, unarchiveLead, updateLead,
+  CrmConflict, addNote, addTask, archiveLead, blockContactOf, getLead, mergeLeads,
+  purgeLead, setAwaitingReply, toggleTask, unarchiveLead, updateLead,
 } from '@/lib/crm/store';
 import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
 import type { LeadPatch } from '@/lib/crm/types';
@@ -119,10 +119,27 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         { status: 409 },
       );
     }
+    if (result === 'holds-unit') {
+      return Response.json(
+        { ok: false, error: 'This lead is the buyer of a unit. Unlink them on the masterplan first.' },
+        { status: 409 },
+      );
+    }
     return Response.json({ ok: true, purged: true });
   }
 
-  const lead = await archiveLead(id, q.get('reason') || undefined, (await currentUser()) || undefined);
-  const ok = Boolean(lead);
-  return Response.json({ ok, archived: ok }, { status: ok ? 200 : 404 });
+  /* Archiving refuses a lead that holds a reserved or sold unit, and says which
+     one. 409 with the sentence rather than a blank failure: the operator can
+     act on it, and the alternative is a unit pointing at a buyer nobody can
+     see. */
+  try {
+    const lead = await archiveLead(id, q.get('reason') || undefined, (await currentUser()) || undefined);
+    const ok = Boolean(lead);
+    return Response.json({ ok, archived: ok }, { status: ok ? 200 : 404 });
+  } catch (err) {
+    if (err instanceof CrmConflict) {
+      return Response.json({ ok: false, error: err.message }, { status: 409 });
+    }
+    throw err;
+  }
 }
