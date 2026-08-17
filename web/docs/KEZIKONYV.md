@@ -118,6 +118,14 @@ feltöltöd a sablonjaikat, ugyanezekből az adatokból ki tudjuk tölteni azoka
 
 **Automatic sequence — hol tart az automata levelezés.** Ez a doboz mutatja, hány levél ment ki ehhez a leadhez a hatból, mi a következő és mikor esedékes — alatta felsorolva a már kiment levelek tárgya és időpontja. Ha a szekvencia leállt, itt az okát is látod („az ügyfél válaszolt", „leiratkozott", „az üzlet továbblépett"). **Sosem érhet meglepetés**: pontosan azt látod itt, amit a rendszer tenni fog.
 
+**Qualification** — nyolc mező arról, amit a beszélgetésből megtudtál. Az első négy azt dönti el, **vevő-e egyáltalán**: költségkeret (a saját pénznemében), időtáv, cél, és hogy készpénzből vagy hitelből. A másik négy azt, **hogyan kell neki eladni**: egyedül dönt-e, járt-e Samuin, mi hajtja, és mi az akadály.
+
+Minden mező **azonnal mentődik**, amint átállítod. Nincs Mentés gomb, mert az olyan űrlap, amit félig kitöltenek és otthagynak.
+
+A kártya fejlécében ott van, **mi hiányzik még**. Ez ugyanaz a lista, amit a fázis-szabályok is nézni fognak, tehát előre látod, mi kell a Qualified fázishoz.
+
+A „Not known yet" is válasz, és **be is írhatod**: attól még hiányzónak számít, de rögzíti, hogy megkérdezted.
+
 **Log** — a jegyzetmező alatt hat gomb: **Spoke by phone**, **No answer**, **Video call**, **Meeting**, **Site visit**, **WhatsApp**. Írj a mezőbe amit akarsz, aztán nyomd meg a megfelelőt: egy kattintás az egész.
 
 A különbség fontos. Amelyik **valódi beszélgetést** jelent (telefon, videó, találkozó, helyszíni látogatás), az ugyanazt csinálja mintha az ügyfél írt volna: **leállítja az automata leveleket**, törli a válasz-időzítőt, és az új leadet Contacted fázisba lépteti. Aki nem vette fel, vagy akinek te írtál WhatsAppon, annál **semmi nem történik** ezekből, csak rögzül a próbálkozás. Ez azért kell, hogy a „még senki nem próbálta" és a „kétszer is hívtam, nem vette fel" ne ugyanaz legyen.

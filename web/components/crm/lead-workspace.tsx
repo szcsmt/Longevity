@@ -4,7 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Lead, Score, Stage } from '@/lib/crm/types';
-import { LOST_REASONS, STAGES, SCORES, TOUCHES } from '@/lib/crm/types';
+import {
+  CURRENCIES, DECISION, FINANCING, LOST_REASONS, MOTIVATIONS, OBJECTIONS,
+  PURPOSES, SCORES, STAGES, TIMEFRAMES, TOUCHES, VISITS,
+} from '@/lib/crm/types';
+import { missingQualification } from '@/lib/crm/rules';
 import { fmtTHB } from '@/lib/crm/villas';
 import { messageTemplates } from '@/lib/crm/templates';
 import { SEQUENCE_STEPS, sequenceState, stepLabel } from '@/lib/crm/sequence';
@@ -46,6 +50,8 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
   const [tpl, setTpl] = useState(0);
   const [copied, setCopied] = useState('');
   const [losing, setLosing] = useState(false);
+  const [budgetDraft, setBudgetDraft] = useState(initial.qualification?.budget ? String(initial.qualification.budget) : '');
+  const [budgetDirty, setBudgetDirty] = useState(false);
 
   async function patch(payload: Record<string, unknown>) {
     setBusy(true);
@@ -61,6 +67,7 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
         // Keep the deal-value input in sync with server truth (merge can fill
         // it) — but never while the operator is mid-edit.
         if (!valueDirty) setValueDraft(data.lead.value ? String(data.lead.value) : '');
+        if (!budgetDirty) setBudgetDraft(data.lead.qualification?.budget ? String(data.lead.qualification.budget) : '');
       }
     } finally {
       setBusy(false);
@@ -149,6 +156,24 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
     await patch({ op: 'update', patch: { value: n } });
   }
 
+  /** Each field saves the moment it changes; the store validates and logs it. */
+  const qualify = (fields: Record<string, unknown>) => patch({ op: 'qualify', patch: fields });
+
+  async function saveBudget() {
+    if (!budgetDirty) return; // an untouched field must never clear what is stored
+    const cleaned = budgetDraft.replace(/[,\s]/g, '');
+    const parsed = cleaned ? Number(cleaned) : null;
+    if (parsed !== null && (!isFinite(parsed) || parsed < 0)) {
+      setBudgetDraft(lead.qualification?.budget ? String(lead.qualification.budget) : '');
+      setBudgetDirty(false);
+      return;
+    }
+    setBudgetDirty(false);
+    const n = parsed === null || parsed === 0 ? undefined : Math.round(parsed);
+    if (n === lead.qualification?.budget) return;
+    await patch({ op: 'qualify', patch: { budget: n ?? null } });
+  }
+
   async function merge(otherId: string) {
     if (!confirm('Merge that enquiry into this lead?\n\nIts notes, tasks and history move here, and the duplicate is archived with a note saying where it went. Nothing is destroyed.')) return;
     await patch({ op: 'merge', otherId });
@@ -166,6 +191,7 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
   ];
 
   const templates = messageTemplates(lead);
+  const missing = missingQualification(lead);
 
   // One merged timeline: manual notes and automatic history, newest first.
   const timeline = [
@@ -319,6 +345,77 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
               <FragmentRow key={k} k={k} v={v} />
             ))}
           </dl>
+        </div>
+
+        {/* ── Qualification ──
+
+            The four answers that decide whether somebody is a buyer, and four
+            more that decide how to sell to them. All of this lived in notes
+            before, where it could not be filtered, counted, or relied on by
+            anything. Every field saves on change: a form with a Save button is
+            a form that gets half filled and abandoned. */}
+        <div className="crm-card">
+          <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+            Qualification
+            {missing.length > 0 && (
+              <span className="crm-meta" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                Still unknown: {missing.join(', ')}
+              </span>
+            )}
+          </h3>
+
+          <div className="qual-grid">
+            <div>
+              <label className="crm-label" htmlFor="q-budget">Budget</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  id="q-budget"
+                  className="crm-input"
+                  inputMode="numeric"
+                  placeholder="e.g. 9000000"
+                  value={budgetDraft}
+                  disabled={busy}
+                  onChange={(e) => { setBudgetDraft(e.target.value); setBudgetDirty(true); }}
+                  onBlur={saveBudget}
+                  onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                />
+                <select
+                  className="crm-select"
+                  style={{ width: 90 }}
+                  value={lead.qualification?.currency || 'THB'}
+                  disabled={busy}
+                  aria-label="Budget currency"
+                  onChange={(e) => qualify({ currency: e.target.value })}
+                >
+                  {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {([
+              ['timeframe', 'Timeframe', TIMEFRAMES],
+              ['purpose', 'Purpose', PURPOSES],
+              ['financing', 'Funding', FINANCING],
+              ['decision', 'Decision maker', DECISION],
+              ['visit', 'Samui visit', VISITS],
+              ['motivation', 'Motivation', MOTIVATIONS],
+              ['objection', 'Objection', OBJECTIONS],
+            ] as const).map(([key, label, options]) => (
+              <div key={key}>
+                <label className="crm-label" htmlFor={`q-${key}`}>{label}</label>
+                <select
+                  id={`q-${key}`}
+                  className="crm-select"
+                  value={(lead.qualification?.[key] as string) || ''}
+                  disabled={busy}
+                  onChange={(e) => qualify({ [key]: e.target.value || undefined })}
+                >
+                  <option value="">—</option>
+                  {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Notes + full history */}

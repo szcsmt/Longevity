@@ -233,6 +233,53 @@ Fields: `id`, `kind`, `detail` (human line), `at`, and `by` — the signed-in pe
 it. `by` is deliberately absent on anything the system or the customer did, which is how the
 timeline distinguishes "Anna moved this to Qualified" from "the CRM did".
 
+## Qualification
+
+`Lead.qualification`, written by `setQualification(id, patch, actor)`. All of it
+used to live in free-text notes, so it could not be filtered, counted, or
+depended on — and "Qualified" was a stage anybody could click without knowing a
+single thing about the buyer.
+
+Eight fields. The specification lists many more; eight is what survived the
+question *does an answer here change what we do next*. The first four decide
+whether this is a buyer, the last four decide how to sell to them. Everything
+else belongs in a note, where a sentence says more than a dropdown.
+
+| Field | Options |
+|---|---|
+| `budget` + `currency` | a number, in THB / EUR / USD / GBP — kept in the buyer's own money, because converting it loses what they actually said |
+| `timeframe` | 0-3, 3-6, 6-12, 12+ months, unknown |
+| `purpose` | investment, lifestyle, both |
+| `financing` | cash, needs financing, unknown |
+| `decision` | decides alone, shares the decision, unknown |
+| `visit` | has been to Samui, planning a visit, not been, unknown |
+| `motivation` | rental return, capital growth, personal use, retirement, diversification, other |
+| `objection` | price, ownership, legal, doubts the return, location, trust, timing, financing, other |
+
+`objection` is distinct from a lost reason: it is what stands in the way while
+the deal is still alive, and it is what the next conversation has to answer.
+
+**Every value is checked against its list**, and an unrecognised one is dropped
+rather than stored. This is not defensiveness for its own sake — a stage rule is
+about to read these fields, and a typo silently kept would make a lead look
+qualified on answers nobody gave.
+
+**Every change is logged individually.** "Budget set to EUR 250,000" three weeks
+after "EUR 180,000" is a fact about the deal; a wholesale overwrite would hide
+it. Setting a field to what it already holds writes nothing.
+
+### missingQualification(lead)
+
+Pure, in `rules.ts`. Returns the labels of the five answers still outstanding:
+budget, timeframe, purpose, financing, and the residence of interest — which
+lives on the lead itself rather than in this object.
+
+`unknown` counts as unanswered on purpose. It is an honest thing to record and
+it is still not knowing.
+
+The lead page shows the same list the stage rules will enforce, so an operator
+is never refused for a reason the screen did not show them first.
+
 ## Logged contact (TOUCHES)
 
 A phone call used to be able to exist only as a free-text note — so the single

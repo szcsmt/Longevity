@@ -29,6 +29,36 @@ export function isStalled(lead: Lead): boolean {
   return max !== undefined && stageAgeDays(lead) > max;
 }
 
+/* ── What is still unknown about a buyer ──
+
+   The four answers that decide whether somebody is a buyer at all: what they
+   can spend, when, what for, and whether the money is already theirs. Which
+   unit they want is the fifth, and it lives on the lead itself.
+
+   Pure, so the lead page can show the same gaps the stage rules will enforce —
+   an operator should never be refused for a reason the screen did not show
+   them first. "unknown" counts as unanswered on purpose: it is an honest
+   answer to record, and it is still not knowing. */
+export const QUALIFYING: { key: 'budget' | 'timeframe' | 'purpose' | 'financing' | 'villa'; label: string }[] = [
+  { key: 'budget',    label: 'Budget' },
+  { key: 'timeframe', label: 'Timeframe' },
+  { key: 'purpose',   label: 'Purpose' },
+  { key: 'financing', label: 'Cash or financing' },
+  { key: 'villa',     label: 'Residence of interest' },
+];
+
+export function missingQualification(lead: Lead): string[] {
+  const q = lead.qualification || {};
+  const answered: Record<string, boolean> = {
+    budget: Boolean(q.budget && q.budget > 0),
+    timeframe: Boolean(q.timeframe && q.timeframe !== 'unknown'),
+    purpose: Boolean(q.purpose),
+    financing: Boolean(q.financing && q.financing !== 'unknown'),
+    villa: Boolean((lead.villa || '').trim()),
+  };
+  return QUALIFYING.filter((f) => !answered[f.key]).map((f) => f.label);
+}
+
 /** Active lead with no open task and no reply-timer: nobody owns its next step. */
 export function hasNoNextStep(lead: Lead): boolean {
   if (!ACTIVE_STAGES.includes(lead.stage)) return false;

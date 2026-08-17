@@ -111,6 +111,97 @@ export interface SentEmail {
   at: string; // ISO
 }
 
+/* ── Qualification ──
+
+   What a salesperson learns in the first real conversation, in fields rather
+   than prose. Until now all of it lived in free-text notes, which meant it
+   could not be filtered on, could not be counted, and "Qualified" was a stage
+   anybody could click without knowing anything at all.
+
+   The specification lists a great deal more than this. Eight is what survived
+   the question "does an answer here change what we do next": the first four
+   decide whether this is a buyer, the last four decide how to sell to them.
+   Everything else belongs in a note, where a sentence says more than a
+   dropdown ever will.
+
+   All optional, all defaulting to unknown. A half-filled form is normal and
+   must never block anything. */
+
+export const TIMEFRAMES = [
+  { id: '0-3',     label: 'Within 3 months' },
+  { id: '3-6',     label: '3 to 6 months' },
+  { id: '6-12',    label: '6 to 12 months' },
+  { id: '12+',     label: 'Over a year' },
+  { id: 'unknown', label: 'Not known yet' },
+] as const;
+
+export const PURPOSES = [
+  { id: 'investment', label: 'Investment' },
+  { id: 'lifestyle',  label: 'Lifestyle' },
+  { id: 'mixed',      label: 'Both' },
+] as const;
+
+export const FINANCING = [
+  { id: 'cash',      label: 'Cash' },
+  { id: 'financing', label: 'Needs financing' },
+  { id: 'unknown',   label: 'Not known yet' },
+] as const;
+
+export const DECISION = [
+  { id: 'sole',    label: 'Decides alone' },
+  { id: 'shared',  label: 'Shares the decision' },
+  { id: 'unknown', label: 'Not known yet' },
+] as const;
+
+/** Have they been to Koh Samui. A buyer who has stood on the plot behaves
+    nothing like one who has only seen photographs. */
+export const VISITS = [
+  { id: 'been',    label: 'Has been to Samui' },
+  { id: 'planned', label: 'Planning a visit' },
+  { id: 'no',      label: 'Not been, no plans' },
+  { id: 'unknown', label: 'Not known yet' },
+] as const;
+
+export const MOTIVATIONS = [
+  { id: 'roi',          label: 'Rental return' },
+  { id: 'appreciation', label: 'Capital growth' },
+  { id: 'personal',     label: 'Personal use' },
+  { id: 'retirement',   label: 'Retirement' },
+  { id: 'diversify',    label: 'Diversification' },
+  { id: 'other',        label: 'Other' },
+] as const;
+
+/** What stands in the way. Distinct from a lost reason: this is the objection
+    while the deal is alive, and it is the thing the next conversation has to
+    answer. */
+export const OBJECTIONS = [
+  { id: 'price',      label: 'Price' },
+  { id: 'ownership',  label: 'Ownership structure' },
+  { id: 'legal',      label: 'Legal / title' },
+  { id: 'roi',        label: 'Doubts the return' },
+  { id: 'location',   label: 'Location' },
+  { id: 'trust',      label: 'Trust in the developer' },
+  { id: 'timing',     label: 'Timing' },
+  { id: 'financing',  label: 'Financing' },
+  { id: 'other',      label: 'Other' },
+] as const;
+
+export const CURRENCIES = ['THB', 'EUR', 'USD', 'GBP'] as const;
+
+export interface Qualification {
+  /** In `currency`, not THB — a buyer thinks in their own money and writing it
+      down converted loses what they actually said. */
+  budget?: number;
+  currency?: string;
+  timeframe?: string;
+  purpose?: string;
+  financing?: string;
+  decision?: string;
+  visit?: string;
+  motivation?: string;
+  objection?: string;
+}
+
 export const LOST_REASONS = [
   { id: 'price',       label: 'Price' },
   { id: 'timing',      label: 'Timing — not now' },
@@ -220,6 +311,10 @@ export interface Lead {
   /* Why the deal was lost — one of LOST_REASONS. The free-text detail lives
      in a "Lost:" note; this field feeds reporting. */
   lost_reason?: string;
+
+  /* What the first real conversation established. Absent until somebody fills
+     any of it in; a half-filled qualification is normal. */
+  qualification?: Qualification;
 
   /* Automated e-mails actually sent to this lead (welcome, reminder…).
      Drives the sequence logic and renders on the timeline. */

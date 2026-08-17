@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type {
   Activity, CardColor, CardItem, Construction, CrmEvent, Lead, LeadPatch, Note, PhaseKey, ProjectNote, Score, Stage, Task,
-  VillaHistoryEntry, VillaRecord, VillaStatus,
+  Qualification, VillaHistoryEntry, VillaRecord, VillaStatus,
 } from './types';
-import { CARD_COLORS, PHASES, SCORES, STAGES, touchByKey } from './types';
+import {
+  CARD_COLORS, CURRENCIES, DECISION, FINANCING, MOTIVATIONS, OBJECTIONS, PHASES,
+  PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, touchByKey,
+} from './types';
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel } from './language';
@@ -617,6 +620,78 @@ export async function toggleTask(id: string, taskId: string): Promise<Lead | nul
     }
   });
   return found ? lead : null;
+}
+
+/* ── What the conversation established ──
+
+   Written field by field rather than as a blob, so the timeline says what
+   changed and when. "Budget set to EUR 250,000" three weeks after "Budget set
+   to EUR 180,000" is a fact about the deal, and a wholesale overwrite would
+   hide it.
+
+   Every value is checked against its list. These arrive from a form, and a
+   stage rule is about to depend on them: a typo silently stored would make a
+   lead look qualified when nobody answered anything. */
+const QUAL_OPTIONS: Record<string, readonly { id: string }[]> = {
+  timeframe: TIMEFRAMES,
+  purpose: PURPOSES,
+  financing: FINANCING,
+  decision: DECISION,
+  visit: VISITS,
+  motivation: MOTIVATIONS,
+  objection: OBJECTIONS,
+};
+
+const QUAL_LABELS: Record<string, string> = {
+  budget: 'Budget', timeframe: 'Timeframe', purpose: 'Purpose',
+  financing: 'Funding', decision: 'Decision maker', visit: 'Samui visit',
+  motivation: 'Motivation', objection: 'Objection',
+};
+
+const labelOf = (field: string, id?: string) =>
+  !id ? 'cleared' : (QUAL_OPTIONS[field]?.find((o) => o.id === id) as { label?: string })?.label || id;
+
+export async function setQualification(
+  id: string,
+  patch: Qualification,
+  actor?: string,
+): Promise<Lead | null> {
+  return mutate(id, (lead) => {
+    const q = (lead.qualification ??= {});
+
+    if ('currency' in patch) {
+      const cur = String(patch.currency || '').toUpperCase();
+      if ((CURRENCIES as readonly string[]).includes(cur)) q.currency = cur;
+    }
+
+    if ('budget' in patch) {
+      const raw = patch.budget;
+      const next = typeof raw === 'number' && isFinite(raw) && raw > 0 ? Math.round(raw) : undefined;
+      if (next !== q.budget) {
+        logActivity(
+          lead, 'value',
+          next ? `Budget set to ${q.currency || 'THB'} ${next.toLocaleString('en-US')}` : 'Budget cleared',
+          actor,
+        );
+        q.budget = next;
+      }
+    }
+
+    for (const field of Object.keys(QUAL_OPTIONS)) {
+      if (!(field in patch)) continue;
+      const raw = patch[field as keyof Qualification];
+      const value = raw ? String(raw) : undefined;
+      // An unrecognised value is dropped, not stored — see above.
+      if (value && !QUAL_OPTIONS[field].some((o) => o.id === value)) continue;
+      const current = q[field as keyof Qualification] as string | undefined;
+      if (value === current) continue;
+      logActivity(lead, 'contact', `${QUAL_LABELS[field]}: ${labelOf(field, value)}`, actor);
+      (q as Record<string, unknown>)[field] = value;
+    }
+
+    // Learning any of this is a person doing the work of selling.
+    markFirstResponse(lead);
+  });
 }
 
 /* ── Logging the contact a person actually made ──

@@ -601,3 +601,10 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
 .gt-flash, .gt-err { display: block; margin-top: 4px; font-style: normal; }
 .gt-flash { color: var(--c-gold); }
 .gt-err { color: var(--c-hot); }
+
+/* Qualification: two columns on a desk, one on a phone. The selects are the
+   whole point of the card, so they get the width rather than the labels. */
+.qual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+.qual-grid .crm-label { margin-bottom: 4px; }
+.qual-grid .crm-select, .qual-grid .crm-input { width: 100%; }
+@media (max-width: 720px) { .qual-grid { grid-template-columns: 1fr; } }

@@ -2,7 +2,8 @@ import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import {
   CrmConflict, addNote, addTask, archiveLead, blockContactOf, getLead, logTouch,
-  mergeLeads, purgeLead, setAwaitingReply, toggleTask, unarchiveLead, updateLead,
+  mergeLeads, purgeLead, setAwaitingReply, setQualification, toggleTask,
+  unarchiveLead, updateLead,
 } from '@/lib/crm/store';
 import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
 import type { LeadPatch } from '@/lib/crm/types';
@@ -64,6 +65,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       break;
     case 'toggleTask':
       lead = await toggleTask(id, String(body.taskId || ''));
+      break;
+    case 'qualify':
+      /* Values are validated in the store against their option lists, so a
+         crafted payload cannot make a lead look qualified on answers nobody
+         gave — which matters because a stage rule reads them. */
+      lead = await setQualification(id, (body.patch || {}) as never, actor);
       break;
     case 'logTouch':
       /* A call, a meeting, a site visit. Agents log these all day, so it sits
