@@ -51,10 +51,16 @@ export function sequenceState(l: Lead): SequenceState {
   if (!channelFor(l)) return { active: false, sent, reason: 'No e-mail address or WhatsApp number on file' };
   if (!['new', 'contacted', 'qualified'].includes(l.stage))
     return { active: false, sent, reason: 'The deal has moved on — a person is handling it' };
-  const engaged = (l.history || []).some(
+  /* Engagement means a person now owns the conversation, whichever direction it
+     came from: the customer wrote, or a salesperson got hold of them and logged
+     it. A call that rang out is not engagement, which is why `reached` is a
+     field rather than something read out of the text. */
+  const wrote = (l.history || []).some(
     (h) => h.kind === 'message' || (h.kind === 'email' && h.detail.startsWith('Reply received')),
   );
-  if (engaged) return { active: false, sent, reason: 'The customer replied — over to you' };
+  if (wrote) return { active: false, sent, reason: 'The customer replied — over to you' };
+  const spoke = (l.history || []).find((h) => h.reached);
+  if (spoke) return { active: false, sent, reason: `${spoke.detail.split(' — ')[0]} — over to you` };
   if (!started) return { active: false, sent, reason: 'Predates the automatic sequence' };
 
   const done = new Set(box.map((e) => e.step));

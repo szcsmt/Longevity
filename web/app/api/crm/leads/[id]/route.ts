@@ -1,8 +1,8 @@
 import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import {
-  CrmConflict, addNote, addTask, archiveLead, blockContactOf, getLead, mergeLeads,
-  purgeLead, setAwaitingReply, toggleTask, unarchiveLead, updateLead,
+  CrmConflict, addNote, addTask, archiveLead, blockContactOf, getLead, logTouch,
+  mergeLeads, purgeLead, setAwaitingReply, toggleTask, unarchiveLead, updateLead,
 } from '@/lib/crm/store';
 import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
 import type { LeadPatch } from '@/lib/crm/types';
@@ -64,6 +64,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       break;
     case 'toggleTask':
       lead = await toggleTask(id, String(body.taskId || ''));
+      break;
+    case 'logTouch':
+      /* A call, a meeting, a site visit. Agents log these all day, so it sits
+         with canEdit like notes and tasks rather than with the owner. An
+         unknown key returns null and answers 404 — the UI only ever sends one
+         of the six it renders. */
+      lead = await logTouch(id, String(body.touch || ''), body.note ? String(body.note) : undefined, actor);
       break;
     case 'merge':
       // Merging destroys one of the two records — an owner's decision.

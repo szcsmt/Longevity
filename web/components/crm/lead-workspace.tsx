@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Lead, Score, Stage } from '@/lib/crm/types';
-import { LOST_REASONS, STAGES, SCORES } from '@/lib/crm/types';
+import { LOST_REASONS, STAGES, SCORES, TOUCHES } from '@/lib/crm/types';
 import { fmtTHB } from '@/lib/crm/villas';
 import { messageTemplates } from '@/lib/crm/templates';
 import { SEQUENCE_STEPS, sequenceState, stepLabel } from '@/lib/crm/sequence';
@@ -332,13 +332,46 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
-          <button
-            className="crm-btn gold sm"
-            disabled={busy || !note.trim()}
-            onClick={async () => { await patch({ op: 'addNote', body: note }); setNote(''); }}
-          >
-            Add note
-          </button>
+          <div className="act-row" style={{ alignItems: 'center' }}>
+            <button
+              className="crm-btn gold sm"
+              disabled={busy || !note.trim()}
+              onClick={async () => { await patch({ op: 'addNote', body: note }); setNote(''); }}
+            >
+              Add note
+            </button>
+
+            {/* ── Log what actually happened ──
+
+                The box above already said "Log a call" and could only produce a
+                note. These make it true: one click after putting the phone
+                down, with whatever is in the box carried across as the detail.
+                Kept to one click because the moment they are used is the moment
+                somebody wants to get on with the next call — anything longer
+                and the log stops being filled in, which is worse than not
+                having it. */}
+            {!readOnly && (
+              <>
+                <span className="crm-meta" style={{ marginLeft: 4 }}>Log:</span>
+                {TOUCHES.map((t) => (
+                  <button
+                    key={t.key}
+                    className="crm-btn sm"
+                    disabled={busy}
+                    title={t.reached
+                      ? 'Records a real conversation: stops the automated e-mails and moves a new lead to Contacted'
+                      : 'Records the attempt only — nothing downstream treats it as contact'}
+                    onClick={async () => {
+                      await patch({ op: 'logTouch', touch: t.key, note });
+                      setNote('');
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
           <ul className="timeline" style={{ marginTop: 16 }}>
             {timeline.length === 0 && <div className="empty">No activity yet.</div>}
             {timeline.map((item) => (

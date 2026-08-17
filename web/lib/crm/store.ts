@@ -3,7 +3,7 @@ import type {
   Activity, CardColor, CardItem, Construction, CrmEvent, Lead, LeadPatch, Note, PhaseKey, ProjectNote, Score, Stage, Task,
   VillaHistoryEntry, VillaRecord, VillaStatus,
 } from './types';
-import { CARD_COLORS, PHASES, SCORES, STAGES } from './types';
+import { CARD_COLORS, PHASES, SCORES, STAGES, touchByKey } from './types';
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel } from './language';
@@ -617,6 +617,56 @@ export async function toggleTask(id: string, taskId: string): Promise<Lead | nul
     }
   });
   return found ? lead : null;
+}
+
+/* ── Logging the contact a person actually made ──
+
+   Until now a phone call could only exist as a free-text note, which meant the
+   single most important thing that happens to a lead was the one thing the CRM
+   could not see. It could not count calls, could not tell "nobody has tried"
+   from "tried twice, no luck", and kept sending automated e-mails to somebody a
+   salesperson had spoken to that morning.
+
+   Reaching somebody has the same consequences as them writing to us, because it
+   is the same event from the other end: a human now owns the conversation. So a
+   reached touch clears the reply timer, ticks its chase task, moves a new lead
+   to Contacted, and stops the sequence. A call that rang out does none of that —
+   it is worth recording, but it is not contact. */
+export async function logTouch(
+  id: string,
+  key: string,
+  note?: string,
+  actor?: string,
+): Promise<Lead | null> {
+  const touch = touchByKey(key);
+  if (!touch) return null;
+  const said = cleanText(note || '').trim().slice(0, 2000);
+
+  return mutate(id, (lead) => {
+    (lead.history ??= []).push({
+      id: randomUUID(),
+      kind: touch.kind,
+      detail: `${touch.past}${said ? ` — ${said}` : ''}`,
+      at: now(),
+      reached: touch.reached,
+      ...(actor ? { by: actor } : {}),
+    });
+
+    // Any logged touch is a person acting, which is what speed-to-lead measures.
+    markFirstResponse(lead);
+
+    if (!touch.reached) return;
+
+    if (lead.awaiting_reply_since) {
+      lead.awaiting_reply_since = undefined;
+      const chase = lead.tasks.find((t) => t.title === REPLY_TASK_TITLE && !t.done);
+      if (chase) chase.done = true;
+    }
+    if (lead.stage === 'new') {
+      logActivity(lead, 'stage', `${stageLabel('new')} → ${stageLabel('contacted')} (spoke with them)`, actor);
+      lead.stage = 'contacted';
+    }
+  });
 }
 
 /* ── Setting a lead aside, and the one way to really destroy it ──

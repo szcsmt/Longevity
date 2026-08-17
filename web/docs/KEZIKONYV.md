@@ -118,6 +118,12 @@ feltöltöd a sablonjaikat, ugyanezekből az adatokból ki tudjuk tölteni azoka
 
 **Automatic sequence — hol tart az automata levelezés.** Ez a doboz mutatja, hány levél ment ki ehhez a leadhez a hatból, mi a következő és mikor esedékes — alatta felsorolva a már kiment levelek tárgya és időpontja. Ha a szekvencia leállt, itt az okát is látod („az ügyfél válaszolt", „leiratkozott", „az üzlet továbblépett"). **Sosem érhet meglepetés**: pontosan azt látod itt, amit a rendszer tenni fog.
 
+**Log** — a jegyzetmező alatt hat gomb: **Spoke by phone**, **No answer**, **Video call**, **Meeting**, **Site visit**, **WhatsApp**. Írj a mezőbe amit akarsz, aztán nyomd meg a megfelelőt: egy kattintás az egész.
+
+A különbség fontos. Amelyik **valódi beszélgetést** jelent (telefon, videó, találkozó, helyszíni látogatás), az ugyanazt csinálja mintha az ügyfél írt volna: **leállítja az automata leveleket**, törli a válasz-időzítőt, és az új leadet Contacted fázisba lépteti. Aki nem vette fel, vagy akinek te írtál WhatsAppon, annál **semmi nem történik** ezekből, csak rögzül a próbálkozás. Ez azért kell, hogy a „még senki nem próbálta" és a „kétszer is hívtam, nem vette fel" ne ugyanaz legyen.
+
+Ezt használd jegyzet helyett, amikor telefonáltál. Így a rendszer tudni fog róla, nem csak te.
+
 **Follow-up tasks** — teendők ehhez a leadhez, opcionális határidővel. A lejárt teendő pirosan jelölve (`· overdue`); a határidő naptári nap szerint számít, tehát a ma esedékes még nem lejárt.
 
 **Danger zone** (csak admin):

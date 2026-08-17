@@ -133,13 +133,56 @@ export interface Task {
    with notes in the lead timeline, so the full history reads in one place. */
 export interface Activity {
   id: string;
-  kind: 'created' | 'stage' | 'score' | 'contact' | 'value' | 'merged' | 'email' | 'message' | 'assigned' | 'download' | 'click' | 'document' | 'archived';
+  kind:
+    | 'created' | 'stage' | 'score' | 'contact' | 'value' | 'merged' | 'email'
+    | 'message' | 'assigned' | 'download' | 'click' | 'document' | 'archived'
+    /* Contact a salesperson made and logged by hand. Until these existed, a
+       phone call could only live in a free-text note — so the single most
+       important thing that happens to a lead was the one thing the CRM could
+       not see, count or act on. */
+    | 'call' | 'video' | 'meeting' | 'visit' | 'whatsapp';
   /** Who did it, when a signed-in person did. Absent for anything the system
       or the customer did — those read as the CRM's own actions. */
   by?: string;
+  /* On a logged contact: whether a conversation actually happened. A structured
+     field rather than something to read out of `detail`, because the automated
+     sequence depends on it — talking to somebody hands the conversation to a
+     person, while a call that rang out changes nothing. */
+  reached?: boolean;
   detail: string; // human line, e.g. "New → Contacted"
   at: string;     // ISO
 }
+
+/* ── The contact a salesperson logs by hand ──
+
+   Kept short on purpose. Every extra option is a decision at the moment
+   somebody has just put the phone down and wants to get on with the next call,
+   and a list nobody can face is a list nobody fills in. */
+export type TouchKind = 'call' | 'video' | 'meeting' | 'visit' | 'whatsapp';
+
+export interface TouchOption {
+  key: string;        // what the UI sends; a call has two, so the kind alone will not do
+  kind: TouchKind;    // what lands on the timeline as a badge
+  label: string;      // on the button
+  past: string;       // on the timeline
+  /* Did a conversation actually happen. A call that rang out is worth
+     recording — it is the difference between "nobody has tried" and "tried
+     twice, no luck" — but it is not contact, and nothing downstream should
+     treat it as if it were. */
+  reached: boolean;
+}
+
+export const TOUCHES: TouchOption[] = [
+  { key: 'call',        kind: 'call',     label: 'Spoke by phone', past: 'Spoke by phone',    reached: true },
+  { key: 'call-missed', kind: 'call',     label: 'No answer',      past: 'Called, no answer', reached: false },
+  { key: 'video',       kind: 'video',    label: 'Video call',     past: 'Video call',        reached: true },
+  { key: 'meeting',     kind: 'meeting',  label: 'Meeting',        past: 'Met in person',     reached: true },
+  { key: 'visit',       kind: 'visit',    label: 'Site visit',     past: 'Site visit',        reached: true },
+  { key: 'whatsapp',    kind: 'whatsapp', label: 'WhatsApp',       past: 'Wrote on WhatsApp', reached: false },
+];
+
+export const touchByKey = (key: string): TouchOption | undefined =>
+  TOUCHES.find((t) => t.key === key);
 
 export interface Lead {
   id: string;

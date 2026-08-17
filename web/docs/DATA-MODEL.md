@@ -233,6 +233,37 @@ Fields: `id`, `kind`, `detail` (human line), `at`, and `by` — the signed-in pe
 it. `by` is deliberately absent on anything the system or the customer did, which is how the
 timeline distinguishes "Anna moved this to Qualified" from "the CRM did".
 
+## Logged contact (TOUCHES)
+
+A phone call used to be able to exist only as a free-text note — so the single
+most important thing that happens to a lead was the one thing the CRM could not
+see, count, or act on.
+
+`logTouch(id, key, note, actor)` writes a typed history entry. Six options, in
+`types.ts`: spoke by phone, no answer, video call, meeting, site visit,
+WhatsApp. Deliberately short — the moment they are used is the moment somebody
+wants to get on with the next call, and a list nobody can face is a list nobody
+fills in.
+
+`Activity.reached` carries the distinction everything turns on:
+
+| | `reached: true` | `reached: false` |
+|---|---|---|
+| Examples | spoke by phone, video, meeting, site visit | no answer, outbound WhatsApp |
+| First response recorded | yes | **yes** — they did pick up the phone |
+| Reply timer cleared, chase ticked | yes | no |
+| `new` → `contacted` | yes | no |
+| Automated sequence | **stops** | keeps running |
+
+Reaching somebody is the same event as them writing to us, seen from the other
+end: a human now owns the conversation. A call that rang out is worth recording
+— it is the difference between "nobody has tried" and "tried twice, no luck" —
+but nothing downstream may treat it as contact.
+
+It is a structured field rather than something parsed out of `detail`, because
+`sequenceState` depends on it, and a rule that reads text is a rule that breaks
+when somebody rewords a label.
+
 ## SentEmail
 
 | Field | Type | Meaning |
