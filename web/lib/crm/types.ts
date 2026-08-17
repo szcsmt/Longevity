@@ -218,4 +218,59 @@ export interface CrmEvent {
   path?: string;
   source?: string;
   at: string;     // ISO
+
+  /* ── Set on a WhatsApp tap only ──
+     The conversation leaves our site at this point and comes back minutes later
+     as a bare phone number on Meta's webhook. `ref` is the code carried into the
+     prefilled message; the rest is what we knew about the visitor at the moment
+     they tapped, held here until the message arrives to claim it. */
+  ref?: string;
+  locale?: string;
+  page_url?: string;
+  utm?: { source?: string; medium?: string; campaign?: string; term?: string; content?: string };
+}
+
+/* ── Project notes ──
+
+   The board for everything about the project that ISN'T a lead: an idea from a
+   phone call, a decision waiting on someone, what the builder asked for, what
+   the brochure still gets wrong. Deliberately unstructured — a note is a title,
+   some text and/or a checklist, and that is all it has to be. The lead-bound
+   follow-ups on the Tasks page stay where they are; these two never mix. */
+
+export const CARD_COLORS = ['plain', 'gold', 'green', 'blue', 'rose', 'violet'] as const;
+export type CardColor = (typeof CARD_COLORS)[number];
+
+/* Suggested labels, offered in the composer. Free text is allowed too — the
+   board collects whatever labels actually exist and offers them as filters. */
+export const CARD_LABELS = ['weboldal', 'brossúra', 'CRM', 'sales', 'építkezés', 'marketing', 'jog', 'pénzügy'];
+
+export interface CardItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+/* Named ProjectNote, not Note: `Note` is already the lead-bound note above, and
+   these two must never be confused for one another. */
+export interface ProjectNote {
+  id: string;
+  title?: string;
+  body?: string;
+  /** A checklist. A note can have text, a list, or both. */
+  items?: CardItem[];
+  color?: CardColor;
+  labels?: string[];
+  /** Pinned notes sit at the top of the board, before everything else. */
+  pinned?: boolean;
+  /** Archived notes leave the board but are never deleted. */
+  archived?: boolean;
+  due?: string;    // ISO date
+  /** Who it waits on — free text, so it works before there is a user table. */
+  owner?: string;
+  at: string;        // ISO created
+  updatedAt: string; // ISO last touched
+  by?: string;       // who created it
+  /** The Google Task this card is mirrored to, once the sync has run. */
+  googleTaskId?: string;
 }

@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { EmailStep, Lead } from './types';
 import { autoEmailsEnabled, sendEmail } from './mailer';
 import {
-  closingEmail, reminderEmail, storyEmail, termsEmail, viewingEmail, welcomeEmail,
-  whatsappMessage,
+  closingEmail, plainReminderEmail, plainWelcomeEmail, storyEmail, termsEmail,
+  viewingEmail, whatsappMessage,
 } from './letters';
 import { channelFor, dueStep, stepLabel } from './sequence';
 import { listLeads, recordSentEmail } from './store';
@@ -33,13 +33,22 @@ import { sendWhatsApp, whatsappEnabled } from './whatsapp';
 type Letter = (l: Lead) => { subject: string; html: string };
 
 const LETTERS: Record<EmailStep, Letter> = {
-  welcome: welcomeEmail,
-  reminder: reminderEmail,
+  welcome: plainWelcomeEmail,
+  reminder: plainReminderEmail,
   story: storyEmail,
   viewing: viewingEmail,
   terms: termsEmail,
   closing: closingEmail,
 };
+
+/* ── Which steps are a mailing, and which are a reply ──
+
+   The welcome answers a form the customer submitted minutes earlier, and the
+   day-3 note is a single follow-up to it. Neither is a mailing, so neither
+   carries the List-Unsubscribe headers — those are what mark a message as bulk,
+   and bulk is what lands a letter in the Promotions tab. From day 10 the
+   sequence is genuinely marketing and is treated as such. */
+const TRANSACTIONAL: EmailStep[] = ['welcome', 'reminder'];
 
 /* ── Sending one step, on whichever channel the lead can be reached on ──
 
@@ -56,7 +65,9 @@ async function deliver(l: Lead, step: EmailStep): Promise<string | null> {
 
   if (channel === 'email' && autoEmailsEnabled()) {
     const mail = LETTERS[step](l);
-    return (await sendEmail({ to: l.email!, leadId: l.id, ...mail })) ? mail.subject : null;
+    const bulk = !TRANSACTIONAL.includes(step);
+    return (await sendEmail({ to: l.email!, leadId: bulk ? l.id : undefined, ...mail }))
+      ? mail.subject : null;
   }
 
   if (channel === 'whatsapp' && whatsappEnabled()) {

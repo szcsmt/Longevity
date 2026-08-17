@@ -25,12 +25,9 @@ export interface ForwardInput {
   brief?: string | null; // the reading, when the triage engine is configured
 }
 
-export async function forwardToOperator(input: ForwardInput): Promise<void> {
-  const key = process.env.RESEND_API_KEY;
-  const to = process.env.CRM_NOTIFY_TO;
-  const from = process.env.CRM_NOTIFY_FROM || process.env.CRM_AUTO_FROM;
-  if (!key || !to || !from) return;
-
+/* Built without touching the network, so the wording can be rendered and
+   reviewed on its own — the same separation the customer letters keep. */
+export function forwardEmail(input: ForwardInput): { subject: string; html: string } {
   const { lead, channel, subject, body, brief } = input;
   const who = lead.name || lead.email || lead.whatsapp || lead.phone || 'Someone';
   const via = channel === 'whatsapp' ? 'on WhatsApp' : 'by e-mail';
@@ -47,6 +44,17 @@ export async function forwardToOperator(input: ForwardInput): Promise<void> {
         : ''}
     </div>`;
 
+  return { subject: `${channel === 'whatsapp' ? 'WhatsApp' : 'Reply'} — ${who}`, html };
+}
+
+export async function forwardToOperator(input: ForwardInput): Promise<void> {
+  const key = process.env.RESEND_API_KEY;
+  const to = process.env.CRM_NOTIFY_TO;
+  const from = process.env.CRM_NOTIFY_FROM || process.env.CRM_AUTO_FROM;
+  if (!key || !to || !from) return;
+
+  const { subject, html } = forwardEmail(input);
+
   try {
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -54,11 +62,11 @@ export async function forwardToOperator(input: ForwardInput): Promise<void> {
       body: JSON.stringify({
         from,
         to: [to],
-        subject: `${channel === 'whatsapp' ? 'WhatsApp' : 'Reply'} — ${who}`,
+        subject,
         /* Only an e-mail reply can be answered by replying. For WhatsApp the
            customer has no mailbox in this conversation, so Reply-To is left
            off rather than pointing somewhere that silently goes nowhere. */
-        reply_to: channel === 'email' ? lead.email || undefined : undefined,
+        reply_to: input.channel === 'email' ? input.lead.email || undefined : undefined,
         html,
       }),
     });

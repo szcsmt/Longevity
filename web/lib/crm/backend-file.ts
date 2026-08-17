@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
-import type { CrmEvent, Lead, VillaRecord, VillaHistoryEntry } from './types';
+import type { CrmEvent, Lead, ProjectNote, VillaRecord, VillaHistoryEntry } from './types';
 import type { Backend } from './backend';
 
 /* Local-dev backend: one JSON file outside the project (default
@@ -18,6 +18,8 @@ interface DB {
   villas: Record<string, VillaRecord>;
   villaHistory: VillaHistoryEntry[];
   blocklist: string[];
+  notes: ProjectNote[];
+  settings: Record<string, unknown>;
 }
 
 /* All mutations are serialized through this promise chain. Without it, two
@@ -41,9 +43,11 @@ async function read(): Promise<DB> {
       villas: db.villas && typeof db.villas === 'object' ? (db.villas as Record<string, VillaRecord>) : {},
       villaHistory: Array.isArray(db.villaHistory) ? db.villaHistory : [],
       blocklist: Array.isArray(db.blocklist) ? db.blocklist : [],
+      notes: Array.isArray(db.notes) ? db.notes : [],
+      settings: db.settings && typeof db.settings === 'object' ? (db.settings as Record<string, unknown>) : {},
     };
   } catch {
-    return { leads: [], events: [], villas: {}, villaHistory: [], blocklist: [] };
+    return { leads: [], events: [], villas: {}, villaHistory: [], blocklist: [], notes: [], settings: {} };
   }
 }
 
@@ -105,6 +109,10 @@ export const fileBackend: Backend = {
       await write(db);
     });
   },
+  async findEventByRef(ref, since) {
+    // Events are stored newest-first, so the first hit is already the newest.
+    return (await read()).events.find((e) => e.ref === ref && e.at >= since) || null;
+  },
   async getVillas() {
     return (await read()).villas;
   },
@@ -137,6 +145,39 @@ export const fileBackend: Backend = {
       const db = await read();
       db.blocklist = [...new Set([...db.blocklist, ...keys])];
       await write(db);
+    });
+  },
+  async getSetting(key) {
+    const v = (await read()).settings[key];
+    return (v === undefined ? null : v) as never;
+  },
+  async setSetting(key, value) {
+    await locked(async () => {
+      const db = await read();
+      db.settings[key] = value;
+      await write(db);
+    });
+  },
+  async allNotes() {
+    return (await read()).notes;
+  },
+  async saveNote(note) {
+    await locked(async () => {
+      const db = await read();
+      const i = db.notes.findIndex((n) => n.id === note.id);
+      if (i === -1) db.notes.unshift(note);
+      else db.notes[i] = note;
+      await write(db);
+    });
+  },
+  async removeNote(id) {
+    return locked(async () => {
+      const db = await read();
+      const before = db.notes.length;
+      db.notes = db.notes.filter((n) => n.id !== id);
+      if (db.notes.length === before) return false;
+      await write(db);
+      return true;
     });
   },
 };

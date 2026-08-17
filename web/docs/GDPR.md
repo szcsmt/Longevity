@@ -47,6 +47,28 @@ Defined in `lib/crm/types.ts` (`Lead`). One JSONB document per lead.
 `/api/event` and `/api/lead` endpoints read `x-forwarded-for` only for an in-memory,
 per-instance rate limiter (`Map` in the route module); IPs are never persisted.
 
+**One exception — the WhatsApp tap. Dormant since 2026-08-12.** The site's floating
+WhatsApp icon was removed on that date, so no new reference-coded events are written; the
+matching path below is still in the code (`stripWaRef`, `findEventByRef`) because inbound
+messages can still carry a code, and events written before that date are still in
+`crm_events`. While it was live, tapping the icon wrote an event carrying a random
+reference code (`ref`) plus the `locale`, `page_url` and `utm` set of that moment. The code
+was also placed in the prefilled message, so when the person wrote, `/api/whatsapp` matched
+it and copied that context onto their lead. Three things follow, and they are the point of
+writing this down:
+
+* the code is **pseudonymous, not anonymous** — until it is matched it identifies a browser
+  session rather than a person, and after the match that browsing context has been joined
+  to an identified individual;
+* the person **chose** it: the reference is visible in the message they send, and a message
+  they never send is never matched. Nothing was set on their device beyond one
+  `sessionStorage` key that died with the tab — no cookie, no cross-site identifier, no
+  consent banner obligation under PECR/ePrivacy for strictly-necessary session storage;
+* matching is bounded to **24 hours** (`REF_WINDOW_MS`); after that the event is an ordinary
+  anonymous click again. The event itself is not deleted at match time — it stays in
+  `crm_events` as click history, and an erasure request handled through "Delete & block"
+  removes the *lead*, not this anonymous row, which by then carries no contact detail.
+
 ### 1.4 Suppression blocklist (`crm_blocklist`)
 
 Normalized contact keys, not full records: `e:<lowercased email>` and
@@ -89,9 +111,9 @@ should not be copied into it.
 | # | Flow | Personal data | Processors touched |
 |---|---|---|---|
 | 1 | Website forms (enquiry / reserve / brochure) → `POST /api/lead` → CRM store | name, email, phone, message, consent, UTM | Vercel → Neon; new-lead alert email with full contact details via **Resend** to `CRM_NOTIFY_TO` (a Google Workspace mailbox, e.g. crm@longevitysamui.com); minute-0 welcome email to the lead via Resend. The make.com forwarding was removed on 2026-08-07 — the CRM is the sole destination |
-| 2 | WhatsApp → `POST /api/whatsapp` (Meta Cloud API webhook, HMAC-SHA256 signed with `WHATSAPP_APP_SECRET`) → CRM store | name (WhatsApp profile), phone, message body | Meta, Vercel, Neon; alert email via Resend for new contacts only. The make.com / Zoho Bigin route was removed on 2026-08-08 |
+| 2 | WhatsApp → `POST /api/whatsapp` (Meta Cloud API webhook, HMAC-SHA256 signed with `WHATSAPP_APP_SECRET`) → CRM store | name (WhatsApp profile), phone, message body; **plus**, when the message carries a reference code, the page / language / UTM of the tap that produced it (§1.3 — dormant since the icon was removed on 2026-08-12) | Meta, Vercel, Neon; alert email via Resend for new contacts only, and an automatic WhatsApp welcome back to the sender on first contact (Meta). The make.com / Zoho Bigin route was removed on 2026-08-08 |
 | 3 | Manual entry (phone call, walk-in, referral) → admin UI → `POST /api/crm/leads` | whatever the operator types | Vercel, Neon |
-| 4 | Site clicks → `POST /api/event` | none (anonymous events) | Vercel, Neon |
+| 4 | Site clicks → `POST /api/event` | none (anonymous events) — **except the WhatsApp tap**, which is pseudonymous for 24 hours (§1.3) | Vercel, Neon |
 | 5 | Villa status changes ↔ Google Sheet (outbound via the Apps Script webhook `SHEET_WEBHOOK`; inbound sheet edits arrive at `POST /api/villa-sync`; both directions authenticated by `SHEET_SECRET`) | villa id, status, **seller name, free-text note** | Google (Sheets / Apps Script) |
 | 6 | `GET /api/3destate/units` (key `ESTATE_API_KEY`) → 3DEstate Smart Model | **no personal data by design** — unit id, status, price, sizes, payment-progress %; the route comment states "without exposing buyer identity" and the response contains no buyer/seller fields; the CRM also pushes unit changes outbound to `PARTNER_WEBHOOK_URL` (`partnerPush` in `store.ts` — id, status, price only, same no-personal-data posture) | 3DEstate |
 | 7 | Daily cron (Vercel Cron, 07:00 UTC, `vercel.json`) → `GET /api/crm/cron` → the follow-up sequence (day 3 / 10 / 24 / 45 / 60), at most one mail per lead per run | lead name + email | Vercel, Resend |

@@ -195,6 +195,16 @@ pipeline. Written by the public `/api/event` endpoint (rate-limited 30/min/IP).
 | `path` | string? | Page path, max 200 |
 | `source` | string? | Campaign source, max 80 |
 | `at` | string | ISO |
+| `ref` | string? | **WhatsApp taps only.** The code carried into the prefilled message, max 16, upper-cased |
+| `locale` | string? | **WhatsApp taps only.** Site language at the tap, max 10 |
+| `page_url` | string? | **WhatsApp taps only.** Full URL at the tap, max 300 |
+| `utm` | object? | **WhatsApp taps only.** `source`/`medium`/`campaign`/`term`/`content`, max 120 each |
+
+The last four are the handover pack for the one click that leaves for a channel which tells
+us nothing about its origin. Meta's webhook delivers a phone number and a line of text, so
+without them a website enquiry and a cold stranger are indistinguishable. `findEventByRef`
+matches the code back for **24 hours** (`REF_WINDOW_MS`), after which the event is inert
+history like any other click. See `docs/API.md` → *Website tap → WhatsApp lead*.
 
 Retention: only the high-volume `visit` type is bounded (newest 5000 kept); actionable signal
 types are never dropped.

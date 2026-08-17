@@ -107,6 +107,14 @@ Request body:
 | `type` | no | 40 | Defaults to `click` |
 | `path` | no | 200 | |
 | `source` | no | 80 | |
+| `ref` | no | 16 | WhatsApp taps only — the code carried into the prefilled message, upper-cased on store |
+| `locale` | no | 10 | WhatsApp taps only |
+| `page_url` | no | 300 | WhatsApp taps only |
+| `utm` | no | 120 each | WhatsApp taps only — object of `source`/`medium`/`campaign`/`term`/`content` |
+
+The last four exist because a WhatsApp tap is the one click where the visitor leaves for a
+channel that tells us nothing about where they came from; they are held on the event until
+the inbound message claims them. See **Website tap → WhatsApp lead**.
 
 Response: `200 {"ok":true}`.
 
@@ -150,7 +158,7 @@ letter already sitting in somebody's inbox.
 
 | id | File | What it is |
 |---|---|---|
-| `overview` | `/brochure/longevity-overview-2026.pdf` | 12 pages, 2.6 MB. First contact — small enough to open on a phone. |
+| `overview` | `/brochure/longevity-brochure-short-2026.pdf` | 13 pages, 9.9 MB. First contact — the story cut to what a stranger needs. A 12-page, 2.6 MB cut is on disk at `/brochure/longevity-overview-2026.pdf`, kept unlinked (see the comment in `documents.ts`). |
 | `brochure` | `/brochure/longevity-brochure-2026.pdf` | 52 pages, 14 MB. Held back for someone who has already shown interest. |
 
 ---
@@ -169,12 +177,38 @@ handset.
 (HMAC-SHA256 of the **raw** body with `WHATSAPP_APP_SECRET`); an unverifiable delivery is
 `401`ed rather than trusted. Then, per message:
 
-1. an unknown number becomes a lead, a known number's message becomes a reply on the lead
+1. blocked contacts are skipped silently;
+2. the reference code is taken off the text (`stripWaRef`) and looked up
+   (`findClickByRef`) — see **Website tap → WhatsApp lead** below;
+3. an unknown number becomes a lead, a known number's message becomes a reply on the lead
    that already exists (`upsertLeadFromPayload`, one person = one lead);
-2. blocked contacts are skipped silently;
-3. `readReply` reads it, if `ANTHROPIC_API_KEY` is set;
-4. `recordInboundReply(channel: 'whatsapp')` files it, which **stops the sequence**;
-5. the message is forwarded to `CRM_NOTIFY_TO` with the brief on top.
+4. `readReply` reads it, if `ANTHROPIC_API_KEY` is set;
+5. `recordInboundReply(channel: 'whatsapp')` files it, which **stops the sequence**;
+6. a brand-new lead gets the welcome back on WhatsApp (`sendAutoWelcome`), inside Meta's
+   24-hour free-text window. Silent while the Cloud API env is unset;
+7. the message is forwarded to `CRM_NOTIFY_TO` with the brief on top.
+
+#### Website tap → WhatsApp lead
+
+Meta's webhook delivers a phone number and a line of text; everything the site knew about
+the visitor a second before the tap is lost at the handover. So the icon's prefilled message
+carries a reference:
+
+```
+Hello, I'd like to learn more about Longevity Resort.
+
+Ref: LR-7K2MQ4
+```
+
+The tap is logged as a `whatsapp` event under the same code (`ref`, plus `locale`,
+`page_url` and the `utm` set — `lib/wa.ts` builds the link, `ReserveFab` posts the event).
+When the message arrives the code is matched back within **24 hours**, and the lead is
+created with that page, language and campaign on it, `form_origin: 'fab'` and
+`source: 'Website WhatsApp'`; the tap goes on the timeline as `Clicked: WhatsApp from /…`.
+The `Ref:` line is stripped before anything is filed, so the timeline reads as the customer
+wrote it. No match (a stranger who found the number elsewhere, a visitor who deleted the
+line, storage blocked in the browser) simply means `source: 'WhatsApp'` and no page context —
+never a dropped message.
 
 Always answers `200` — a non-2xx makes Meta retry, which would double-file a message we have
 already accepted. Response: `{"ok":true,"messages":N,"filed":N}`. Most deliveries are status

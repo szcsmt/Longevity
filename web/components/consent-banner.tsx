@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useLang } from '@/lib/i18n';
 import {
   ALL_DENIED, ALL_GRANTED, CONSENT_COOKIE, CONSENT_MAX_AGE, CONSENT_VERSION,
@@ -129,6 +130,7 @@ function logConsent(c: Choices) {
 
 export function ConsentBanner() {
   const { locale } = useLang();
+  const path = usePathname();
   const t = T[locale] || T.en;
 
   const [open, setOpen] = useState(false);
@@ -160,6 +162,9 @@ export function ConsentBanner() {
     setDetail(false);
   };
 
+  // The CRM is a signed-in internal tool, not the public site: asking staff for
+  // cookie consent on their own back office is noise, and it sat over the work.
+  if (path?.startsWith('/admin')) return null;
   if (!open) return null;
 
   const toggle = (cat: Category) =>

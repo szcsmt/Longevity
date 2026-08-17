@@ -89,7 +89,10 @@ export default function PrivacyPage() {
           <strong>Marketing attribution data</strong> — campaign parameters associated with your
           visit (including UTM source, medium, campaign, term and content identifiers and
           equivalent referral codes), the page from which a form was submitted, and the date and
-          time of submission;
+          time of submission. Where a message you send us by WhatsApp contains a short reference
+          code issued by the Website, that code is matched to the page and language recorded
+          against it; if you do not send the message, or if you remove the code, no such
+          association is made;
         </li>
         <li>
           <strong>Usage and interaction data</strong> — aggregated and event-level records of

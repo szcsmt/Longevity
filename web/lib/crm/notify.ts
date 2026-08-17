@@ -17,11 +17,10 @@ const SITE = 'https://longevitysamui.com';
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-export async function notifyNewLead(lead: Lead): Promise<void> {
-  const key = process.env.RESEND_API_KEY;
-  const to = process.env.CRM_NOTIFY_TO;
-  if (!key || !to) return;
-
+/* The alert itself, built without touching the network — same separation the
+   customer letters keep, so the wording can be rendered and reviewed on its
+   own rather than only ever seen in somebody's inbox. */
+export function newLeadEmail(lead: Lead): { subject: string; html: string } {
   const kind = (lead.form_type || 'enquiry').replace('_', ' ');
   const name = lead.name || 'Unknown enquirer';
   const hot = lead.score === 'hot';
@@ -135,13 +134,23 @@ export async function notifyNewLead(lead: Lead): Promise<void> {
 </body>
 </html>`;
 
+  return { subject: `New ${kind} — ${name}${hot ? ' 🔥' : ''}`, html };
+}
+
+export async function notifyNewLead(lead: Lead): Promise<void> {
+  const key = process.env.RESEND_API_KEY;
+  const to = process.env.CRM_NOTIFY_TO;
+  if (!key || !to) return;
+
+  const { subject, html } = newLeadEmail(lead);
+
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: process.env.CRM_NOTIFY_FROM || 'Longevity CRM <onboarding@resend.dev>',
       to: [to],
-      subject: `New ${kind} — ${name}${hot ? ' 🔥' : ''}`,
+      subject,
       html,
     }),
   });

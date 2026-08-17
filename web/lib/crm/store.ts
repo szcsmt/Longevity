@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type {
-  Activity, Construction, CrmEvent, Lead, LeadPatch, Note, PhaseKey, Score, Stage, Task,
+  Activity, CardColor, CardItem, Construction, CrmEvent, Lead, LeadPatch, Note, PhaseKey, ProjectNote, Score, Stage, Task,
   VillaHistoryEntry, VillaRecord, VillaStatus,
 } from './types';
-import { PHASES, SCORES, STAGES } from './types';
+import { CARD_COLORS, PHASES, SCORES, STAGES } from './types';
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel } from './language';
@@ -1094,12 +1094,34 @@ export async function addEvent(e: Omit<CrmEvent, 'id' | 'at'>): Promise<CrmEvent
     source: e.source?.slice(0, 80),
     at: now(),
   };
+  // Only a WhatsApp tap carries these, and only then are they written.
+  if (e.ref) ev.ref = e.ref.slice(0, 16).toUpperCase();
+  if (e.locale) ev.locale = e.locale.slice(0, 10);
+  if (e.page_url) ev.page_url = e.page_url.slice(0, 300);
+  if (e.utm && Object.keys(e.utm).length) ev.utm = e.utm;
   await (await backend()).insertEvent(ev);
   return ev;
 }
 
 export async function listEvents(limit = 40): Promise<CrmEvent[]> {
   return (await backend()).allEvents(limit);
+}
+
+/* ── Matching an inbound WhatsApp message back to the tap that started it ──
+
+   The window is deliberately generous: someone taps the icon on a laptop, then
+   finds the conversation on their phone that evening and writes then. A day
+   covers that without ever reaching back far enough to attach a stranger's
+   message to somebody else's browsing — the codes are random, so a wrong match
+   would take a collision AND a guess. The newest tap wins, which is the right
+   reading of a visitor who came back and tapped again. */
+const REF_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export async function findClickByRef(ref: string): Promise<CrmEvent | null> {
+  const code = ref.trim().toUpperCase();
+  if (!code) return null;
+  const since = new Date(Date.now() - REF_WINDOW_MS).toISOString();
+  return (await backend()).findEventByRef(code, since);
 }
 
 // ── Reporting ──
@@ -1319,4 +1341,126 @@ export async function reports(): Promise<Reports> {
     .slice(0, 20);
 
   return { bySource, byMonth, byVilla, lostReasons };
+}
+
+/* ══════════════════ Project notes ══════════════════
+
+   The board for everything that isn't a lead. Kept deliberately thin: a note is
+   a document, and every write replaces it whole. No revision dance like leads —
+   two people editing the same card at the same second is not a problem this
+   board has, and pretending otherwise would only make it harder to use. */
+
+const noteText = (s: unknown, max: number) => cleanText(String(s ?? '')).trim().slice(0, max);
+
+export interface NoteInput {
+  title?: string;
+  body?: string;
+  items?: { id?: string; text: string; done?: boolean }[];
+  color?: CardColor;
+  labels?: string[];
+  pinned?: boolean;
+  archived?: boolean;
+  due?: string;
+  owner?: string;
+}
+
+/** Pinned first, then most recently touched. That ordering IS the board. */
+export async function listNotes(): Promise<ProjectNote[]> {
+  const notes = await (await backend()).allNotes();
+  return notes.sort((a, b) =>
+    Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
+    (b.updatedAt || b.at || '').localeCompare(a.updatedAt || a.at || ''),
+  );
+}
+
+function cleanItems(items: NoteInput['items']): CardItem[] | undefined {
+  if (!Array.isArray(items)) return undefined;
+  const list = items
+    .map((it) => ({ id: it.id || randomUUID(), text: noteText(it.text, 500), done: Boolean(it.done) }))
+    .filter((it) => it.text);
+  return list.length ? list : [];
+}
+
+/** Only the fields actually present in the patch are touched — the composer
+    sends a whole note, a checkbox tick sends one field. */
+function applyInput(note: ProjectNote, input: NoteInput): ProjectNote {
+  if ('title' in input)    note.title  = noteText(input.title, 200) || undefined;
+  if ('body' in input)     note.body   = noteText(input.body, 8000) || undefined;
+  if ('items' in input)    note.items  = cleanItems(input.items);
+  if ('color' in input)    note.color  = CARD_COLORS.includes(input.color as CardColor) ? input.color : 'plain';
+  if ('labels' in input)   note.labels = (input.labels || []).map((l) => noteText(l, 40)).filter(Boolean).slice(0, 8);
+  if ('pinned' in input)   note.pinned = Boolean(input.pinned);
+  if ('archived' in input) note.archived = Boolean(input.archived);
+  if ('due' in input)      note.due    = noteText(input.due, 30) || undefined;
+  if ('owner' in input)    note.owner  = noteText(input.owner, 60) || undefined;
+  note.updatedAt = now();
+  return note;
+}
+
+export async function createNote(input: NoteInput, actor?: string): Promise<ProjectNote> {
+  const note = applyInput(
+    { id: randomUUID(), at: now(), updatedAt: now(), ...(actor ? { by: actor } : {}) },
+    input,
+  );
+  await (await backend()).saveNote(note);
+  return note;
+}
+
+export async function updateNote(id: string, input: NoteInput): Promise<ProjectNote | null> {
+  const be = await backend();
+  const note = (await be.allNotes()).find((n) => n.id === id);
+  if (!note) return null;
+  const next = applyInput({ ...note }, input);
+  await be.saveNote(next);
+  return next;
+}
+
+/** Tick one checklist line. Its own call so the board can fire it on a tap
+    without sending (and risking clobbering) the rest of the note. */
+export async function toggleNoteItem(id: string, itemId: string): Promise<ProjectNote | null> {
+  const be = await backend();
+  const note = (await be.allNotes()).find((n) => n.id === id);
+  if (!note?.items) return null;
+  const next: ProjectNote = {
+    ...note,
+    items: note.items.map((it) => (it.id === itemId ? { ...it, done: !it.done } : it)),
+    updatedAt: now(),
+  };
+  await be.saveNote(next);
+  return next;
+}
+
+export async function deleteNote(id: string): Promise<boolean> {
+  return (await backend()).removeNote(id);
+}
+
+/** Every label in use, most-used first — the board's filter bar. */
+export async function noteLabels(): Promise<string[]> {
+  const counts = new Map<string, number>();
+  for (const n of await (await backend()).allNotes()) {
+    if (n.archived) continue;
+    for (const l of n.labels || []) counts.set(l, (counts.get(l) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([l]) => l);
+}
+
+/** Attach (or clear) the Google Task this card mirrors to. Deliberately NOT an
+    updateNote patch: the link is bookkeeping, and bumping updatedAt for it would
+    shuffle the board every time the sync runs. */
+export async function linkNoteToTask(id: string, googleTaskId?: string): Promise<void> {
+  const be = await backend();
+  const note = (await be.allNotes()).find((n) => n.id === id);
+  if (!note) return;
+  const next = { ...note };
+  if (googleTaskId) next.googleTaskId = googleTaskId;
+  else delete next.googleTaskId;
+  await be.saveNote(next);
+}
+
+/** Integration state (tokens, sync marks) lives beside the notes, not in them. */
+export async function getSetting<T>(key: string): Promise<T | null> {
+  return (await backend()).getSetting<T>(key);
+}
+export async function setSetting(key: string, value: unknown): Promise<void> {
+  return (await backend()).setSetting(key, value);
 }

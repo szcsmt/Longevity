@@ -3,6 +3,7 @@ import { runSequence } from '@/lib/crm/automation';
 import { sendDigest } from '@/lib/crm/digest';
 import { autoEmailsEnabled } from '@/lib/crm/mailer';
 import { whatsappEnabled } from '@/lib/crm/whatsapp';
+import { syncNow as syncGoogleTasks } from '@/lib/crm/google-tasks';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,5 +30,9 @@ export async function GET(req: Request) {
      what needs doing has nothing to do with whether we are mailing customers. */
   const digest = await sendDigest().catch(() => ({ sent: false, total: 0 }));
 
-  return Response.json({ ok: true, enabled: canSend, ...sequence, digest });
+  /* And carry the project board to the phone. Inert until someone has connected
+     a Google account; a failure here must never fail the sweep. */
+  const googleTasks = await syncGoogleTasks(true).catch(() => ({ ok: false, error: 'sync threw' }));
+
+  return Response.json({ ok: true, enabled: canSend, ...sequence, digest, googleTasks });
 }

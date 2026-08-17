@@ -315,7 +315,7 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* CTA — Explore + Enter the Estate + a WhatsApp shortcut to sales */}
+        {/* CTA — Explore + Enter the Estate */}
         <div className="hero-cta" style={{
           position:'absolute', left:'50%',
           transform:'translateX(-50%)',

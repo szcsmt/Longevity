@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import type { CrmEvent, Lead, VillaRecord, VillaHistoryEntry } from './types';
+import type { CrmEvent, Lead, ProjectNote, VillaRecord, VillaHistoryEntry } from './types';
 import type { Backend } from './backend';
 
 /* Production backend: Neon Postgres over HTTP (serverless-friendly, no pooling
@@ -42,6 +42,16 @@ function init(): Promise<void> {
       await q`CREATE TABLE IF NOT EXISTS crm_blocklist (
         key text PRIMARY KEY,
         added_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await q`CREATE TABLE IF NOT EXISTS crm_settings (
+        key text PRIMARY KEY,
+        value jsonb NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await q`CREATE TABLE IF NOT EXISTS crm_notes (
+        id text PRIMARY KEY,
+        data jsonb NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now()
       )`;
     })().catch((e) => {
       ready = null; // allow retry on next call
@@ -100,6 +110,13 @@ export const pgBackend: Backend = {
       SELECT id FROM crm_events WHERE data->>'type' = 'visit' ORDER BY at DESC OFFSET 5000
     )`;
   },
+  async findEventByRef(ref, since) {
+    await init();
+    const rows = await sql()`SELECT data FROM crm_events
+      WHERE data->>'ref' = ${ref} AND at >= ${since}
+      ORDER BY at DESC LIMIT 1`;
+    return (rows[0]?.data as CrmEvent) || null;
+  },
   async getVillas() {
     await init();
     const rows = await sql()`SELECT id, status, data FROM crm_villas`;
@@ -142,5 +159,32 @@ export const pgBackend: Backend = {
     for (const key of keys) {
       await sql()`INSERT INTO crm_blocklist (key) VALUES (${key}) ON CONFLICT (key) DO NOTHING`;
     }
+  },
+  async getSetting(key) {
+    await init();
+    const rows = await sql()`SELECT value FROM crm_settings WHERE key = ${key}`;
+    return (rows[0]?.value ?? null) as never;
+  },
+  async setSetting(key, value) {
+    await init();
+    await sql()`INSERT INTO crm_settings (key, value, updated_at)
+      VALUES (${key}, ${JSON.stringify(value)}::jsonb, now())
+      ON CONFLICT (key) DO UPDATE SET value = ${JSON.stringify(value)}::jsonb, updated_at = now()`;
+  },
+  async allNotes() {
+    await init();
+    const rows = await sql()`SELECT data FROM crm_notes ORDER BY updated_at DESC`;
+    return rows.map((r) => r.data as ProjectNote);
+  },
+  async saveNote(note) {
+    await init();
+    await sql()`INSERT INTO crm_notes (id, data, updated_at)
+      VALUES (${note.id}, ${JSON.stringify(note)}::jsonb, ${note.updatedAt})
+      ON CONFLICT (id) DO UPDATE SET data = ${JSON.stringify(note)}::jsonb, updated_at = ${note.updatedAt}`;
+  },
+  async removeNote(id) {
+    await init();
+    const rows = await sql()`DELETE FROM crm_notes WHERE id = ${id} RETURNING id`;
+    return rows.length > 0;
   },
 };
