@@ -1,11 +1,11 @@
 import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
-import { bulkDelete, bulkUpdate } from '@/lib/crm/store';
+import { bulkArchive, bulkUpdate } from '@/lib/crm/store';
 import { SCORES, STAGES } from '@/lib/crm/types';
 import type { Score, Stage } from '@/lib/crm/types';
 
 export const dynamic = 'force-dynamic';
 
-/* Bulk actions from the leads list: move stage, set score, or delete a
+/* Bulk actions from the leads list: move stage, set score, or archive a
    selection. Values are validated against the domain enums — a bad action or
    value is a 400. Each lead is attempted independently; the response reports
    how many succeeded and how many failed so a mid-batch error is never
@@ -33,12 +33,16 @@ export async function POST(req: Request) {
       if (!(SCORES as string[]).includes(value)) return Response.json({ ok: false, error: 'bad score' }, { status: 400 });
       result = await bulkUpdate(ids, { score: value as Score }, actor);
       break;
-    case 'delete':
-      // Deleting in bulk is the most destructive thing this CRM can do in one
-      // click, so it stays with the owner even though agents may re-stage and
-      // re-score freely.
+    case 'archive':
+      /* Archiving in bulk is reversible, but it takes a selection of leads out
+         of every view at once, so it stays with the owner even though agents
+         may re-stage and re-score freely.
+
+         There is deliberately no bulk PERMANENT delete. Destroying a customer's
+         history is a one-at-a-time decision, and the only route to it is
+         DELETE /api/crm/leads/[id]?purge=1 on a lead already archived. */
       if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
-      result = await bulkDelete(ids);
+      result = await bulkArchive(ids, undefined, actor);
       break;
     default:
       return Response.json({ ok: false, error: 'unknown action' }, { status: 400 });

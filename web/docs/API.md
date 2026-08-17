@@ -339,12 +339,28 @@ All writes go through optimistic concurrency (per-lead `rev`; up to 4 retries on
 | `merge` | `otherId` | Folds the other lead into this one: fills blank contact/attribution fields, keeps GDPR consent if either had it, appends notes/tasks/history (deduped by id — a retried merge is idempotent), logs a `merged` activity once, then deletes the other lead. `otherId === id` → `404`. |
 | `awaiting` | `on` (boolean) | `true`: sets `awaiting_reply_since = now`, logs "Email sent — awaiting reply", and adds a "Follow up — no reply yet" task due in 3 days (unless one is already open). `false`: clears the flag, logs "Reply received", ticks the chase task. |
 
-### DELETE /api/crm/leads/[id]?block=1
+### DELETE /api/crm/leads/[id]
 
-Deletes the lead. With `?block=1`, the lead's contact keys (`e:<lowercased email>`,
-`p:<last-9-digit phone key>` for phone and WhatsApp) are added to the blocklist **first**, so
-the person's next WhatsApp message through `/api/whatsapp` never recreates the lead (used for
-private/non-lead contacts, "Delete & block"). Response: `200 {"ok":true}` or `404 {"ok":false}`.
+**Archives** the lead. Admin only. The default is reversible because the request
+that looks like "get rid of this" is almost always "get this out of my way": the
+lead leaves every view, count, report and the sequence, and its timeline,
+attribution and ownership history all survive.
+
+| Query | Effect |
+|---|---|
+| *(none)* | Archive. `200 {"ok":true,"archived":true}` |
+| `?reason=…` | Archive with a reason recorded on the timeline |
+| `?block=1` | Also blocklist the contact, so a future WhatsApp message never recreates the lead |
+| `?purge=1` | **Permanent deletion.** Requires the lead to be archived already, else `409` with an explanation. `200 {"ok":true,"purged":true}` |
+
+`PATCH … {"op":"unarchive"}` restores it (admin only).
+
+There is deliberately no bulk permanent delete — the bulk action is `archive`.
+
+`?block=1` adds the lead's contact keys (`e:<lowercased email>`, `p:<last-9-digit phone key>`
+for phone and WhatsApp) to the blocklist **first**, so the person's next WhatsApp message
+through `/api/whatsapp` never recreates the lead. Used for private numbers that are not real
+leads, and it composes with either archiving or purging.
 
 ### GET /api/crm/leads/[id]/offer?value=&lt;THB&gt;
 
@@ -367,7 +383,7 @@ Bulk action from the leads list. Body:
 | Field | Validation |
 |---|---|
 | `ids` | array of strings, non-strings filtered out, capped at **200**; empty → `400 "no ids"` |
-| `action` | `stage` \| `score` \| `delete`; anything else → `400 "unknown action"` |
+| `action` | `stage` \| `score` \| `archive`; anything else → `400 "unknown action"` |
 | `value` | for `stage`: a valid stage id (else `400 "bad stage"`); for `score`: `hot`/`warm`/`cold` (else `400 "bad score"`); ignored for `delete` |
 
 Each lead is attempted independently — one failure never aborts the batch. Response:

@@ -56,13 +56,36 @@ export interface LeadFilter {
   /** Restrict to one salesperson's leads. With several people selling, "all
       leads" stops being a worklist and starts being a directory. */
   owner?: string;
+  /** Archived leads are excluded unless asked for. `include` is for the backup,
+      which must hold everything or it is not a backup; `only` is the operator
+      looking through what was set aside. */
+  archived?: 'exclude' | 'include' | 'only';
+}
+
+export const isArchived = (l: Lead): boolean => Boolean(l.archived_at);
+
+/* ── The working set ──
+
+   Every count, report, worklist and automated decision must be computed from
+   live leads only. Getting this wrong is quiet: an archived lead left in the
+   numbers inflates a conversion rate, and one left in the sequence keeps
+   e-mailing somebody the operator deliberately set aside.
+
+   So the filtering lives HERE, in one function, and the aggregates call it
+   rather than the backend. `backend.allLeads()` still returns everything, on
+   purpose — the backup depends on it. */
+async function liveLeads(): Promise<Lead[]> {
+  return (await (await backend()).allLeads()).filter((l) => !isArchived(l));
 }
 
 export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
   const leads = await (await backend()).allLeads();
   const q = filter.q?.trim().toLowerCase();
+  const archived = filter.archived || 'exclude';
   return leads
     .filter((l) => {
+      if (archived === 'exclude' && isArchived(l)) return false;
+      if (archived === 'only' && !isArchived(l)) return false;
       if (filter.stage && l.stage !== filter.stage) return false;
       if (filter.score && l.score !== filter.score) return false;
       if (filter.form_type && l.form_type !== filter.form_type) return false;
@@ -88,7 +111,11 @@ export async function relatedLeads(lead: Lead): Promise<Lead[]> {
   const email = (lead.email || '').trim().toLowerCase();
   const phone = (lead.phone || lead.whatsapp || '').replace(/[^\d]/g, '');
   if (!email && !phone) return [];
-  const leads = await (await backend()).allLeads();
+  /* Live records only. This panel offers a one-click merge, and an archived
+     duplicate has already been dealt with — a husk folded in by an earlier
+     merge would otherwise offer itself again for ever. Intake still finds
+     archived contacts by e-mail and phone, which is where it matters. */
+  const leads = await liveLeads();
   return leads
     .filter((l) => {
       if (l.id === lead.id) return false;
@@ -111,7 +138,8 @@ export async function relatedLeads(lead: Lead): Promise<Lead[]> {
    nobody is responsible for. Silent no-op while no roster is configured. */
 async function assignOwner(lead: Lead): Promise<void> {
   const lang = guessLanguage(lead);
-  const owner = pickOwner(await (await backend()).allLeads(), lang.language);
+  // Round-robin over live leads: an archived one is not somebody's workload.
+  const owner = pickOwner(await liveLeads(), lang.language);
   if (!owner) return;
   lead.owner = owner;
   logActivity(lead, 'assigned', `Assigned to ${owner} (${languageLabel(lang)})`);
@@ -169,6 +197,11 @@ export async function findLeadByContact(email?: string, phone?: string, whatsapp
   const e = (email || '').trim().toLowerCase();
   const pk = phoneKey(phone) || phoneKey(whatsapp);
   if (!e && !pk) return null;
+  /* Archived leads are deliberately INCLUDED here, and this is the one place
+     they are. Somebody the operator set aside who writes to us again is a real
+     enquiry, and the upsert revives their record rather than starting a second
+     one beside it — which is exactly the duplicate this function exists to
+     prevent. "Never again" is the blocklist's job, not the archive's. */
   const leads = await (await backend()).allLeads();
   const matches = leads.filter((l) =>
     (e && (l.email || '').trim().toLowerCase() === e) ||
@@ -231,11 +264,21 @@ export async function upsertLeadFromPayload(
   // A lead from before the roster existed picks up an owner on its next contact.
   const missingOwner = existing.owner
     ? undefined
-    : pickOwner(await (await backend()).allLeads(), guessLanguage({ ...existing, phone: s('phone') || existing.phone }).language);
+    : pickOwner(await liveLeads(), guessLanguage({ ...existing, phone: s('phone') || existing.phone }).language);
   const updated = await mutate(existing.id, (lead) => {
     if (!lead.owner && missingOwner) {
       lead.owner = missingOwner;
       logActivity(lead, 'assigned', `Assigned to ${missingOwner}`);
+    }
+    /* Somebody the operator set aside has written to us again. That is a live
+       enquiry, so the record comes back rather than a second one appearing
+       beside it. A contact who must never return is on the blocklist and never
+       reaches this far. */
+    if (isArchived(lead)) {
+      lead.archived_at = undefined;
+      lead.archived_by = undefined;
+      lead.archive_reason = undefined;
+      logActivity(lead, 'archived', `Restored from the archive — they made contact again`);
     }
     // Fill blanks only — never overwrite what the operator curated.
     for (const k of ['name', 'email', 'phone', 'whatsapp', 'villa'] as const) {
@@ -378,7 +421,7 @@ export async function updateLead(id: string, patch: LeadPatch, actor?: string): 
    duplicate. Nothing on the primary is ever overwritten, and appends are
    deduped by id so a retried merge (e.g. after a failed delete) stays
    idempotent instead of double-appending. */
-export async function mergeLeads(primaryId: string, otherId: string): Promise<Lead | null> {
+export async function mergeLeads(primaryId: string, otherId: string, actor?: string): Promise<Lead | null> {
   if (primaryId === otherId) return null;
   const be = await backend();
   const other = await be.getLead(otherId);
@@ -413,7 +456,12 @@ export async function mergeLeads(primaryId: string, otherId: string): Promise<Le
     }
   });
   if (!merged) return null;
-  await be.removeLead(otherId);
+  /* The husk is archived, not deleted. Everything on it was copied across, so
+     it holds nothing unique — but the fact that a second record existed, and
+     what it was folded into, is part of the history a merge must not erase.
+     Archived records are excluded from duplicate detection, so it will not
+     present itself for merging again. */
+  await archiveLead(otherId, `Merged into ${merged.name || merged.email || merged.id}`, actor);
   return merged;
 }
 
@@ -430,7 +478,9 @@ export interface DedupeReport {
 }
 
 async function duplicateGroups(): Promise<Lead[][]> {
-  const leads = await (await backend()).allLeads();
+  // Archived excluded: a husk folded in by an earlier merge is not a duplicate
+  // waiting to be found all over again.
+  const leads = await liveLeads();
   // Union-find over contact keys so email- and phone-matches chain together.
   const parent = new Map<string, string>();
   const find = (x: string): string => {
@@ -508,18 +558,7 @@ export async function bulkUpdate(ids: string[], patch: LeadPatch, actor?: string
   return { done, failed };
 }
 
-export async function bulkDelete(ids: string[]): Promise<{ done: number; failed: number }> {
-  const be = await backend();
-  let done = 0, failed = 0;
-  for (const id of ids) {
-    try {
-      if (await be.removeLead(id)) done++;
-    } catch {
-      failed++;
-    }
-  }
-  return { done, failed };
-}
+
 
 // ── Tasks across all leads ──
 
@@ -531,7 +570,7 @@ export interface GlobalTask {
 }
 
 export async function allTasks(): Promise<GlobalTask[]> {
-  const leads = await (await backend()).allLeads();
+  const leads = await liveLeads();
   return leads.flatMap((l) =>
     l.tasks.map((task) => ({ leadId: l.id, leadName: l.name || 'Unknown', leadStage: l.stage, task })),
   );
@@ -565,8 +604,60 @@ export async function toggleTask(id: string, taskId: string): Promise<Lead | nul
   return found ? lead : null;
 }
 
-export async function deleteLead(id: string): Promise<boolean> {
-  return (await backend()).removeLead(id);
+/* ── Setting a lead aside, and the one way to really destroy it ──
+
+   Until now the only way to get rid of a lead was a real DELETE, which took the
+   timeline, the source attribution and the ownership history with it. That is
+   the opposite of the developer owning the database: a wrong number and a
+   customer's entire history were one click apart, and the only recovery was
+   last night's backup.
+
+   Archiving replaces it. The lead leaves every view, count, report and the
+   automated sequence, and everything about it survives. */
+export async function archiveLead(id: string, reason?: string, actor?: string): Promise<Lead | null> {
+  const why = cleanText(reason || '').trim().slice(0, 300) || undefined;
+  return mutate(id, (lead) => {
+    if (isArchived(lead)) return; // already set aside; keep the first record of why
+    lead.archived_at = now();
+    lead.archived_by = actor;
+    lead.archive_reason = why;
+    logActivity(lead, 'archived', `Archived${why ? `: ${why}` : ''}`, actor);
+  });
+}
+
+export async function unarchiveLead(id: string, actor?: string): Promise<Lead | null> {
+  return mutate(id, (lead) => {
+    if (!isArchived(lead)) return;
+    lead.archived_at = undefined;
+    lead.archived_by = undefined;
+    lead.archive_reason = undefined;
+    logActivity(lead, 'archived', 'Restored from the archive', actor);
+  });
+}
+
+export async function bulkArchive(
+  ids: string[], reason?: string, actor?: string,
+): Promise<{ done: number; failed: number }> {
+  let done = 0, failed = 0;
+  for (const id of ids) {
+    try {
+      if (await archiveLead(id, reason, actor)) done++; else failed++;
+    } catch {
+      failed++;
+    }
+  }
+  return { done, failed };
+}
+
+/* The real deletion, for a genuine erasure request. Two deliberate steps: a
+   lead has to be archived first, so the destructive act can never be the same
+   click as the tidy-up one. Returns 'not-archived' rather than throwing so the
+   route can say why instead of failing blankly. */
+export async function purgeLead(id: string): Promise<'purged' | 'not-found' | 'not-archived'> {
+  const lead = await (await backend()).getLead(id);
+  if (!lead) return 'not-found';
+  if (!isArchived(lead)) return 'not-archived';
+  return (await (await backend()).removeLead(id)) ? 'purged' : 'not-found';
 }
 
 /** Log an automated e-mail on the lead: outbox entry (drives the sequence)
@@ -836,7 +927,7 @@ export interface AttentionCounts {
 }
 
 export async function attentionCounts(): Promise<AttentionCounts> {
-  const leads = await (await backend()).allLeads();
+  const leads = await liveLeads();
   const today = now().slice(0, 10);
   const newCut = daysAgo(STAGE_MAX_DAYS.new ?? 1);
   const replyCut = daysAgo(REPLY_FLAG_DAYS);
@@ -1243,7 +1334,9 @@ export interface Stats {
 
 export async function stats(): Promise<Stats> {
   const be = await backend();
-  const [leads, events] = await Promise.all([be.allLeads(), be.allEvents(500)]);
+  // Live leads only: an archived lead left in the counts inflates every rate
+  // computed from them, and does it silently.
+  const [leads, events] = await Promise.all([liveLeads(), be.allEvents(500)]);
   const byStage: Record<string, number> = {};
   const byScore: Record<string, number> = {};
   const byForm: Record<string, number> = {};
@@ -1373,7 +1466,7 @@ export interface Reports {
 }
 
 export async function reports(): Promise<Reports> {
-  const leads = await (await backend()).allLeads();
+  const leads = await liveLeads();
 
   // Source performance
   const srcMap = new Map<string, SourceReport>();

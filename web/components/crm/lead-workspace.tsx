@@ -97,12 +97,38 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
     setEditing(false);
   }
 
-  async function remove(block = false) {
+  /* Archiving takes the lead out of every view and keeps everything about it.
+     It is what "get rid of this" almost always means, and it can be undone. */
+  async function archive(block = false) {
     const msg = block
-      ? 'Delete this lead AND block the contact? Future WhatsApp messages from this number/e-mail will never create a lead again.'
-      : 'Delete this lead permanently?';
+      ? 'Archive this lead AND block the contact?\n\nThe history is kept and can be restored. Blocking means future WhatsApp messages from this number or e-mail never create a lead again.'
+      : 'Archive this lead?\n\nIt leaves every list, count and report, and the automated e-mails stop. Nothing is lost — you can restore it.';
     if (!confirm(msg)) return;
     await fetch(`/api/crm/leads/${lead.id}${block ? '?block=1' : ''}`, { method: 'DELETE' });
+    router.replace('/admin/leads');
+    router.refresh();
+  }
+
+  async function restore() {
+    await patch({ op: 'unarchive' });
+    router.refresh();
+  }
+
+  /* The real erasure, for a deletion request. Only reachable on a lead that is
+     already archived, so it can never be the same click as tidying up. */
+  async function purge() {
+    if (!confirm(
+      `Permanently delete ${lead.name || 'this lead'}?\n\n` +
+      'This destroys the timeline, the notes and the source attribution for good. ' +
+      'There is no undo and no copy except last night\u2019s backup.\n\n' +
+      'Use this only for a genuine erasure request.',
+    )) return;
+    const res = await fetch(`/api/crm/leads/${lead.id}?purge=1`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      alert(data?.error || 'The delete did not go through.');
+      return;
+    }
     router.replace('/admin/leads');
     router.refresh();
   }
@@ -124,7 +150,7 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
   }
 
   async function merge(otherId: string) {
-    if (!confirm('Merge that enquiry into this lead? Its notes, tasks and history move here and the duplicate is deleted.')) return;
+    if (!confirm('Merge that enquiry into this lead?\n\nIts notes, tasks and history move here, and the duplicate is archived with a note saying where it went. Nothing is destroyed.')) return;
     await patch({ op: 'merge', otherId });
     router.refresh();
   }
@@ -149,6 +175,30 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
 
   return (
     <div className="crm-detail">
+      {lead.archived_at && (
+        <div
+          className="crm-card"
+          style={{
+            gridColumn: '1 / -1',
+            borderColor: 'var(--c-hot)',
+            display: 'flex', flexWrap: 'wrap', gap: 12,
+            alignItems: 'center', justifyContent: 'space-between',
+          }}
+        >
+          <div>
+            <div style={{ color: 'var(--c-hot)', fontWeight: 600 }}>Archived</div>
+            <div className="crm-meta" style={{ marginTop: 4 }}>
+              {fmtDate(lead.archived_at)}
+              {lead.archived_by ? ` · ${lead.archived_by}` : ''}
+              {lead.archive_reason ? ` · ${lead.archive_reason}` : ''}
+              {' · '}Hidden from every list, count and report. The automated e-mails have stopped.
+            </div>
+          </div>
+          {!readOnly && (
+            <button className="crm-btn gold sm" disabled={busy} onClick={restore}>Restore</button>
+          )}
+        </div>
+      )}
       {/* ── Left column ── */}
       <div className="stack">
         {/* Contact + quick actions */}
@@ -554,11 +604,23 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
           <div className="crm-card">
             <h3>Danger zone</h3>
             <div className="act-row">
-              <button className="crm-btn danger sm" onClick={() => remove(false)}>Delete lead</button>
-              <button className="crm-btn danger sm" onClick={() => remove(true)}
-                title="Delete and blocklist the contact — for private numbers that are not real leads">
-                Delete & block contact
-              </button>
+              {lead.archived_at ? (
+                <>
+                  <button className="crm-btn gold sm" onClick={restore}>Restore from archive</button>
+                  <button className="crm-btn danger sm" onClick={purge}
+                    title="Destroys the timeline and the source attribution for good. For a genuine erasure request only.">
+                    Delete permanently
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="crm-btn danger sm" onClick={() => archive(false)}>Archive lead</button>
+                  <button className="crm-btn danger sm" onClick={() => archive(true)}
+                    title="Archive and blocklist the contact — for private numbers that are not real leads">
+                    Archive &amp; block contact
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

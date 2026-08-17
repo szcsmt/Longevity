@@ -51,6 +51,9 @@ export async function GET(req: Request) {
     score: p('score'),
     form_type: p('form_type'),
     q: p('q'),
+    // Follows the view it was launched from: exporting while looking at the
+    // archive should not quietly hand back the live list instead.
+    archived: p('archived') === 'only' ? 'only' : undefined,
   });
 
   const lines = [

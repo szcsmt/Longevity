@@ -16,8 +16,9 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
   sortHrefs: Record<string, string>; // column id -> href with that sort applied
   sort: string;
   readOnly?: boolean;
-  /** Agents re-stage and re-score all day but may not delete: the button is
-      hidden for them rather than shown and then refused by the API. */
+  /** Agents re-stage and re-score all day but may not archive a selection out
+      of everyone's view: the button is hidden for them rather than shown and
+      then refused by the API. */
   canDelete?: boolean;
 }) {
   const router = useRouter();
@@ -37,9 +38,13 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
     });
   }
 
-  async function bulk(action: 'stage' | 'score' | 'delete', value?: string) {
+  async function bulk(action: 'stage' | 'score' | 'archive', value?: string) {
     if (!ids.length) return;
-    if (action === 'delete' && !confirm(`Delete ${ids.length} ${ids.length === 1 ? 'lead' : 'leads'} permanently?`)) return;
+    if (action === 'archive' && !confirm(
+      `Archive ${ids.length} ${ids.length === 1 ? 'lead' : 'leads'}?\n\n` +
+      'They leave every list, count and report, and their automated e-mails stop. ' +
+      'Nothing is lost — each one can be restored.',
+    )) return;
     setBusy(true);
     try {
       const res = await fetch('/api/crm/leads/bulk', {
@@ -89,7 +94,7 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
             <option value="">Set score…</option>
             {SCORES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
           </select>
-          {canDelete && <button className="crm-btn danger sm" disabled={busy || !any} onClick={() => bulk('delete')}>Delete</button>}
+          {canDelete && <button className="crm-btn danger sm" disabled={busy || !any} onClick={() => bulk('archive')}>Archive</button>}
           <button className="crm-btn ghost sm" disabled={busy || !any} onClick={() => setSel(new Set())}>Clear</button>
         </div>
       )}

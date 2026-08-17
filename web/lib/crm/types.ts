@@ -133,7 +133,7 @@ export interface Task {
    with notes in the lead timeline, so the full history reads in one place. */
 export interface Activity {
   id: string;
-  kind: 'created' | 'stage' | 'score' | 'contact' | 'value' | 'merged' | 'email' | 'message' | 'assigned' | 'download' | 'click' | 'document';
+  kind: 'created' | 'stage' | 'score' | 'contact' | 'value' | 'merged' | 'email' | 'message' | 'assigned' | 'download' | 'click' | 'document' | 'archived';
   /** Who did it, when a signed-in person did. Absent for anything the system
       or the customer did — those read as the CRM's own actions. */
   by?: string;
@@ -205,6 +205,22 @@ export interface Lead {
 
   created_at: string;
   updated_at: string;
+
+  /* ── Archived, not deleted ──
+
+     Set instead of removing the row. An archived lead is out of every working
+     view, every count, every report and the automated sequence, but its
+     timeline, its source attribution and its ownership history are all still
+     there — which is the whole point of the developer owning the database.
+     A salesperson leaving, an enquiry turning out to be a wrong number, or a
+     duplicate being folded in must not erase what happened.
+
+     Reversible: `unarchiveLead` clears all three. A genuine erasure (a GDPR
+     request) is `purgeLead`, which deletes the row for real and only accepts a
+     lead that is already archived — two deliberate steps, never one click. */
+  archived_at?: string;
+  archived_by?: string;      // the operator who archived it
+  archive_reason?: string;   // why, in their words or the system's
 
   /* Optimistic-concurrency revision. Bumped on every save; the backend refuses
      a save whose expected rev no longer matches, so two concurrent edits can't

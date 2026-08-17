@@ -28,12 +28,18 @@ export default async function LeadsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
+  /* `archived=only` is the one way into the archive, and it is deliberately a
+     URL rather than a prominent tab: setting leads aside should be easy to
+     undo and uninteresting to browse. */
+  const showArchived = str(sp.archived) === 'only';
   const filter = {
     stage: str(sp.stage),
     score: str(sp.score),
     form_type: str(sp.form_type),
     owner: str(sp.owner),
     q: str(sp.q),
+    // Left undefined off the archive view, so it stays out of every link qs() builds.
+    archived: (showArchived ? 'only' : undefined) as 'only' | undefined,
   };
   // Object.hasOwn, not a truthy lookup: '__proto__' or 'hasOwnProperty' would
   // otherwise pass the check and hand Array.sort a non-function comparator.
@@ -61,8 +67,11 @@ export default async function LeadsPage({
     <>
       <div className="crm-head">
         <div>
-          <h1 className="crm-title">Leads</h1>
-          <p className="crm-sub">{leads.length} {leads.length === 1 ? 'lead' : 'leads'} matching your view.</p>
+          <h1 className="crm-title">{showArchived ? 'Archived leads' : 'Leads'}</h1>
+          <p className="crm-sub">
+            {leads.length} {leads.length === 1 ? 'lead' : 'leads'} matching your view.
+            {showArchived && ' Hidden from every count and report, and the automated e-mails have stopped. Open one to restore it.'}
+          </p>
         </div>
         <div className="act-row">
           {editor && <Link className="crm-btn gold" href="/admin/leads/new">+ Add lead</Link>}
@@ -76,6 +85,11 @@ export default async function LeadsPage({
             </Link>
           )}
           <Link className="crm-btn" href="/admin/pipeline">Pipeline view →</Link>
+          {admin && (
+            <Link className="crm-btn ghost" href={showArchived ? '/admin/leads' : '/admin/leads?archived=only'}>
+              {showArchived ? '← Back to leads' : 'Archive'}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -112,6 +126,7 @@ export default async function LeadsPage({
             </select>
           </div>
         )}
+        {showArchived && <input type="hidden" name="archived" value="only" />}
         <button className="crm-btn gold" type="submit">Filter</button>
         <Link className="crm-btn ghost" href="/admin/leads">Reset</Link>
       </form>

@@ -77,6 +77,38 @@ serialized write lock). A lost race returns false; the domain layer re-reads and
 4 attempts, then throws `too many concurrent updates`. Concurrent edits interleave instead of
 silently overwriting each other.
 
+## Archived leads
+
+`archived_at`, `archived_by`, `archive_reason` on the Lead. Set instead of
+deleting the row.
+
+An archived lead is excluded from **every** list, count, report, worklist and
+from the automated sequence, and its timeline, source attribution and ownership
+history are all still there. That is the point: a wrong number and a customer's
+entire history used to be one click apart, with last night's backup as the only
+recovery.
+
+Where the exclusion lives: `liveLeads()` in `store.ts`, which every aggregate
+calls. `backend.allLeads()` still returns everything on purpose — the backup
+depends on it, and a backup that omits the records somebody set aside is not a
+backup. `listLeads({ archived })` takes `exclude` (the default), `include` (the
+backup) or `only` (the archive view).
+
+Two deliberate exceptions, both in `store.ts` and both commented there:
+
+| Function | Behaviour | Why |
+|---|---|---|
+| `findLeadByContact` | **includes** archived | Somebody who writes to us again is a live enquiry. `upsertLeadFromPayload` un-archives their record rather than creating a second one beside it. "Never again" is the blocklist's job. |
+| `relatedLeads` | excludes archived | The panel offers a one-click merge; a husk folded in by an earlier merge would offer itself for ever. |
+
+**Merging** archives the duplicate with `archive_reason` = `Merged into <name>`
+rather than deleting it. Everything was copied to the primary, but the fact that
+a second record existed, and where it went, is part of the history.
+
+**Permanent deletion** is `purgeLead`, and it refuses a lead that is not already
+archived — two deliberate steps, never one click. Route:
+`DELETE /api/crm/leads/[id]?purge=1`, admin only. There is no bulk purge.
+
 ## Note
 
 | Field | Type | Meaning |

@@ -121,8 +121,10 @@ feltöltöd a sablonjaikat, ugyanezekből az adatokból ki tudjuk tölteni azoka
 **Follow-up tasks** — teendők ehhez a leadhez, opcionális határidővel. A lejárt teendő pirosan jelölve (`· overdue`); a határidő naptári nap szerint számít, tehát a ma esedékes még nem lejárt.
 
 **Danger zone** (csak admin):
-- **Delete lead** — végleges törlés.
-- **Delete & block contact** — törlés ÉS a kontakt (e-mail + telefonszám) tiltólistára tétele. Ezután az erről a számról vagy címről WhatsAppon beérkező megkeresés soha többé nem hoz létre leadet. Magánszámokra, nem valódi érdeklődőkre való.
+- **Archive lead** — a lead kikerül minden listából, számból, riportból, és leállnak rajta az automata levelek. **Semmi nem veszik el:** az idővonal, a jegyzetek, a forrás és a gazda-előzmény mind megmarad, és bármikor visszahozható. Ez az, amit a régi „törlés" helyett használj.
+- **Archive & block contact** — ugyanez, plusz a kontakt tiltólistára kerül. Ezután az erről a számról vagy címről WhatsAppon beérkező megkeresés soha többé nem hoz létre leadet. Magánszámokra, nem valódi érdeklődőkre való.
+- **Az archivált leadek** a Leads oldal jobb felső **Archive** gombjával érhetők el. Ott megnyitva egy **Restore** gomb hozza vissza.
+- **Delete permanently** — csak archivált leaden jelenik meg, és **véglegesen megszünteti** az idővonalat, a jegyzeteket és a forrás-adatot. Nincs visszaút, az éjszakai mentésen kívül nincs másolat. Kizárólag valódi törlési kérésre (GDPR) használd.
 
 ### Lost — elveszett üzlet
 

@@ -19,7 +19,10 @@ export async function GET(req: Request) {
   }
 
   const [leads, villaData, events] = await Promise.all([
-    listLeads(),
+    /* Everything, archived included. A backup that quietly omits the records
+       somebody set aside is not a backup — and those are exactly the ones with
+       no other copy anywhere. */
+    listLeads({ archived: 'include' }),
     getVillaData(),
     listEvents(500),
   ]);
