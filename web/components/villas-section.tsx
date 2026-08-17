@@ -3,17 +3,12 @@
 import { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { openEnquiry } from '@/components/enquiry-modal';
+import { Tour3D, TOUR_APP_ID } from '@/components/tour-3d';
 import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
-/* 3destate "3D Twin" — embedded via the official launcher script (NOT an iframe;
-   the vendor's own guide says iframes degrade the mobile experience). The launcher
-   reads the app id off its <script> tag and renders the live viewer into #sm3de.
-   One shared tour for now — give each villa its own appId below when supplied. */
-const TOUR_APP_ID   = 'naboo-sol-fzc-balalake-resort-dsa73hsa-co-sm-prod';
-const TOUR_LAUNCHER = 'https://oneappappsprd.z6.web.core.windows.net/launcher/production/app.js';
 /* Per-villa unit ids inside the 3D Twin. Passing `initUnitOpenId` opens that unit's
    interior model directly instead of the whole estate from above. The project has
    three unit types (50.17 / 53.34 / 66.30 m², 1/1/2 rooms) — mapped to M / L / XL. */
@@ -126,74 +121,6 @@ const villas: VillaData[] = [
     tourUnitId: TOUR_UNIT.XL,
   },
 ];
-
-/* ─── 3D Twin viewer ───
-   Mounts the 3destate launcher the official way: a #sm3de host element plus the
-   launcher <script> (id "sm-init-script", data-appid). The launcher auto-inits on
-   first load; on every later open we re-init through its public window API so the
-   viewer rebuilds inside the fresh host without a page reload. */
-// Strip every state param the viewer reads/writes, so our address bar goes back to
-// clean once the tour closes (the viewer mirrors its state into the page URL).
-function clearTourParams() {
-  const u = new URL(window.location.href);
-  let changed = false;
-  [...u.searchParams.keys()].forEach(k => { if (k.startsWith('sm-')) { u.searchParams.delete(k); changed = true; } });
-  if (changed) window.history.replaceState(null, '', u.pathname + u.search + u.hash);
-}
-
-function Tour3D({ appId, unitId }: { appId: string; unitId?: string }) {
-  useEffect(() => {
-    const ROOT = 'sm3de';
-    let cancelled = false;
-
-    // The viewer takes its starting state from the page URL. Pointing it at one
-    // unit's interior (Dollhouse = the 3D apartment model) opens that villa
-    // directly instead of the whole estate from above.
-    if (unitId) {
-      const u = new URL(window.location.href);
-      [...u.searchParams.keys()].forEach(k => { if (k.startsWith('sm-')) u.searchParams.delete(k); });
-      u.searchParams.set('sm-screen-type', 'UnitDetails');
-      u.searchParams.set('sm-unit', unitId);
-      u.searchParams.set('sm-media', 'Dollhouse');
-      window.history.replaceState(null, '', u.toString());
-    } else {
-      clearTourParams();
-    }
-
-    const config = { appId, rootElement: ROOT };
-    type Launcher = { init: (o: typeof config) => unknown };
-    const w = window as unknown as {
-      AppLauncher3DEOA?: Launcher;
-      AppLauncher3DEOAConfig?: typeof config;
-    };
-
-    if (w.AppLauncher3DEOA?.init) {
-      // Launcher already on the page from a previous open — rebuild for this villa
-      // (it re-reads the URL params we just set).
-      if (!cancelled) w.AppLauncher3DEOA.init(config);
-    } else if (!document.getElementById('sm-init-script')) {
-      // First open: the launcher auto-inits from this global config; the viewer
-      // reads the unit from the URL. No manual init, or it would build twice.
-      w.AppLauncher3DEOAConfig = config;
-      const s = document.createElement('script');
-      s.id = 'sm-init-script';
-      s.src = TOUR_LAUNCHER;
-      s.async = true;
-      s.setAttribute('data-appid', appId);
-      s.setAttribute('data-rootelement', ROOT);
-      document.body.appendChild(s);
-    }
-
-    return () => {
-      cancelled = true;
-      const host = document.getElementById(ROOT);
-      if (host) host.innerHTML = '';   // clear the viewer so the next open starts clean
-      clearTourParams();               // and restore a clean address bar
-    };
-  }, [appId, unitId]);
-
-  return <div id="sm3de" style={{ width: '100%', height: '100%' }} />;
-}
 
 /* ─── Image Carousel ─── */
 function VillaImageCarousel({

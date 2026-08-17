@@ -24,6 +24,7 @@ export const messages: Record<string, Entry> = {
   // ── Nav ──
   'nav.estate': { en: 'The Estate', de: 'Das Anwesen', hu: 'A birtok', fr: 'Le Domaine', zh: '庄园', ru: 'Поместье' },
   'nav.park': { en: 'The Park', de: 'Der Park', hu: 'A park', fr: 'Le Parc', zh: '园区', ru: 'Парк' },
+  'nav.tour': { en: '3D Twin', de: '3D Zwilling', hu: '3D mása', fr: 'Jumeau 3D', zh: '3D 数字孪生', ru: '3D двойник' },
   'nav.villas': { en: 'Residences', de: 'Villen', hu: 'Villák', fr: 'Villas', zh: '别墅', ru: 'Виллы' },
   'nav.personalise': { en: 'Personalise', de: 'Personalisieren', hu: 'Személyre szabás', fr: 'Personnaliser', zh: '个性定制', ru: 'Персонализация' },
   'nav.location': { en: 'Location', de: 'Lage', hu: 'Elhelyezkedés', fr: 'Emplacement', zh: '位置', ru: 'Расположение' },
@@ -292,6 +293,44 @@ export const messages: Record<string, Entry> = {
 
   // ── Villas ──
   'v.eyebrow': { en: 'The Residences', de: 'Die Villen', hu: 'A villák', fr: 'Les Villas', zh: '别墅', ru: 'Виллы' },
+  // ── The 3D Twin section ──
+  'tour.eyebrow': { en: 'The 3D Twin', de: 'Der 3D Zwilling', hu: 'A 3D mása', fr: 'Le Jumeau 3D', zh: '3D 数字孪生', ru: '3D двойник' },
+  'tour.headline': {
+    en: 'Walk the estate, *before a brick is laid.*',
+    de: 'Gehen Sie durch das Anwesen, *bevor der erste Stein liegt.*',
+    hu: 'Járja be a birtokot, *mielőtt egy tégla is állna.*',
+    fr: 'Parcourez le domaine, *avant la première pierre.*',
+    zh: '在第一块砖砌起之前，*先走遍整座庄园。*',
+    ru: 'Пройдитесь по поместью, *ещё до первого кирпича.*',
+  },
+  'tour.body': {
+    en: 'The whole project, modelled to the last detail — the lanes, the planting, the rooftops. Open it from above, filter by size or availability, then step inside any of the 69 residences and look around as though you were standing in it.',
+    de: 'Das gesamte Projekt, bis ins letzte Detail modelliert — die Wege, die Bepflanzung, die Dächer. Öffnen Sie es von oben, filtern Sie nach Größe oder Verfügbarkeit, und treten Sie dann in jede der 69 Villen ein, als stünden Sie darin.',
+    hu: 'A teljes projekt, az utolsó részletig megépítve — az utcák, a növényzet, a tetők. Nyissa meg felülről, szűrjön méretre vagy elérhetőségre, majd lépjen be bármelyikbe a 69 rezidencia közül, és nézzen körül, mintha ott állna.',
+    fr: "L'ensemble du projet, modélisé jusqu'au moindre détail — les allées, les plantations, les toitures. Ouvrez-le vu du ciel, filtrez par surface ou disponibilité, puis entrez dans chacune des 69 villas comme si vous y étiez.",
+    zh: '整个项目均以极致细节建模——街巷、植被、屋顶皆在其中。自空中俯瞰开启，按面积或在售状态筛选，再步入 69 栋住宅中的任意一栋，如临其境般环顾四周。',
+    ru: 'Весь проект, смоделированный до последней детали — улицы, озеленение, кровли. Откройте его сверху, отфильтруйте по площади или доступности, а затем войдите в любую из 69 резиденций и осмотритесь, будто стоите внутри.',
+  },
+  'tour.cta': { en: 'Walk the estate', de: 'Anwesen begehen', hu: 'Birtok bejárása', fr: 'Parcourir le domaine', zh: '走进庄园', ru: 'Пройти по поместью' },
+  'tour.stageNote': { en: 'Interactive · 69 residences', de: 'Interaktiv · 69 Villen', hu: 'Interaktív · 69 rezidencia', fr: 'Interactif · 69 villas', zh: '可交互 · 69 栋住宅', ru: 'Интерактивно · 69 резиденций' },
+  'tour.hint': {
+    en: 'Opens on this page. Nothing loads until you ask for it.',
+    de: 'Öffnet sich auf dieser Seite. Es wird nichts geladen, bevor Sie es anfordern.',
+    hu: 'Ezen az oldalon nyílik meg. Semmi nem töltődik be, amíg Ön nem kéri.',
+    fr: "S'ouvre sur cette page. Rien ne se charge tant que vous ne le demandez pas.",
+    zh: '在本页面内打开。在您主动开启之前，不会加载任何内容。',
+    ru: 'Открывается на этой странице. Ничего не загружается, пока вы не попросите.',
+  },
+  'tour.posterAlt': {
+    en: 'The Longevity Resort estate as a 3D model, seen from above',
+    de: 'Das Anwesen von Longevity Resort als 3D Modell, von oben gesehen',
+    hu: 'A Longevity Resort birtok 3D modellje, felülnézetből',
+    fr: 'Le domaine de Longevity Resort en modèle 3D, vu du ciel',
+    zh: 'Longevity Resort 庄园 3D 模型俯瞰图',
+    ru: 'Поместье Longevity Resort в виде 3D модели, вид сверху',
+  },
+  'tour.close': { en: 'Close the tour', de: 'Tour schließen', hu: 'Bejárás bezárása', fr: 'Fermer la visite', zh: '关闭漫游', ru: 'Закрыть тур' },
+
   'v.headline': { en: 'Three private residences. *One island.*', de: 'Drei Refugien. *Eine Insel.*', hu: 'Három menedék. *Egy sziget.*', fr: 'Trois sanctuaires. *Une île.*', zh: '三处静谧居所，*同享一座海岛。*', ru: 'Три убежища. *Один остров.*' },
   'v.tap': { en: 'Tap to explore', de: 'Zum Erkunden tippen', hu: 'Koppintson a felfedezéshez', fr: 'Touchez pour explorer', zh: '轻触探索', ru: 'Нажмите, чтобы открыть' },
   'v.view3d': { en: 'View it in 3D', de: 'In 3D ansehen', hu: 'Megtekintés 3D-ben', fr: 'Voir en 3D', zh: '查看 3D', ru: 'Смотреть в 3D' },
@@ -418,7 +457,7 @@ export const messages: Record<string, Entry> = {
   // ── Enquiry popup ──
   'enq.title': { en: 'Enquire', de: 'Anfrage senden', hu: 'Érdeklődés', fr: 'Faire une demande', zh: '咨询', ru: 'Оставить запрос' },
   'enq.sub': { en: 'Leave your details and our team will be in touch shortly.', de: 'Hinterlassen Sie Ihre Kontaktdaten, und unser Team meldet sich in Kürze bei Ihnen.', hu: 'Hagyja meg az elérhetőségét, és csapatunk hamarosan jelentkezik.', fr: 'Laissez vos coordonnées et notre équipe vous recontactera sous peu.', zh: '留下您的联系方式，我们的团队将尽快与您联系。', ru: 'Оставьте свои контакты, и наша команда свяжется с вами в ближайшее время.' },
-  'enq.whatsapp': { en: 'WhatsApp number (optional)', de: 'WhatsApp Nummer (optional)', hu: 'WhatsApp szám (opcionális)', fr: 'Numéro WhatsApp (facultatif)', zh: 'WhatsApp 号码（选填）', ru: 'Номер WhatsApp (необязательно)' },
+  'enq.whatsapp': { en: 'Phone / WhatsApp', de: 'Telefon / WhatsApp', hu: 'Telefon / WhatsApp', fr: 'Téléphone / WhatsApp', zh: '电话 / WhatsApp', ru: 'Телефон / WhatsApp' },
   'enq.gdpr': { en: 'I agree to the processing of my personal data. See our', de: 'Ich stimme der Verarbeitung meiner personenbezogenen Daten zu. Siehe unsere', hu: 'Hozzájárulok a személyes adataim kezeléséhez. Lásd az', fr: 'J’accepte le traitement de mes données personnelles. Voir notre', zh: '我同意处理我的个人数据。请参阅我们的', ru: 'Я согласен на обработку моих персональных данных. См. нашу' },
   'enq.gdprLink': { en: 'Privacy Policy', de: 'Datenschutzerklärung', hu: 'Adatvédelmi tájékoztatót', fr: 'Politique de confidentialité', zh: '隐私政策', ru: 'Политику конфиденциальности' },
   'enq.err.gdpr': { en: 'Please accept the data processing terms to continue.', de: 'Bitte stimmen Sie der Datenverarbeitung zu, um fortzufahren.', hu: 'A folytatáshoz kérjük, fogadja el az adatkezelési feltételeket.', fr: 'Veuillez accepter le traitement des données pour continuer.', zh: '请接受数据处理条款以继续。', ru: 'Чтобы продолжить, примите условия обработки данных.' },

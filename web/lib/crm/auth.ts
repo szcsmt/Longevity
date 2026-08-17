@@ -2,9 +2,10 @@ import { cookies } from 'next/headers';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 /* Multi-user auth for the CRM, still env-configured (no user table yet).
-   Users come from two places, merged:
+   Users come from three places, merged:
      CRM_USER + CRM_PASSWORD  — the original primary account
-     CRM_USERS                — extra accounts as "name:password,name:password"
+     CRM_USERS                — extra accounts as "name:password[:role]"
+     CRM_VIEWERS              — read-only accounts as "name:password"
    The session cookie is "<base64url(name)>.<sha256(name:password:salt)>", so
    the app always knows WHO is signed in (greeting now, audit trail later).
    In production a missing CRM_PASSWORD fails CLOSED for the primary account;
@@ -45,6 +46,21 @@ function accounts(): CrmAccount[] {
       if (name && password) list.push({ name, password, role });
     }
   }
+
+  /* ── Guests, in their own variable ──
+
+     A guest is read-only by definition, so the role never needs spelling out.
+     Keeping them separate from CRM_USERS is also the safer shape in practice:
+     adding a guest means writing one short value rather than editing a list
+     that holds every working account, where a slip costs somebody their
+     login. Format: "name:password,name:password". */
+  for (const entry of (process.env.CRM_VIEWERS || '').split(',')) {
+    const [rawName, rawPw] = entry.split(':');
+    const name = (rawName || '').trim();
+    const password = (rawPw || '').trim();
+    if (name && password) list.push({ name, password, role: 'viewer' });
+  }
+
   return list;
 }
 

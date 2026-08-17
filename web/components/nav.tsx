@@ -12,6 +12,7 @@ const links = [
   ...(process.env.NODE_ENV === 'development' ? [{ tk: 'nav.centre', href: '#centre' }] : []),
   { tk: 'nav.estate',      href: '#discover'    },
   { tk: 'nav.park',        href: '#park'        },
+  { tk: 'nav.tour',        href: '#tour'        },
   { tk: 'nav.villas',      href: '#villas'      },
   { tk: 'nav.personalise', href: '#personalise' },
   { tk: 'nav.location',    href: '#location'    },

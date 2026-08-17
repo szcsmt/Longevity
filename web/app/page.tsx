@@ -11,6 +11,7 @@ import { EstateSection }     from '@/components/estate-section';
 import { ParkSection }       from '@/components/park-section';
 import { ParkLifeSection }   from '@/components/park-life-section';
 import { AmenitiesSection }  from '@/components/amenities-section';
+import { TourSection }       from '@/components/tour-section';
 import { VillasSection }     from '@/components/villas-section';
 import { InteriorSection }   from '@/components/interior-section';
 import { MapSection }        from '@/components/map-section';
@@ -37,6 +38,10 @@ export default function Home() {
       <ParkSection />
       <ParkLifeSection />
       <AmenitiesSection />
+      {/* The estate seen whole, in 3D — the visitor has just been shown the grounds
+          from the outside, so this is where walking them makes sense, and it sets
+          up the residences that follow. */}
+      <TourSection />
       <VillasSection />
       <InteriorSection />
       {/* "Where it belongs — Koh Samui": the island sits between the residence and the

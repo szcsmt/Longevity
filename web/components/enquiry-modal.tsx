@@ -9,6 +9,12 @@ const ff  = 'var(--font-playfair), serif';
 const ffs = 'var(--font-raleway), sans-serif';
 
 const emailOk = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+/* Same rule as the main reserve form (cta-section) — one definition of "a usable
+   number" across the site, or the two forms would disagree about the same lead. */
+const phoneOk = (v: string) => {
+  const digits = v.replace(/\D/g, '');
+  return digits.length >= 7 && digits.length <= 15 && /^[+\d\s().\-/]+$/.test(v.trim());
+};
 
 export const OPEN_ENQUIRY_EVENT = 'lr-open-enquiry';
 
@@ -18,7 +24,7 @@ export function openEnquiry(origin: string) {
   try { window.dispatchEvent(new CustomEvent(OPEN_ENQUIRY_EVENT, { detail: { origin } })); } catch { /* noop */ }
 }
 
-type Errors = { name?: string; email?: string; gdpr?: string };
+type Errors = { name?: string; email?: string; phone?: string; gdpr?: string };
 
 export function EnquiryModal() {
   const t = useT();
@@ -63,6 +69,7 @@ export function EnquiryModal() {
     const errs: Errors = {};
     if (!form.name.trim())    errs.name  = t('cta.err.name');
     if (!emailOk(form.email)) errs.email = t('cta.err.email');
+    if (!phoneOk(form.phone)) errs.phone = t('cta.err.phone');
     if (!form.gdpr)           errs.gdpr  = t('enq.err.gdpr');
     setErrors(errs);
     if (Object.keys(errs).length) return;
@@ -143,8 +150,13 @@ export function EnquiryModal() {
                 {errors.email && <span style={errStyle}>{errors.email}</span>}
               </label>
               <label>
-                <span style={labelStyle}>{t('enq.whatsapp')}</span>
-                <input style={inputStyle} type="tel" inputMode="tel" autoComplete="tel" placeholder="+66 00 000 0000" value={form.phone} onChange={update('phone')} />
+                <span style={labelStyle}>{t('enq.whatsapp')} *</span>
+                <input
+                  style={errors.phone ? { ...inputStyle, borderColor: 'rgba(206,138,120,0.75)' } : inputStyle}
+                  type="tel" inputMode="tel" autoComplete="tel" placeholder="+66 00 000 0000"
+                  value={form.phone} onChange={update('phone')}
+                />
+                {errors.phone && <span style={errStyle}>{errors.phone}</span>}
               </label>
 
               {/* GDPR consent — required */}
