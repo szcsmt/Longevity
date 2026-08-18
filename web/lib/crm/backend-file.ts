@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
-import type { CrmEvent, Lead, ProjectNote, VillaRecord, VillaHistoryEntry } from './types';
+import type { Agency, CrmEvent, Lead, ProjectNote, VillaRecord, VillaHistoryEntry } from './types';
 import type { Backend } from './backend';
 
 /* Local-dev backend: one JSON file outside the project (default
@@ -20,6 +20,7 @@ interface DB {
   blocklist: string[];
   notes: ProjectNote[];
   settings: Record<string, unknown>;
+  agencies: Agency[];
 }
 
 /* All mutations are serialized through this promise chain. Without it, two
@@ -45,9 +46,10 @@ async function read(): Promise<DB> {
       blocklist: Array.isArray(db.blocklist) ? db.blocklist : [],
       notes: Array.isArray(db.notes) ? db.notes : [],
       settings: db.settings && typeof db.settings === 'object' ? (db.settings as Record<string, unknown>) : {},
+      agencies: Array.isArray(db.agencies) ? db.agencies : [],
     };
   } catch {
-    return { leads: [], events: [], villas: {}, villaHistory: [], blocklist: [], notes: [], settings: {} };
+    return { leads: [], events: [], villas: {}, villaHistory: [], blocklist: [], notes: [], settings: {}, agencies: [] };
   }
 }
 
@@ -189,6 +191,18 @@ export const fileBackend: Backend = {
       if (db.notes.length === before) return false;
       await write(db);
       return true;
+    });
+  },
+  async allAgencies() {
+    return (await read()).agencies;
+  },
+  async saveAgency(agency) {
+    await locked(async () => {
+      const db = await read();
+      const i = db.agencies.findIndex((a) => a.id === agency.id);
+      if (i === -1) db.agencies.push(agency);
+      else db.agencies[i] = agency;
+      await write(db);
     });
   },
 };

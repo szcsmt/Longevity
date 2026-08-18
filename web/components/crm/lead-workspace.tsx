@@ -8,13 +8,22 @@ import {
   CURRENCIES, DECISION, FINANCING, LOST_REASONS, MOTIVATIONS, NURTURE_REASONS, OBJECTIONS,
   PURPOSES, SCORES, STAGES, TIMEFRAMES, TOUCHES, VISITS,
 } from '@/lib/crm/types';
-import { REPLY_FLAG_DAYS, isNurtured, missingQualification } from '@/lib/crm/rules';
+import { REPLY_FLAG_DAYS, creditedClaim, isNurtured, missingQualification } from '@/lib/crm/rules';
 import { fmtTHB } from '@/lib/crm/villas';
 import { messageTemplates } from '@/lib/crm/templates';
 import { SEQUENCE_STEPS, sequenceState, stepLabel } from '@/lib/crm/sequence';
 import { DOCUMENTS } from '@/lib/crm/documents';
 import { guessLanguage, languageLabel, languageName } from '@/lib/crm/language';
 import { LostReasonDialog } from '@/components/crm/lost-reason-dialog';
+
+/* What the picker needs about an agency — not the whole record, and not the
+   commission terms, which have no business crossing to the browser on a lead
+   page. */
+export interface AgencyOption {
+  id: string;
+  name: string;
+  contacts: { id: string; name: string }[];
+}
 
 /* Fixed locale + UTC: the server prerender and the browser must produce the
    same text, or React reports a hydration mismatch on every page load. */
@@ -35,7 +44,22 @@ const CONTACT_FIELDS = [
   { key: 'villa', label: 'Villa' },
 ] as const;
 
-export function LeadWorkspace({ lead: initial, related = [], roster = [], today, readOnly = false }: { lead: Lead; related?: Lead[]; roster?: string[]; today: string; readOnly?: boolean }) {
+export function LeadWorkspace({
+  lead: initial, related = [], roster = [], agencies = [], today, admin = false, readOnly = false,
+}: {
+  lead: Lead;
+  related?: Lead[];
+  roster?: string[];
+  /** Partner agencies a buyer can be registered against — the roster's
+      equivalent for the firms that introduce them. Server-loaded, like the
+      roster, because the workspace is a client component. */
+  agencies?: AgencyOption[];
+  today: string;
+  /** Withdrawing a registration and recording over another agency's live claim
+      both decide who gets paid. Hidden rather than shown-and-refused. */
+  admin?: boolean;
+  readOnly?: boolean;
+}) {
   const router = useRouter();
   const [lead, setLead] = useState<Lead>(initial);
   const [note, setNote] = useState('');
@@ -56,7 +80,13 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], today,
   const [nurtureReason, setNurtureReason] = useState<string>(NURTURE_REASONS[0].id);
   /* Parked and still waiting, versus parked and the date has come — the panel
      reads very differently either way, and so does the day list. */
+  const [regAgency, setRegAgency] = useState('');
+  const [regBroker, setRegBroker] = useState('');
   const parked = isNurtured(lead, today);
+  const claims = lead.claims || [];
+  const credited = creditedClaim(lead);
+  const todayStr = today;
+  const regContacts = agencies.find((a) => a.id === regAgency)?.contacts || [];
   /* The earliest date the picker offers. Derived from the server's `today`,
      not the browser's, because the server is what validates it — a laptop set
      a day ahead should not be able to offer a date the API will refuse. */
@@ -108,6 +138,41 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], today,
       .then((res) => res.json())
       .then((data) => { if (data?.lead) setLead(data.lead); })
       .catch(() => { /* the message still went out; the line can be added by hand */ });
+  }
+
+  /* ── Recording a registration ──
+
+     The 409 is the interesting path: another agency's protection window is
+     still open. The server sends back who holds it and until when, and the
+     only way past it is somebody with the authority deciding to record over
+     the top — which is then part of the claim, not a quiet overwrite. */
+  async function registerAgency(override: boolean) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/crm/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'register', agencyId: regAgency, brokerId: regBroker || undefined, override }),
+      });
+      const data = await res.json();
+      if (res.status === 409) {
+        const name = agencies.find((a) => a.id === regAgency)?.name || 'this agency';
+        if (!admin) {
+          alert(`${data.error}\n\nRecording ${name} over that claim is the owner's decision — ask them.`);
+          return;
+        }
+        if (confirm(`${data.error}\n\nRecord ${name} over that claim anyway?\n\nBoth registrations stay on the record, and this one will say it went over the earlier one.`)) {
+          await registerAgency(true);
+        }
+        return;
+      }
+      if (!res.ok) { alert(data?.error || 'The registration could not be recorded.'); return; }
+      if (data.lead) setLead(data.lead);
+      setRegAgency('');
+      setRegBroker('');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function setStage(stage: Stage) {
@@ -383,6 +448,110 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], today,
               <FragmentRow key={k} k={k} v={v} />
             ))}
           </dl>
+        </div>
+
+        {/* ── Who introduced this buyer ──
+
+            The argument this panel exists to end: "we introduced that buyer to
+            you in March." Before this, an introducing agency was a free-text
+            word in the source field with no date on it, and the answer lived
+            in somebody's inbox.
+
+            A registration is append-only. Nothing here edits or removes a
+            claim; withdrawing one leaves it on the record with the reason. */}
+        <div className="crm-card">
+          <h3>Introduced by</h3>
+
+          {claims.length === 0 && (
+            <div className="crm-meta" style={{ marginBottom: 14 }}>
+              No agency has registered this buyer. They came to us directly.
+            </div>
+          )}
+
+          {claims.map((c) => {
+            const open = !c.released_at && (!c.expires_at || c.expires_at >= todayStr);
+            return (
+              <div key={c.id} className="claim">
+                <div className="claim-head">
+                  <span className="crm-name">{c.agencyName}</span>
+                  <span className={`badge ${c.released_at ? 'cold' : open ? 'hot' : 'stage'}`}>
+                    {c.released_at ? 'withdrawn' : open ? 'protected' : 'window closed'}
+                  </span>
+                </div>
+                <div className="crm-meta">
+                  {c.brokerName ? `${c.brokerName} · ` : ''}registered {fmtDay(c.at)}
+                  {c.expires_at && !c.released_at ? ` · ${open ? 'protected to' : 'ran to'} ${fmtDay(c.expires_at)}` : ''}
+                  {c.by ? ` · recorded by ${c.by}` : ''}
+                </div>
+                {c.note && <div className="crm-meta" style={{ marginTop: 4 }}>“{c.note}”</div>}
+                {c.overrode && (
+                  <div className="crm-meta" style={{ marginTop: 4, color: 'var(--c-hot)' }}>
+                    Recorded over an earlier claim.
+                  </div>
+                )}
+                {c.released_at && (
+                  <div className="crm-meta" style={{ marginTop: 4 }}>
+                    Withdrawn {fmtDay(c.released_at)} — {c.release_reason}
+                  </div>
+                )}
+                {admin && !c.released_at && (
+                  <button
+                    className="crm-btn ghost sm"
+                    style={{ marginTop: 8 }}
+                    disabled={busy}
+                    onClick={async () => {
+                      const why = window.prompt(
+                        'Why is this registration being withdrawn?\n\nIt stays on the record with the reason — this is not a delete.',
+                      );
+                      if (why && why.trim()) await patch({ op: 'releaseClaim', claimId: c.id, reason: why });
+                    }}
+                  >
+                    Withdraw
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
+          {credited && claims.filter((c) => !c.released_at).length > 1 && (
+            <div className="lost-hint" style={{ marginTop: 4 }}>
+              More than one agency is claiming this buyer. <strong>{credited.agencyName}</strong> registered
+              them first and is who the reports credit.
+            </div>
+          )}
+
+          {!readOnly && agencies.length > 0 && (
+            <div style={{ marginTop: claims.length ? 16 : 0 }}>
+              <label className="crm-label">Register an agency</label>
+              <select
+                className="crm-select"
+                value={regAgency}
+                onChange={(e) => { setRegAgency(e.target.value); setRegBroker(''); }}
+              >
+                <option value="">Choose an agency…</option>
+                {agencies.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+              {regContacts.length > 0 && (
+                <select className="crm-select" style={{ marginTop: 8 }} value={regBroker} onChange={(e) => setRegBroker(e.target.value)}>
+                  <option value="">Which agent? (optional)</option>
+                  {regContacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              )}
+              <button
+                className="crm-btn sm"
+                style={{ marginTop: 10 }}
+                disabled={busy || !regAgency}
+                onClick={() => registerAgency(false)}
+              >
+                Record registration
+              </button>
+            </div>
+          )}
+          {!readOnly && agencies.length === 0 && (
+            <div className="crm-meta" style={{ marginTop: 12 }}>
+              No partner agencies on file yet. <Link href="/admin/agencies" style={{ color: 'var(--c-gold)' }}>Add one</Link> first.
+            </div>
+          )}
         </div>
 
         {/* ── Qualification ──

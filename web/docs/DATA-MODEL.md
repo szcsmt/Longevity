@@ -569,6 +569,87 @@ that has **no open task and no running reply timer** — nobody owns its next mo
 a red badge in the nav (`attentionCounts()`), together with overdue tasks, untouched new leads,
 awaiting-reply leads past 3 days, and stalled leads.
 
+## Agencies, and the registrations that decide who gets paid
+
+Careful with the word **agent**. In this codebase it already means one of *our* salespeople —
+the `CRM_AGENTS` roster, the `owner` on a lead, the `agent` login role. The records below are
+the firms that bring us buyers. So an **`Agency`** is that firm, a **`Broker`** is a named
+person at it, and our own people stay where they were. The UI says "agency" and "agent"
+because that is what the operator calls them; the code says `Agency` and `Broker` because
+`Agent` was taken and quietly reusing it would be a bug waiting to happen.
+
+Before this, an introducing agency was a free-text word in `source`: no date, no way to settle
+who brought a buyer first, no answer to "which agencies produce sales". None of it could be
+reconstructed afterwards, which is why it came before the prettier work.
+
+### `Agency` — `lib/crm/partners.ts`
+
+| Field | |
+|---|---|
+| `name`, `country`, `website`, `note` | |
+| `status` | `AGENCY_STATUS`: `prospect` (in discussion), `active`, `paused`, `ended`. A new agency starts as a conversation, not a partner |
+| `agreement_at` | ISO date the agreement was signed |
+| `commission_model` | `COMMISSION_MODELS`: `percent`, `fixed`, `tiered`, `none` |
+| `commission_pct` / `commission_fixed` | the number the model needs. Over 100% is dropped as the typo it is |
+| `protection_days` | this agency's own window; absent means the house default |
+| `contacts` | `Broker[]`, nested. Deactivated (`inactive`), **never removed** — a claim can point at somebody who left last year and must keep reading with their name on it |
+| `archived_at` / `archived_by` | there is no delete |
+
+Stored as whole documents (`allAgencies` / `saveAgency` on the backend, `crm_agencies` in
+Postgres), like project notes: the record is small and edited rarely, by one admin at a time,
+so a revision dance would buy nothing.
+
+**The protection window** is `CRM_AGENCY_PROTECTION_DAYS` (default 90) unless the agency
+carries its own — configuration, not a constant, because 90 days is a market convention and
+not a law.
+
+### `AgencyClaim` — on the lead
+
+The thing that gets argued over by e-mail: *"we introduced that buyer to you in March."*
+`lead.claims` is **append-only**. A claim is never edited and never deleted; a second agency
+registering the same person adds an entry rather than replacing one, which is exactly what
+makes it evidence.
+
+| Field | |
+|---|---|
+| `agencyId` + `agencyName` | the name is denormalised at registration — an agency can be renamed, the claim has to keep reading as it did on the day |
+| `brokerId` + `brokerName` | who at the agency, if named |
+| `at`, `expires_at` | registered when, protected until |
+| `by`, `note` | who recorded it here, and why |
+| `released_at` + `release_reason` | withdrawn, and kept. A withdrawn claim is evidence too |
+| `overrode` | the claim id this one was deliberately recorded over |
+
+**Two questions, deliberately not the same function** (`rules.ts`, pure):
+
+- `activeClaim(lead, today)` — *may somebody else register this person right now?* The most
+  recent claim neither released nor expired. It **expires**, because a claim that never expires
+  is a claim on a person forever.
+- `creditedClaim(lead)` — *who brought us this buyer?* The **first** claim that was never
+  released. It does **not** expire: a deal closing thirteen months after the introduction was
+  still that agency's introduction. Every production figure is counted against this one.
+- `competingClaims(lead)` — every agency currently asserting a claim, so "two agencies are
+  claiming this buyer" is something the screen can say rather than something to discover later.
+
+`registerAgency()` **refuses** a different agency while a claim is live, throwing a
+`ClaimConflict` (a `CrmConflict`) that names who holds it and until when — nothing is written,
+so a refused registration leaves no trace. `override: true` records over it anyway; that is an
+admin decision, the new claim stores the id it superseded, and the timeline says so.
+`releaseClaim()` needs a reason.
+
+**A merge carries claims across** and re-sorts them by date. Folding two records for the same
+person together must never be what loses an agency their introduction.
+
+### `performanceFor(agency, leads)`
+
+Registered, live, qualified (reaching it or beyond), site visits, reserved, won, lost, won
+value, pipeline value, conversion %. Counted against `creditedClaim`, so an expired window
+never quietly moves a sale to whoever registered the same person later. Archived leads are
+excluded, as everywhere.
+
+`commission` is what the agreement generates on the won volume, and is **absent** rather than
+zero when nothing is agreed — a zero reads as "they earn nothing", which is a different
+statement. What has actually been *paid* is not tracked yet and is deliberately not guessed at.
+
 ### Nurture — parked until a date
 
 Not every lead that will not buy this month is lost. The six-to-eighteen-month wait is normal

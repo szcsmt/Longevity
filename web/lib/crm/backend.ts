@@ -1,4 +1,4 @@
-import type { CrmEvent, Lead, ProjectNote, VillaRecord, VillaHistoryEntry } from './types';
+import type { Agency, CrmEvent, Lead, ProjectNote, VillaRecord, VillaHistoryEntry } from './types';
 
 /* Minimal persistence contract the domain layer (store.ts) runs on. Two
    implementations: backend-file (local dev, JSON on disk) and backend-pg
@@ -40,6 +40,33 @@ export interface Backend {
   allNotes(): Promise<ProjectNote[]>;
   saveNote(note: ProjectNote): Promise<void>;
   removeNote(id: string): Promise<boolean>;
+  /** Partner agencies, with their named contacts nested. Whole-document
+      writes, like notes: an agency record is small, edited rarely, and by one
+      admin at a time — there is no race here worth a revision dance. There is
+      deliberately no remove: an agency is archived, because its registrations
+      are evidence about who introduced which buyer. */
+  allAgencies(): Promise<Agency[]>;
+  saveAgency(agency: Agency): Promise<void>;
+}
+
+/* ── The one place the backend is chosen ──
+
+   With a DATABASE_URL (production / Vercel + Neon) it is Postgres; otherwise a
+   local JSON file (dev and the whole test suite). Cached after the first call.
+   Lives here rather than inside store.ts so that a second aggregate — the
+   partner agencies — can reach it without importing the lead store. */
+let cached: Backend | null = null;
+
+export async function getBackend(): Promise<Backend> {
+  if (cached) return cached;
+  if (hasDatabase()) {
+    const { pgBackend } = await import('./backend-pg');
+    cached = pgBackend;
+  } else {
+    const { fileBackend } = await import('./backend-file');
+    cached = fileBackend;
+  }
+  return cached;
 }
 
 export function hasDatabase(): boolean {

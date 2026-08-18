@@ -1,9 +1,10 @@
 import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
+import { findContact, getAgency, protectionDays } from '@/lib/crm/partners';
 import {
-  CrmConflict, addNote, addTask, archiveLead, blockContactOf, endNurture, getLead,
-  isOutreachChannel, logOutreach, logTouch, mergeLeads, purgeLead, setAwaitingReply,
-  setNurture, setQualification, toggleTask, unarchiveLead, updateLead,
+  ClaimConflict, CrmConflict, addNote, addTask, archiveLead, blockContactOf, endNurture, getLead,
+  isOutreachChannel, logOutreach, logTouch, mergeLeads, purgeLead, registerAgency, releaseClaim,
+  setAwaitingReply, setNurture, setQualification, toggleTask, unarchiveLead, updateLead,
 } from '@/lib/crm/store';
 import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
 import type { LeadPatch } from '@/lib/crm/types';
@@ -110,6 +111,59 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }
       } else {
         lead = await endNurture(id, actor);
+      }
+      break;
+    }
+    case 'register': {
+      /* An agency introduced this buyer. Recording it is ordinary sales work,
+         so it sits with canEdit — but registering OVER another agency's live
+         claim is a commercial decision about who gets paid, and that stays
+         with the owner. */
+      const agency = await getAgency(String(body.agencyId || ''));
+      if (!agency || agency.archived_at) {
+        return Response.json({ ok: false, error: 'Pick an agency we work with.' }, { status: 400 });
+      }
+      const override = body.override === true;
+      if (override && !(await isAdmin())) {
+        return Response.json(
+          { ok: false, error: 'Recording over another agency’s claim is the owner’s decision.' },
+          { status: 403 },
+        );
+      }
+      const broker = findContact(agency, String(body.brokerId || '') || undefined);
+      try {
+        lead = await registerAgency(
+          id,
+          agency,
+          protectionDays(agency),
+          {
+            brokerId: broker?.id,
+            brokerName: broker?.name,
+            note: body.note ? String(body.note) : undefined,
+            override,
+          },
+          actor,
+        );
+      } catch (err) {
+        if (err instanceof ClaimConflict) {
+          /* 409 with the sentence, not a blank failure: the operator can act
+             on "X registered them on the 3rd and holds it until June" — either
+             by leaving it alone or by deciding to override. */
+          return Response.json({ ok: false, error: err.message, conflict: err.claim }, { status: 409 });
+        }
+        throw err;
+      }
+      break;
+    }
+    case 'releaseClaim': {
+      // Withdrawing a registration decides who does not get paid.
+      if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
+      lead = await releaseClaim(id, String(body.claimId || ''), String(body.reason || ''), actor);
+      if (!lead) {
+        return Response.json(
+          { ok: false, error: 'Say why the registration is being withdrawn — it stays on the record.' },
+          { status: 400 },
+        );
       }
       break;
     }

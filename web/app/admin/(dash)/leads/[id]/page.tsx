@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { canEdit } from '@/lib/crm/auth';
+import { canEdit, isAdmin } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import { getLead, relatedLeads } from '@/lib/crm/store';
+import { listAgencies } from '@/lib/crm/partners';
 import { LeadWorkspace } from '@/components/crm/lead-workspace';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,14 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const lead = await getLead(id);
   if (!lead) notFound();
   const related = await relatedLeads(lead);
+  /* Only what the picker needs. The commission terms stay on the server —
+     they have no business crossing to the browser on a lead page. */
+  const agencies = (await listAgencies()).map((a) => ({
+    id: a.id,
+    name: a.name,
+    contacts: a.contacts.filter((c) => !c.inactive).map((c) => ({ id: c.id, name: c.name })),
+  }));
+  const [editor, owner] = await Promise.all([canEdit(), isAdmin()]);
 
   return (
     <>
@@ -33,8 +42,10 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         lead={lead}
         related={related}
         roster={agents().map((a) => a.name)}
+        agencies={agencies}
         today={new Date().toISOString().slice(0, 10)}
-        readOnly={!(await canEdit())}
+        admin={owner}
+        readOnly={!editor}
       />
     </>
   );

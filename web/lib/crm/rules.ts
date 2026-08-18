@@ -1,4 +1,4 @@
-import type { Lead, Stage, Task } from './types';
+import type { AgencyClaim, Lead, Stage, Task } from './types';
 
 /* Pure lead-management rules — importable from client components (no Node
    APIs). The structural contract: every active lead has a next step, and no
@@ -114,6 +114,51 @@ export function hasConversed(lead: Lead): boolean {
   return (lead.history || []).some(
     (h) => h.reached === true || h.kind === 'message' || (h.kind === 'email' && h.detail.startsWith('Reply received')),
   );
+}
+
+/* ══════════════════ Who introduced this buyer ══════════════════
+
+   Two different questions, and conflating them is how commission arguments
+   start.
+
+   PROTECTION — "may somebody else register this person right now?" That is
+   `activeClaim`: the most recent registration that has neither been released
+   nor run past its window. It expires, on purpose, because a claim that never
+   expires is a claim on a person forever.
+
+   CREDIT — "who brought us this buyer?" That is `creditedClaim`: the FIRST
+   registration that was never released. It does NOT expire. Whoever brought
+   the buyer brought them, and a deal that closes thirteen months after the
+   introduction was still that agency's introduction. An expired window means
+   the next agency may register them too; it does not rewrite history.
+
+   Both are pure and read the append-only `claims` array, so the lead page, the
+   agency report and the refusal in the store all answer identically. */
+
+const live = (c: AgencyClaim) => !c.released_at;
+
+/** The registration currently holding protection, if any. */
+export function activeClaim(lead: Lead, today = new Date().toISOString().slice(0, 10)): AgencyClaim | undefined {
+  const open = (lead.claims || []).filter(
+    (c) => live(c) && (!c.expires_at || c.expires_at.slice(0, 10) >= today),
+  );
+  return open.length ? open[open.length - 1] : undefined;
+}
+
+/** The registration credited with the introduction, expired or not. */
+export function creditedClaim(lead: Lead): AgencyClaim | undefined {
+  return (lead.claims || []).find(live);
+}
+
+/** Every agency that has ever registered this person and not withdrawn it —
+    the honest answer to "is more than one agency claiming them". */
+export function competingClaims(lead: Lead): AgencyClaim[] {
+  const seen = new Set<string>();
+  return (lead.claims || []).filter((c) => {
+    if (!live(c) || seen.has(c.agencyId)) return false;
+    seen.add(c.agencyId);
+    return true;
+  });
 }
 
 /* ── Parked until a date ──

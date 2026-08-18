@@ -233,6 +233,105 @@ export const NURTURE_REASONS = [
   { id: 'other',   label: 'Other' },
 ] as const;
 
+/* ══════════════════ External agencies and the agents who introduce buyers ══════════════════
+
+   Careful with the word "agent". In this codebase it already means one of OUR
+   salespeople — the roster in `agents.ts`, the `owner` on a lead, the `agent`
+   login role. The people below work for somebody else and bring us buyers.
+
+   So: an **Agency** is the firm we have (or are negotiating) an agreement with,
+   and a **Broker** is a named person at that firm. An internal agent sells; an
+   external broker introduces. The UI says "agency" and "agent" because that is
+   what the operator calls them, and the code says Agency and Broker because
+   `Agent` was taken and quietly reusing it would be a bug waiting to happen.
+
+   Until now an introducing agency was a free-text word in `source`. That meant
+   no registration date, no way to settle who introduced a buyer first, and no
+   answer to "which agencies actually produce sales". None of it can be
+   reconstructed after the fact, which is why this came before the prettier
+   work. */
+
+export const AGENCY_STATUS = [
+  { id: 'prospect', label: 'In discussion' },
+  { id: 'active',   label: 'Active' },
+  { id: 'paused',   label: 'Paused' },
+  { id: 'ended',    label: 'Agreement ended' },
+] as const;
+
+export const COMMISSION_MODELS = [
+  { id: 'percent', label: 'Percentage of the sale' },
+  { id: 'fixed',   label: 'Fixed fee per sale' },
+  { id: 'tiered',  label: 'Tiered / negotiated' },
+  { id: 'none',    label: 'Nothing agreed yet' },
+] as const;
+
+/** A named person at an agency. Kept thin on purpose: what we need is somebody
+    to call and somebody to credit, not a second CRM inside this one. */
+export interface Broker {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  whatsapp?: string;
+  /** They have left, or we no longer deal with them. Never deleted — their
+      registrations are still part of the record. */
+  inactive?: boolean;
+}
+
+export interface Agency {
+  id: string;
+  name: string;
+  country?: string;
+  website?: string;
+  status: string;            // AGENCY_STATUS
+  agreement_at?: string;     // ISO date the agreement was signed
+  commission_model?: string; // COMMISSION_MODELS
+  commission_pct?: number;   // when the model is a percentage
+  commission_fixed?: number; // THB per sale, when the model is a fixed fee
+  /* How many days a registration protects this agency's claim on a buyer.
+     Absent means the house default (CRM_AGENCY_PROTECTION_DAYS, else 90) —
+     an agency that negotiated something different carries its own number. */
+  protection_days?: number;
+  contacts: Broker[];
+  note?: string;
+  created_at: string;
+  updated_at: string;
+  archived_at?: string;
+  archived_by?: string;
+}
+
+/* ── A registration, and the claim it creates ──
+
+   The thing that gets argued over by e-mail in this business: "we introduced
+   that buyer to you in March". A claim is that assertion, timestamped, with
+   whoever recorded it named, and it is NEVER edited or deleted — a second
+   agency registering the same person adds a claim, it does not replace one.
+
+   `expires_at` is the protection window, computed once at registration from
+   the agency's own terms. Expiry does not remove the attribution — whoever
+   brought the buyer still brought them, and `creditedClaim` says so. It only
+   governs whether a later registration by somebody else is refused. */
+export interface AgencyClaim {
+  id: string;
+  agencyId: string;
+  /** Denormalised at registration. An agency can be renamed or archived; the
+      claim has to keep reading as it did on the day it was made. */
+  agencyName: string;
+  brokerId?: string;
+  brokerName?: string;
+  at: string;              // ISO — when it was registered with us
+  expires_at?: string;     // ISO date the protection window closes
+  note?: string;
+  by?: string;             // the operator who recorded it
+  /* Released: the registration was withdrawn or found to be wrong. Kept, with
+     the reason — a withdrawn claim is evidence too. */
+  released_at?: string;
+  release_reason?: string;
+  /** Recorded over the top of another agency's live claim, deliberately and by
+      somebody who had to confirm it. Holds the claim id it went over. */
+  overrode?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -255,6 +354,9 @@ export interface Activity {
        important thing that happens to a lead was the one thing the CRM could
        not see, count or act on. */
     | 'call' | 'video' | 'meeting' | 'visit' | 'whatsapp'
+    /* An agency registered this buyer, or a registration was released. The
+       one kind of timeline entry that decides who gets paid. */
+    | 'registered'
     /* Parked until a date, or brought back. Its own kind rather than a note,
        because the queue rules read it and a report will want to count it. */
     | 'nurture';
@@ -347,6 +449,11 @@ export interface Lead {
      working. */
   nurture_until?: string;   // ISO date
   nurture_reason?: string;  // one of NURTURE_REASONS
+
+  /* Every agency registration ever made against this person, oldest first.
+     Append-only: a claim is released, never removed, and a competing
+     registration adds a second entry rather than overwriting the first. */
+  claims?: AgencyClaim[];
 
   /* What the first real conversation established. Absent until somebody fills
      any of it in; a half-filled qualification is normal. */

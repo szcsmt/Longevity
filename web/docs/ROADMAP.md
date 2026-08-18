@@ -40,6 +40,7 @@ the work is filling gaps and closing blind spots.
 | Automated sequence | Six letters, minute 0 → day 60, stopping the moment a human owns the conversation |
 | Roles | admin / agent / viewer, with the irreversible and the exportable reserved to the owner |
 | Speed to lead | `first_response_at` — the first moment a *person* acted |
+| Introducing agencies | `Agency` + nested `Broker` records, append-only registrations on the lead, an auditable protection window that refuses a competing claim, and per-agency production figures counted against whoever introduced the buyer first |
 
 ### PARTIAL — works, but not all the way
 
@@ -60,7 +61,6 @@ the work is filling gaps and closing blind spots.
 
 | | Why it matters |
 |---|---|
-| **External agencies and agents** | The single biggest hole. An introducing agent is a free-text word in `source`. No agency record, no registration timestamp, no protection window, no production figures, no commission tracking. Attribution not captured today cannot be reconstructed later |
 | **Reservation as a process** | A unit flips to `reserved` and a `slot` phase gets ticked. No reservation date, amount, expiry, agreement document or deposit status of its own |
 | **Contract / SPA tracking** | Sent → reviewed → signed, with dates. Today the whole contract stage is one status word on a plot |
 | **Configurable payment schedules** | 7 / 43 / 40 / 10 is hard-coded in `PHASES`. It is right for this project and wrong as a permanent assumption |
@@ -94,11 +94,9 @@ the work is filling gaps and closing blind spots.
 - [x] **P1.4** The attention rules become a filter, not just a number — `?flag=`
 - [x] **P1.5** Email and WhatsApp buttons stop being invisible (`logOutreach`)
 - [x] **P1.6** "Not now" stops meaning "lost" — nurture
-- [ ] **P1.7 Agencies and introducing agents.** Two records (`Agency`, `Agent`), a registration
-      stamped on the lead the moment it arrives, and a protection window that is *auditable*
-      rather than argued over by e-mail. Production figures per agency: registered, qualified,
-      reserved, sold, volume. **Nothing here can be back-filled — every week without it is
-      attribution lost for good.**
+- [x] **P1.7** Agencies and the registrations that decide who gets paid — `Agency` + `Broker`,
+      an append-only claim on the lead, an auditable protection window, and production figures
+      per agency
 - [ ] **P1.8 The stages the sales actually has.** Add presentation, site visit and negotiation;
       make the funnel positional rather than assumed. Entry rules where they are objective
       (Qualified needs the four answers; Reserved needs a unit), warnings where they are not.
@@ -111,6 +109,9 @@ the work is filling gaps and closing blind spots.
 - [ ] Source normalisation at intake, so a report counts campaigns rather than spellings
 - [ ] Attribution chain: source → qualified → reservation → contract → revenue
 - [ ] Reservation as its own record: date, amount, expiry, agreement, deposit status
+- [ ] Commission actually **paid**: a per-agency ledger with dates, so outstanding is a fact
+      rather than a subtraction. `performanceFor` computes only what an agreement *generates*,
+      and deliberately does not guess at the rest
 - [ ] Contract / SPA status with dates
 - [ ] Configurable payment schedules per project or deal
 - [ ] Country / nationality on the lead, inferred and correctable, filterable

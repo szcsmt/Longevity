@@ -242,6 +242,93 @@ korábban beállított dátum már elavult.
 
 ---
 
+## 4b. Ügynökségek — ki hozta a vevőt
+
+`/admin/agencies`
+
+Eddig a bevezető ügynökség egy szabadszöveg volt a `source` mezőben. Nem volt dátuma, nem
+lehetett eldönteni, ki hozta a vevőt előbb, és nem lehetett megválaszolni azt a kérdést, hogy
+**melyik ügynökség hoz olyan vevőt, aki tényleg vásárol**. Ez az egyetlen adat, amit utólag nem
+lehet pótolni: ha nincs rögzítve a bevezetés pillanatában, örökre elveszett.
+
+> **Figyelem a szóhasználatra.** A CRM-ben az „agent" eddig a *saját* értékesítőnket jelentette
+> (a `CRM_AGENTS` névsor, a lead „Owner"-e, az `agent` belépési szerepkör). Az itteni emberek
+> egy másik cégnek dolgoznak. Az **ügynökség** a cég, az **ügynök** az ő nevesített emberük.
+
+### Az ügynökség lapja
+
+Alap adatok: név, ország, weboldal, hol tartunk (`In discussion` → `Active` → `Paused` →
+`Agreement ended`), az együttműködési szerződés dátuma.
+
+**Jutalék**: százalék a vételárból, vagy fix összeg eladásonként. Ha nincs megállapodás, hagyd
+üresen — a riportban akkor `—` fog állni, nem `0`. A kettő nem ugyanaz: a nulla azt állítja,
+hogy nem keresnek semmit.
+
+**Védelmi ablak (protection window)**: hány napig védi az ügynökség igényét egy regisztráció.
+Alapból **90 nap** (a `CRM_AGENCY_PROTECTION_DAYS` beállítás), de aki mást tárgyalt ki, annak
+saját száma lehet.
+
+**Az ő ügynökeik**: nevesített emberek. Aki elmegy, azt a **„They left"** gombbal jelölöd —
+soha nem törlődik, mert egy tavalyi regisztráció az ő nevével szerepel, és annak úgy kell
+maradnia.
+
+Minden mező **kilépéskor mentődik**. Nincs Save gomb, amit el lehet felejteni megnyomni.
+
+**Az együttműködés vége**: az „End the relationship" **archivál**, nem töröl. Az ügynökség
+eltűnik minden választóból és riportból, de **a regisztrációi rajta maradnak a vevőkön** — így
+egy jövőre záruló eladás is annak lesz elszámolva, aki behozta.
+
+Az oldal alján: **minden vevő, akit ők hoztak** — dátummal, az ő ügynökük nevével, fázissal
+és üzletértékkel.
+
+### Az ügynökségek listája
+
+A táblázat nem a leadek számáról szól. Az az ügynökség, aki negyven nézelődőt regisztrál és
+semmit nem ad el, **költség**; aki hatot regisztrál és kettőt elad, az a megőrzendő kapcsolat.
+Lead-számban a kettő egyformán néz ki — ezért van ott a **Sold**, a **Conversion** és a
+**Sales value** oszlop is.
+
+### Regisztráció — a lead oldalán
+
+A vevő oldalán, a bal oszlopban: **Introduced by** kártya.
+
+1. Válaszd ki az **ügynökséget** (és ha tudod, az **ügynököt**).
+2. **Record registration.**
+
+Ettől kezdve a leaden ott áll, ki hozta, mikor, ki rögzítette, és meddig védett az igény.
+A bejegyzés **soha nem szerkeszthető és nem törölhető** — ez teszi bizonyítékká.
+
+**Ha másik ügynökség már regisztrálta és még él az igénye**, a rendszer **elutasítja**, és
+megmondja, ki tartja és meddig:
+
+> *Bangkok Prime Property registered this buyer on 2026-03-04 and holds the claim until 2026-06-02.*
+
+Ez nem hiba, hanem a válasz arra a vitára, ami egyébként e-mailben zajlana. Fölé **csak a
+tulajdonos** rögzíthet, külön megerősítéssel — és akkor **mindkét regisztráció** ott marad, az
+újon pedig szerepel, hogy melyik fölé került.
+
+**Visszavonás** (`Withdraw`, szintén csak tulajdonos): indoklás kötelező. A regisztráció nem
+tűnik el, hanem az indoklással és a dátummal együtt ott marad a lapon.
+
+### Ki kap kreditet
+
+Két külön kérdés, és a rendszer külön is kezeli őket:
+
+| Kérdés | Válasz |
+|---|---|
+| **Regisztrálhatja-e most más?** | A legutóbbi, még élő és le nem járt igény. Ez **lejár** — egy örökké tartó igény egy emberre szóló örök igény lenne. |
+| **Ki hozta a vevőt?** | Az **első**, soha vissza nem vont regisztráció. Ez **nem jár le.** Aki behozta, az hozta be, akkor is, ha az üzlet tizenhárom hónappal később zárul. |
+
+Minden teljesítmény-szám a második szerint számol. A lejárt védelmi ablak azt jelenti, hogy más
+is regisztrálhatja ugyanazt az embert — **nem** azt, hogy a történelem átíródik.
+
+**Összevonáskor** (duplikátum) a regisztrációk átjönnek, dátum szerint sorrendbe rendezve. Két
+rekord összevonása soha nem veheti el egy ügynökségtől a bevezetést.
+
+Az **Export CSV** is viszi: `agency`, `agency_agent`, `registered` oszlopok.
+
+---
+
 ## 5. Pipeline — a tábla
 
 `/admin/pipeline` — hat oszlop: **New → Contacted → Qualified → Reserved → Won → Lost**.

@@ -336,8 +336,14 @@ All writes go through optimistic concurrency (per-lead `rev`; up to 4 retries on
 | `addNote` | `body` (required, non-empty → else `400`) | Prepends a note (capped 4000). |
 | `addTask` | `title` (required → else `400`), `due` (optional ISO) | Appends an open task (title capped 300). |
 | `toggleTask` | `taskId` | Flips `done`; unknown task id → `404`. |
-| `merge` | `otherId` | Folds the other lead into this one: fills blank contact/attribution fields, keeps GDPR consent if either had it, appends notes/tasks/history (deduped by id — a retried merge is idempotent), logs a `merged` activity once, then deletes the other lead. `otherId === id` → `404`. |
+| `merge` | `otherId` | Folds the other lead into this one: fills blank contact/attribution fields, keeps GDPR consent if either had it, appends notes/tasks/history **and agency registrations** (deduped by id — a retried merge is idempotent; claims are re-sorted by date, because "who was first" is the whole question a claim answers), logs a `merged` activity once, then archives the other lead. `otherId === id` → `404`. |
 | `awaiting` | `on` (boolean) | `true`: sets `awaiting_reply_since = now`, logs "Email sent — awaiting reply", and adds a "Follow up — no reply yet" task due in 3 days (unless one is already open). `false`: clears the flag, logs "Reply received", ticks the chase task. |
+| `qualify` | `patch` object | Structured qualification. Values are validated against their option lists in the store, so a crafted payload cannot make a lead look qualified on answers nobody gave. |
+| `logTouch` | `touch` (a `TOUCHES` key), `note` (optional) | Records a call / video / meeting / site visit / WhatsApp. A `reached` touch clears the reply timer, ticks the chase task, moves a `new` lead to `contacted` and stops the automated sequence; a missed one does none of that. Unknown key → `404`. |
+| `outreach` | `channel` (`email`/`whatsapp`/`phone`) | Records that the channel was **opened** — never that a message was sent. `reached` stays unset. Repeats of the same channel within 10 minutes are dropped. An unknown channel returns `200 {"ignored":true}` rather than an error, because the call rides along with a navigation the operator has already started. |
+| `nurture` | `until` (ISO date, future), `reason` (a `NURTURE_REASONS` id), `note` — or **no `until`** to bring the lead back | Parks the lead until the date: out of the working queue, out of the automated sequence, no stall flag, stage unchanged. Clears the reply timer. A date that is not in the future → `400`. Omitting `until` releases it. |
+| `register` | `agencyId` (required), `brokerId`, `note`, `override` | Records that an agency introduced this buyer. Appends a claim carrying the agency name **as it reads today**, who recorded it, and an expiry computed from the agency's protection window. While another agency's claim is live this returns **`409`** with `{error, conflict}` naming who holds it and until when; `override: true` records over it anyway (**admin only**, `403` otherwise) and the new claim stores the id of the one it superseded. The same agency re-registering is a renewal, not a conflict. Unknown or archived agency → `400`. |
+| `releaseClaim` | `claimId`, `reason` (required) | Withdraws a registration. **Admin only.** The claim stays on the record with the reason and the timestamp — it stops counting for protection and for credit, and is never removed. Missing reason or unknown claim → `400`. |
 
 ### DELETE /api/crm/leads/[id]
 
@@ -389,6 +395,32 @@ Bulk action from the leads list. Body:
 Each lead is attempted independently — one failure never aborts the batch. Response:
 `200 {"ok":<failed===0>,"count":<done>,"failed":<failed>}`.
 
+### GET /api/crm/agencies
+
+Partner agencies, alphabetical. Any signed-in session — a salesperson has to know which
+agencies exist to register a buyer against one. `?archived=only|include` widens it.
+Returns `{"ok":true,"agencies":[...]}` with contacts nested.
+
+### POST /api/crm/agencies
+
+Creates one. **Admin only.** Body: `name` (required → else `400`), `country`, `website`,
+`status`, `note`. A new agency starts as `prospect` — a conversation, not a partner.
+
+### GET · PATCH /api/crm/agencies/[id]
+
+`GET` returns one agency (any signed-in session). `PATCH` is **admin only**: everything here
+edits the commercial relationship, and a commission percentage is not a salesperson's to write.
+
+| `op` | Body | Behaviour |
+|---|---|---|
+| `update` | `patch` | Accepts `name`, `country`, `website`, `note`, `status` (a `AGENCY_STATUS` id), `commission_model` (a `COMMISSION_MODELS` id), `agreement_at` (`YYYY-MM-DD`), `commission_pct` (0–100), `commission_fixed`, `protection_days`. A value not on its list leaves the stored one alone; a non-positive number clears the field; a percentage over 100 is dropped as the typo it is. A blank `name` is ignored. |
+| `addContact` | `contact` `{name, email, phone, whatsapp}` | Appends a named agent. Missing name → `400`. |
+| `setContactActive` | `contactId`, `active` | Marks somebody as having left, or brings them back. Contacts are **never removed** — a claim can point at somebody who left last year and has to keep reading with their name on it. |
+| `archive` | — | Ends the relationship. The agency leaves every picker and every report; its registrations stay on the buyers, so a sale completing next year is still credited to whoever introduced it. |
+| `unarchive` | — | Restores it. |
+
+There is deliberately **no DELETE**.
+
 ### GET /api/crm/villas
 
 Returns the full villa state: `200 {"ok":true,"villas":{"<id>":VillaRecord,...},"history":[...]}`
@@ -431,11 +463,14 @@ are grouped by shared e-mail OR shared phone key, linked transitively (union-fin
 ### GET /api/crm/export
 
 CSV export of the (optionally filtered) lead list. Query params match the Leads page:
-`stage`, `score`, `form_type`, `q` (free-text over name/e-mail/phone/villa).
+`stage`, `score`, `form_type`, `owner`, `flag` (one of the six working-queue rules), `q`
+(free-text over name/e-mail/phone/villa) and `archived=only`.
 
 Columns: `name`, `email`, `phone`, `whatsapp`, `form_type`, `form_origin`, `villa`, `stage`,
-`score`, `source` (falls back to `utm_source`), `utm_medium`, `utm_campaign`, `gdpr_consent`
-(`yes`/`no`), `received` (`submitted_at` or `created_at`), `notes` (count), `open_tasks` (count).
+`score`, `source` (falls back to `utm_source`), `agency`, `agency_agent`, `registered`
+(the credited registration — who introduced the buyer, their named agent, and when),
+`utm_medium`, `utm_campaign`, `gdpr_consent` (`yes`/`no`), `received` (`submitted_at` or
+`created_at`), `notes` (count), `open_tasks` (count).
 
 Every value originates from the public form and is treated as hostile: cells starting with
 `=`, `@`, tab or CR — and `+`/`-` unless the value looks like a phone number — get a leading
@@ -515,6 +550,7 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 | `INBOUND_SECRET` | Fallback query-string secret for `POST /api/inbound` (`?key=`), used only while no signing secret is set. |
 | `CRM_REPLY_TO` | The Resend inbound address customer replies should go to, e.g. `reply@….resend.app`. Set → the CRM sees replies and can stop the sequence. Unset → falls back to `CRM_NOTIFY_TO` and the CRM stays blind. |
 | `CRM_DIGEST_TO` | Morning-digest recipients, comma-separated. Falls back to `CRM_NOTIFY_TO`. |
+| `CRM_AGENCY_PROTECTION_DAYS` | How long a partner agency's registration protects its claim on a buyer, in days (default `90`). The house figure; an agency that negotiated something different carries its own `protection_days`. Deliberately configuration rather than a constant in the code. |
 | `WHATSAPP_TOKEN` | Meta Cloud API permanent access token. |
 | `WHATSAPP_PHONE_ID` | Meta phone **number id** (not the number itself). |
 | `WHATSAPP_VERIFY_TOKEN` | Any string; also typed into Meta's webhook form. Unset → `GET /api/whatsapp` always 403s. |

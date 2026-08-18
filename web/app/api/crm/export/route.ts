@@ -1,5 +1,6 @@
 import { isAdmin, isAuthed } from '@/lib/crm/auth';
-import { listLeads } from '@/lib/crm/store';
+import { isQueueKey, listLeads } from '@/lib/crm/store';
+import { creditedClaim } from '@/lib/crm/rules';
 import type { Lead, Stage } from '@/lib/crm/types';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,12 @@ const COLS: [string, (l: Lead) => string | number | undefined][] = [
   ['stage', (l) => l.stage],
   ['score', (l) => l.score],
   ['source', (l) => l.source || l.utm_source],
+  /* Who introduced the buyer, and when they registered them. The one piece of
+     attribution that decides who gets paid, so it travels with the export
+     rather than living only on the lead page. */
+  ['agency', (l) => creditedClaim(l)?.agencyName],
+  ['agency_agent', (l) => creditedClaim(l)?.brokerName],
+  ['registered', (l) => creditedClaim(l)?.at],
   ['utm_medium', (l) => l.utm_medium],
   ['utm_campaign', (l) => l.utm_campaign],
   ['gdpr_consent', (l) => (l.gdpr_consent ? 'yes' : 'no')],
@@ -46,11 +53,17 @@ export async function GET(req: Request) {
   if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
   const url = new URL(req.url);
   const p = (k: string) => url.searchParams.get(k) || undefined;
+  /* Every filter the Leads page can apply, so the file really is the view
+     being looked at. Owner and flag were missing, which meant "export" on a
+     salesperson's own overdue list quietly handed back every lead we have. */
+  const flag = p('flag');
   const leads = await listLeads({
     stage: p('stage') as Stage | undefined,
     score: p('score'),
     form_type: p('form_type'),
+    owner: p('owner'),
     q: p('q'),
+    flag: flag && isQueueKey(flag) ? flag : undefined,
     // Follows the view it was launched from: exporting while looking at the
     // archive should not quietly hand back the live list instead.
     archived: p('archived') === 'only' ? 'only' : undefined,

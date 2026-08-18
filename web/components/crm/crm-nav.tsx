@@ -25,6 +25,11 @@ const items = [
     icon: <path d="M4 5h16M4 5v4h10M4 9v4h7m0 0v4h13M14 13h6" />,
   },
   {
+    href: '/admin/agencies',
+    label: 'Agencies',
+    icon: <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01" />,
+  },
+  {
     href: '/admin/masterplan',
     label: 'Masterplan',
     icon: <path d="m9 20-6-2V4l6 2m0 14 6-2m-6 2V6m6 12 6 2V6l-6-2m0 14V4M9 6l6-2" />,

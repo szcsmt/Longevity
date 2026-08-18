@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type {
-  Activity, CardColor, CardItem, Construction, CrmEvent, Lead, LeadPatch, Note, PhaseKey, ProjectNote, Score, Stage, Task,
-  Qualification, VillaHistoryEntry, VillaRecord, VillaStatus,
+  Activity, AgencyClaim, CardColor, CardItem, Construction, CrmEvent, Lead, LeadPatch, Note, PhaseKey,
+  ProjectNote, Score, Stage, Task, Qualification, VillaHistoryEntry, VillaRecord, VillaStatus,
 } from './types';
 import {
   CARD_COLORS, CURRENCIES, DECISION, FINANCING, MOTIVATIONS, NURTURE_REASONS, OBJECTIONS,
@@ -10,17 +10,19 @@ import {
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel } from './language';
-import { ACTIVE_STAGES, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, matchesFlag, workQueue, type QueueKey } from './rules';
+import {
+  ACTIVE_STAGES, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, activeClaim, matchesFlag, workQueue,
+  type QueueKey,
+} from './rules';
 import { fmtTHB, phaseAmount, priceForSize, villaByName } from './villas';
 import unitCatalog from '../villas.json';
 export {
   STAGE_MAX_DAYS, REPLY_FLAG_DAYS, SECTION_META, stageAgeDays, stageEnteredAt, isStalled,
   hasNoNextStep, nextAction, nextActionState, hasConversed, isNurtured, isQueueKey, matchesFlag,
-  workQueue,
+  workQueue, activeClaim, creditedClaim, competingClaims,
 } from './rules';
 export type { QueueKey, QueueSection } from './rules';
-import { hasDatabase, type Backend } from './backend';
-import { fileBackend } from './backend-file';
+import { getBackend } from './backend';
 export type { VillaHistoryEntry, VillaRecord, VillaStatus } from './types';
 
 /* Domain layer of the CRM store. Persistence is pluggable: with a DATABASE_URL
@@ -28,17 +30,7 @@ export type { VillaHistoryEntry, VillaRecord, VillaStatus } from './types';
    (dev). Starts EMPTY — only real form submissions and real site clicks land
    here. All CRM code talks to these functions only. */
 
-let cached: Backend | null = null;
-async function backend(): Promise<Backend> {
-  if (cached) return cached;
-  if (hasDatabase()) {
-    const { pgBackend } = await import('./backend-pg');
-    cached = pgBackend;
-  } else {
-    cached = fileBackend;
-  }
-  return cached;
-}
+const backend = getBackend;
 
 const now = () => new Date().toISOString();
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
@@ -51,6 +43,25 @@ export function cleanText(s: string): string {
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
     .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '')
     .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
+}
+
+/* ── A refusal, as opposed to a failure ──
+
+   Two people each believing something is theirs to claim — a villa, a buyer —
+   is not a race the revision guard can settle. It is a business rule, and it
+   has to be a refusal rather than a warning, because a warning in a drawer is
+   a warning nobody reads.
+
+   Thrown rather than returned: it is exceptional, every caller wants it
+   surfaced rather than folded into a null, and throwing inside a transaction
+   body means nothing is persisted and no audit line is written. Subclassed per
+   aggregate below (VillaConflict, ClaimConflict) so a caller can tell what it
+   collided with. */
+export class CrmConflict extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CrmConflict';
+  }
 }
 
 // ── Lead queries ──
@@ -469,6 +480,13 @@ export async function mergeLeads(primaryId: string, otherId: string, actor?: str
     primary.notes = appendNew(primary.notes, other.notes);
     primary.tasks = appendNew(primary.tasks, other.tasks);
     primary.history = appendNew(primary.history || [], other.history || []);
+    /* Registrations move with the person, and they are the reason a merge must
+       never be a delete: an agency that registered the duplicate introduced
+       this buyer, and folding the records together cannot be what quietly
+       loses their claim. Sorted by date afterwards, because "who was first"
+       is the whole question a claim answers. */
+    primary.claims = appendNew(primary.claims || [], other.claims || [])
+      .sort((a, b) => a.at.localeCompare(b.at));
 
     const when = other.submitted_at || other.created_at;
     const detail = `Merged duplicate ${(other.form_type || 'enquiry').replace('_', ' ')} from ${when.slice(0, 10)}`;
@@ -761,6 +779,122 @@ export async function logTouch(
       lead.stage = 'contacted';
     }
   });
+}
+
+/* ══════════════════ An agency registering a buyer ══════════════════
+
+   The argument this exists to end: "we introduced that buyer to you in March."
+   Until now the answer lived in somebody's inbox, because an introducing
+   agency was a free-text word in `source` with no date attached.
+
+   A registration is append-only. It is never edited, never deleted, and a
+   second agency registering the same person adds a claim rather than replacing
+   one — which is exactly what makes it evidence.
+
+   The refusal is the point. While one agency's protection window is open, a
+   different agency cannot simply register over the top of it: the call fails
+   with a sentence naming who holds the claim and until when. It CAN be done
+   deliberately, with `override`, and then the new claim carries the id of the
+   one it went over and the timeline says who decided.
+
+   The Agency is passed in rather than looked up here, so this module never has
+   to import the partner module that imports it. */
+
+export class ClaimConflict extends CrmConflict {
+  /* A plain field rather than a constructor parameter property: the test
+     runner strips types without transforming, and `public readonly` in a
+     signature is syntax rather than a type annotation. */
+  readonly claim: AgencyClaim;
+
+  constructor(claim: AgencyClaim) {
+    super(
+      `${claim.agencyName} registered this buyer on ${claim.at.slice(0, 10)}` +
+      (claim.expires_at ? ` and holds the claim until ${claim.expires_at.slice(0, 10)}.` : '.'),
+    );
+    this.name = 'ClaimConflict';
+    this.claim = claim;
+  }
+}
+
+export interface RegistrationInput {
+  brokerId?: string;
+  brokerName?: string;
+  note?: string;
+  /** Register over a live claim from another agency, deliberately. */
+  override?: boolean;
+}
+
+export async function registerAgency(
+  leadId: string,
+  agency: { id: string; name: string },
+  protectionDays: number,
+  input: RegistrationInput = {},
+  actor?: string,
+): Promise<Lead | null> {
+  const said = cleanText(input.note || '').trim().slice(0, 1000);
+  const brokerName = cleanText(input.brokerName || '').trim().slice(0, 120) || undefined;
+
+  let conflict: AgencyClaim | null = null;
+  const lead = await mutate(leadId, (l) => {
+    conflict = null;
+    const held = activeClaim(l);
+    /* The same agency registering again is not a conflict — it is a renewal,
+       and it should reset their window rather than be refused. */
+    if (held && held.agencyId !== agency.id && !input.override) {
+      conflict = held;
+      return;
+    }
+    const at = now();
+    const expires = new Date(Date.now() + protectionDays * 86_400_000).toISOString().slice(0, 10);
+    const claim: AgencyClaim = {
+      id: randomUUID(),
+      agencyId: agency.id,
+      agencyName: agency.name,
+      brokerId: input.brokerId,
+      brokerName,
+      at,
+      expires_at: expires,
+      ...(said ? { note: said } : {}),
+      ...(actor ? { by: actor } : {}),
+      ...(held && held.agencyId !== agency.id ? { overrode: held.id } : {}),
+    };
+    (l.claims ??= []).push(claim);
+    logActivity(
+      l,
+      'registered',
+      `${agency.name} registered this buyer${brokerName ? ` (${brokerName})` : ''}` +
+        `, protected to ${expires}` +
+        (claim.overrode ? ` — recorded over ${held!.agencyName}'s claim` : '') +
+        (said ? ` — ${said}` : ''),
+      actor,
+    );
+  });
+  if (conflict) throw new ClaimConflict(conflict);
+  return lead;
+}
+
+/* Withdrawn, not erased. A registration that turns out to be wrong — the buyer
+   was already ours, the agency sent the wrong name — stops counting for both
+   protection and credit, and stays on the record with the reason. */
+export async function releaseClaim(
+  leadId: string,
+  claimId: string,
+  reason: string,
+  actor?: string,
+): Promise<Lead | null> {
+  const why = cleanText(reason || '').trim().slice(0, 500);
+  if (!why) return null;
+  let found = false;
+  const lead = await mutate(leadId, (l) => {
+    found = false;
+    const claim = (l.claims || []).find((c) => c.id === claimId && !c.released_at);
+    if (!claim) return;
+    found = true;
+    claim.released_at = now();
+    claim.release_reason = why;
+    logActivity(l, 'registered', `${claim.agencyName}'s registration withdrawn — ${why}`, actor);
+  });
+  return found ? lead : null;
 }
 
 /* ── Parking a lead until a date ──
@@ -1321,18 +1455,7 @@ async function persistVilla(id: string, rec: VillaRecord, expectedRev: number): 
    deliberately reserving a unit that another salesperson reserved an hour ago,
    because that is not a race — it is two people who each believe the unit is
    theirs to sell. Only a business rule catches that, and it has to be a refusal
-   rather than a warning: a warning in a drawer is a warning nobody reads.
-
-   Thrown, not returned, because it is exceptional and every caller wants it
-   surfaced rather than folded into a null. Thrown inside the transaction body,
-   so nothing is persisted and no audit line is written. */
-export class CrmConflict extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'CrmConflict';
-  }
-}
-
+   rather than a warning: a warning in a drawer is a warning nobody reads. */
 export class VillaConflict extends CrmConflict {
   constructor(message: string) {
     super(message);

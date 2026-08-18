@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import type { CrmEvent, Lead, ProjectNote, VillaRecord, VillaHistoryEntry } from './types';
+import type { Agency, CrmEvent, Lead, ProjectNote, VillaRecord, VillaHistoryEntry } from './types';
 import type { Backend } from './backend';
 
 /* Production backend: Neon Postgres over HTTP (serverless-friendly, no pooling
@@ -49,6 +49,11 @@ function init(): Promise<void> {
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
       await q`CREATE TABLE IF NOT EXISTS crm_notes (
+        id text PRIMARY KEY,
+        data jsonb NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await q`CREATE TABLE IF NOT EXISTS crm_agencies (
         id text PRIMARY KEY,
         data jsonb NOT NULL,
         updated_at timestamptz NOT NULL DEFAULT now()
@@ -200,5 +205,17 @@ export const pgBackend: Backend = {
     await init();
     const rows = await sql()`DELETE FROM crm_notes WHERE id = ${id} RETURNING id`;
     return rows.length > 0;
+  },
+  async allAgencies() {
+    await init();
+    const rows = await sql()`SELECT data FROM crm_agencies ORDER BY data->>'name'`;
+    return rows.map((r) => r.data as Agency);
+  },
+  async saveAgency(agency) {
+    await init();
+    await sql()`INSERT INTO crm_agencies (id, data, updated_at)
+      VALUES (${agency.id}, ${JSON.stringify(agency)}::jsonb, ${agency.updated_at})
+      ON CONFLICT (id) DO UPDATE
+        SET data = ${JSON.stringify(agency)}::jsonb, updated_at = ${agency.updated_at}`;
   },
 };

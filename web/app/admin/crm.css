@@ -638,3 +638,8 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
   color: var(--c-cream); background: rgba(201,169,110,0.09); border: 1px solid rgba(201,169,110,0.35);
 }
 .lost-hint strong { color: var(--c-gold-bright); }
+
+/* ── Agency registrations on the lead page ── */
+.claim { padding: 12px 0; border-bottom: 1px solid var(--c-line-2); }
+.claim:last-of-type { border-bottom: 0; }
+.claim-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
