@@ -22,6 +22,7 @@ delete process.env.CRM_AUTO_FROM;
 process.env.CRM_AGENTS = 'Anna|anna@example.com||en;Bence|bence@example.com||en';
 
 const store = await import('../lib/crm/store');
+const { performance } = await import('../lib/crm/performance');
 
 after(() => rmSync(dir, { recursive: true, force: true }));
 
@@ -73,9 +74,12 @@ describe('archiving a lead', () => {
   });
 
   it('is gone from the reports', async () => {
-    const r = await store.reports();
-    const inSources = r.bySource.reduce((n, x) => n + x.total, 0);
-    assert.equal(inSources, (await store.listLeads()).length);
+    /* Deliberately fed the WHOLE table, archived rows included: the exclusion
+       has to live inside the report rather than in whatever happened to call
+       it, or the next caller reintroduces the bug. */
+    const p = performance(await store.listLeads({ archived: 'include' }));
+    assert.equal(p.total, (await store.listLeads()).length);
+    assert.equal(p.bySource.reduce((n, x) => n + x.leads, 0), p.total);
   });
 
   it('is gone from the attention counts', async () => {

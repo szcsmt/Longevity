@@ -50,6 +50,11 @@ const items = [
     icon: <path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm9 0v5h5M8 13h8M8 17h5" />,
   },
   {
+    href: '/admin/performance',
+    label: 'Performance',
+    icon: <path d="M4 20V10m6 10V4m6 16v-7m-12 7h18" />,
+  },
+  {
     href: '/admin/analytics',
     label: 'Analytics',
     icon: <path d="M3 12c3-6 6-9 9-9s6 3 9 9c-3 6-6 9-9 9s-6-3-9-9Zm9 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />,

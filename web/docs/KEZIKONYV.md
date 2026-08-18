@@ -464,6 +464,64 @@ Minden sorból link visz a leadre. Pipálással kész — átkerül a Done-ba.
 
 ---
 
+## 8b. Performance — a sales vezető képernyője
+
+`/admin/performance`
+
+Nem az Analitika másolata. Az a weboldal forgalmáról és a készlet értékéről szól; **ez négy
+kérdésre válaszol az értékesítésről magáról**: hol halnak meg az üzletek, mennyi ideig tartanak,
+ki termel, és mi kíván ma vezetői döntést.
+
+Ennek a nagy része eddig is kiszámolódott — és eldobódott. A rendszer forrásonként kiszámolta a
+nyerési arányt és a bevételt **minden egyes lekéréskor**, és egyetlen oldal sem jelenítette meg.
+
+### Needs management attention
+
+Négy szám, mindegyik **kattintható**, és a saját leszűrt lead-listájára visz: akivel még senki
+nem beszélt · lejárt követés · nincs betervezve semmi · nem mozdul.
+
+### The shape of the business
+
+Eladott érték · pipeline érték (qualified és még nyitott) · **értékesítési ciklus** (medián:
+beérkezéstől eladásig) · **első kontaktus ideje** (medián: beérkezéstől az *első valódi
+beszélgetésig* — a kiment automata levél és a nem felvett hívás egyik sem az).
+
+### A tölcsér — hol halnak meg az üzletek
+
+| Oszlop | Mit mond |
+|---|---|
+| **Reached** | hányan **jutottak el** eddig a fázisig (nem az, hogy most hányan ülnek benne) |
+| **Of all leads** | az összes leadhez képest |
+| **From previous** | **ez az egyetlen oszlop, ami miatt érdemes értekezletet tartani** |
+| **Lost here** | hányat vesztettünk el pontosan ebben a fázisban |
+
+A „41 lead eljutott a prezentációig" egy adat. Az, hogy „a prezentációt kapott leadek
+háromnegyede soha nem jutott el megtekintésig", egy **döntés**. 50% alatti átmenet pirosan.
+
+Az elvesztett üzletek is beleszámítanak azokba a fázisokba, amiken **áthaladtak** — különben úgy
+tűnne, mintha elpárologtak volna, ahelyett hogy egy konkrét ponton elvesztek volna.
+
+A rendszer megmondja, ha nem tud mindent: *„a 12 elvesztett üzletből 5 még azelőtt veszett el,
+hogy a CRM rögzítette volna, melyik fázisban" —* a „Lost here" oszlop pontosan ennyivel kevesebb.
+Nem tippel, hanem kimondja.
+
+### By salesperson
+
+Lead-szám, nyitott, pipeline-érték, eladás, eladási érték, konverzió, és **hány élő leadje
+kíván most figyelmet**. A gazdátlan leadek **külön sorban** szerepelnek (`— unassigned —`) —
+az a legfontosabb sor a képernyőn, nem kerekítési hiba.
+
+### By source · Why we lose · By agency
+
+Forrásonként: lead → qualified → eladva → érték. **A lead-szám önmagában semmit nem jelent**:
+az a forrás, amelyik negyven olcsó leadet hoz és egy vevőt sem, drágább, mint amelyik négyet hoz.
+Ahol még semmi nem dőlt el, ott `—` áll nyerési arány helyett, nem `0%` — az utóbbi rágalom
+lenne egy fiatal kampánnyal szemben.
+
+A veszteség-okok a **strukturált mezőből** jönnek, nem a jegyzet szövegéből.
+
+---
+
 ## 9. Analytics — számok
 
 `/admin/analytics` — időablak-választó: 7 nap / 30 nap / 90 nap / Összes.

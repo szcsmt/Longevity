@@ -40,6 +40,7 @@ the work is filling gaps and closing blind spots.
 | Automated sequence | Six letters, minute 0 → day 60, stopping the moment a human owns the conversation |
 | Roles | admin / agent / viewer, with the irreversible and the exportable reserved to the owner |
 | Speed to lead | `first_response_at` — the first moment a *person* acted |
+| Management reporting | `/admin/performance`: funnel with stage-to-stage drop, cycle length, time to first conversation, production by salesperson / source / agency, lost reasons from the structured field |
 | Pipeline | Ten ordered stages with what each one means, positional helpers (`atOrBeyond`, `OPEN_STAGES`), a refusal on the stages that assert a unit, and the qualification gap written onto the stage entry |
 | Introducing agencies | `Agency` + nested `Broker` records, append-only registrations on the lead, an auditable protection window that refuses a competing claim, and per-agency production figures counted against whoever introduced the buyer first |
 
@@ -47,9 +48,7 @@ the work is filling gaps and closing blind spots.
 
 | | What is missing |
 |---|---|
-| Lost reporting | `reports().lostReasons` reads the `"Lost: …"` **note text** while `lead.lost_reason` holds the structured value. Two sources, one of them fragile |
 | Scoring | One hot/warm/cold, from the form type plus AI triage. The specification asks for fit and engagement kept apart |
-| Attribution | Source, campaign and UTM are all stored, and `reports().bySource` computes source → won → revenue — **but no page renders it** |
 | Source values | Whatever arrives in `?source=` / `utm_source`, unnormalised: `fb`, `Facebook`, `FB_ads` are three rows in a report that only shows eight |
 | Country / nationality | Language is inferred from the phone number; nationality is neither stored nor filterable |
 | Filters | Stage, score, form, owner, free text and now the attention flags. Not budget, timeframe, country or value |
@@ -61,17 +60,14 @@ the work is filling gaps and closing blind spots.
 | | Why it matters |
 |---|---|
 | **Reservation as a process** | A unit flips to `reserved` and a `slot` phase gets ticked. No reservation date, amount, expiry, agreement document or deposit status of its own |
-| **Contract / SPA tracking** | Sent → reviewed → signed, with dates. Today the whole contract stage is one status word on a plot |
+| **Contract / SPA tracking** | There is a `contract` STAGE now, which is where a deal is. What is still missing is what it is doing there: sent → reviewed → signed, with dates and the document |
 | **Configurable payment schedules** | 7 / 43 / 40 / 10 is hard-coded in `PHASES`. It is right for this project and wrong as a permanent assumption |
-| Head-of-sales dashboard | Conversion between stages, cycle length, pipeline and sales by person, agency and source — all computable, none assembled on one screen |
 | Configurable SLAs | `STAGE_MAX_DAYS` and `REPLY_FLAG_DAYS` are constants in code |
 
 ### NEEDS REFACTORING
 
-- `store.ts` is ~2000 lines and holds leads, units, events, notes and settings. Split by aggregate when it next needs a real change, not before.
+- `store.ts` still holds leads, units, events, notes and settings in one file, though the agency and reporting aggregates now live in `partners.ts` and `performance.ts`. Split the rest by aggregate when it next needs a real change, not before.
 - `dictionaries.ts` is 110 KB in one file.
-- Lost reasons read from note text (above) — one source of truth, not two.
-- `reports()` is dead code: computed on every call, rendered nowhere.
 - Two client components call `Date.now()` during render (a real React purity warning, pre-existing).
 
 ---
@@ -85,7 +81,7 @@ the work is filling gaps and closing blind spots.
 - [x] **P0.3** A unit and its buyer cannot drift apart — referential integrity plus a report of what is already broken
 - [x] **P0.4** One price table, and one pass over the inventory
 
-### P1 — sales effectiveness
+### P1 — sales effectiveness ✅ *shipped*
 
 - [x] **P1.1** A phone call can be something the CRM knows about (`logTouch`, `reached`)
 - [x] **P1.2** Qualification in fields, not prose
@@ -99,14 +95,16 @@ the work is filling gaps and closing blind spots.
 - [x] **P1.8** The stages the sales actually has — presentation, visit, negotiation and contract,
       ordered helpers instead of six disagreeing literal arrays, a refusal where the rule is
       objective (a unit) and a recorded gap where it is judgement
-- [ ] **P1.9 The head-of-sales screen.** Stage-to-stage conversion, cycle length, pipeline and
-      won value by person / source / agency, lost reasons — assembled from `reports()`, which
-      already computes most of it and is rendered nowhere.
+- [x] **P1.9** The head-of-sales screen — `/admin/performance`: the funnel with the drop between
+      its steps, cycle length, time to first contact, production by person / source / agency,
+      and why we lose. `reports()` is gone; `lib/crm/performance.ts` is pure and tested
 
 ### P2 — management and optimisation
 
 - [ ] Source normalisation at intake, so a report counts campaigns rather than spellings
-- [ ] Attribution chain: source → qualified → reservation → contract → revenue
+- [ ] Attribution by campaign and ad, not just source — `/admin/performance` now walks
+      source → qualified → reserved → sold → money, but `utm_campaign` and the ad id are stored
+      and never grouped on
 - [ ] Reservation as its own record: date, amount, expiry, agreement, deposit status
 - [ ] Commission actually **paid**: a per-agency ledger with dates, so outstanding is a fact
       rather than a subtraction. `performanceFor` computes only what an agreement *generates*,

@@ -488,9 +488,15 @@ export async function updateLead(id: string, patch: LeadPatch, actor?: string): 
       lead.nurture_until = undefined;
       lead.nurture_reason = undefined;
     }
+    /* Where the deal was when it died. Captured before the assignment, because
+       a moment later `lead.stage` is 'lost' and the answer is gone. */
+    if (patch.stage === 'lost' && lead.stage !== 'lost') lead.lost_from = lead.stage;
     Object.assign(lead, patch);
     // A revived deal is no longer lost — drop the stale reason.
-    if (patch.stage && patch.stage !== 'lost') lead.lost_reason = undefined;
+    if (patch.stage && patch.stage !== 'lost') {
+      lead.lost_reason = undefined;
+      lead.lost_from = undefined;
+    }
   });
   if (refusal) throw new StageConflict(refusal);
   return result;
@@ -2031,85 +2037,6 @@ export async function stats(): Promise<Stats> {
     byDay, funnel, lost, wonRate, attention: { overdue, untouched },
     pipelineValue, wonValue,
   };
-}
-
-// ── Reports ──
-
-export interface SourceReport {
-  source: string;
-  total: number;
-  hot: number;
-  won: number;
-  lost: number;
-  winRate: number;   // of decided
-  wonValue: number;  // THB
-}
-
-export interface Reports {
-  bySource: SourceReport[];
-  byMonth: { month: string; label: string; total: number; won: number }[]; // last 6, oldest first
-  byVilla: { villa: string; total: number; hot: number; reserved: number; won: number }[];
-  lostReasons: { leadId: string; leadName: string; reason: string; at: string }[];
-}
-
-export async function reports(): Promise<Reports> {
-  const leads = await liveLeads();
-
-  // Source performance
-  const srcMap = new Map<string, SourceReport>();
-  for (const l of leads) {
-    const source = l.source || l.utm_source || 'direct';
-    const row = srcMap.get(source) || { source, total: 0, hot: 0, won: 0, lost: 0, winRate: 0, wonValue: 0 };
-    row.total++;
-    if (l.score === 'hot') row.hot++;
-    if (l.stage === 'won') { row.won++; row.wonValue += l.value || 0; }
-    if (l.stage === 'lost') row.lost++;
-    srcMap.set(source, row);
-  }
-  const bySource = [...srcMap.values()]
-    .map((r) => ({ ...r, winRate: r.won + r.lost ? Math.round((r.won / (r.won + r.lost)) * 100) : 0 }))
-    .sort((a, b) => b.total - a.total);
-
-  // Monthly volume, last 6 calendar months
-  const byMonth: Reports['byMonth'] = [];
-  const ref = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(ref.getFullYear(), ref.getMonth() - i, 1);
-    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const inMonth = leads.filter((l) => (l.created_at || '').startsWith(month));
-    byMonth.push({
-      month,
-      label: d.toLocaleDateString('en-US', { month: 'short' }),
-      total: inMonth.length,
-      won: inMonth.filter((l) => l.stage === 'won').length,
-    });
-  }
-
-  // Villa interest
-  const villaMap = new Map<string, Reports['byVilla'][number]>();
-  for (const l of leads) {
-    const villa = villaByName(l.villa)?.name || (l.villa ? l.villa : undefined);
-    if (!villa) continue;
-    const row = villaMap.get(villa) || { villa, total: 0, hot: 0, reserved: 0, won: 0 };
-    row.total++;
-    if (l.score === 'hot') row.hot++;
-    if (atOrBeyond(l.stage, 'reserved')) row.reserved++;
-    if (l.stage === 'won') row.won++;
-    villaMap.set(villa, row);
-  }
-  const byVilla = [...villaMap.values()].sort((a, b) => b.total - a.total);
-
-  // Lost reasons — the "Lost: …" notes captured when a deal is marked lost
-  const lostReasons = leads
-    .flatMap((l) =>
-      l.notes
-        .filter((n) => n.body.startsWith('Lost:'))
-        .map((n) => ({ leadId: l.id, leadName: l.name || 'Unknown', reason: n.body.slice(5).trim(), at: n.at })),
-    )
-    .sort((a, b) => b.at.localeCompare(a.at))
-    .slice(0, 20);
-
-  return { bySource, byMonth, byVilla, lostReasons };
 }
 
 /* ══════════════════ Project notes ══════════════════

@@ -622,6 +622,47 @@ that has **no open task and no running reply timer** — nobody owns its next mo
 a red badge in the nav (`attentionCounts()`), together with overdue tasks, untouched new leads,
 awaiting-reply leads past 3 days, and stalled leads.
 
+## Performance — `lib/crm/performance.ts`
+
+Pure: every figure is derived from a list of leads, nothing is fetched, and the whole module is
+testable without a database. It backs `/admin/performance`, the head-of-sales screen.
+
+It exists because most of it was already being computed and thrown away. `reports()` in the
+store worked out source-by-source win rates and revenue on **every call** and was rendered by no
+page at all — it has been deleted, and what was useful in it lives here. The old funnel counted
+how many leads sat in each stage but never the drop between them, which is the only part
+anybody acts on.
+
+Deliberately **not** here: anything the analytics page already answers well — inventory,
+traffic, campaign volume. Two screens computing the same number two different ways is how a
+management meeting turns into an argument about the CRM.
+
+| | |
+|---|---|
+| `funnel` | Per stage: `reached`, `ofTotal`, **`ofPrevious`** and `lostHere` |
+| `cycleDays` | Median days from arriving to sold |
+| `firstContactHours` | Median hours from arriving to a real **conversation** (`firstConversationAt`) — an automatic e-mail and a call that rang out are neither of them contact |
+| `bySalesperson` | Leads, open, pipeline value, sold, sales value, conversion, and how many of their live leads are asking for attention. Unowned leads get their own `UNASSIGNED` row rather than being dropped |
+| `bySource` | leads → qualified → reserved → sold → money. `winRate` is `null` when nothing is decided |
+| `lostReasons` | From the structured `lost_reason` |
+| `attention` | The four working-queue rules, counted |
+
+**Reaching, not sitting in.** A lead now at Negotiation reached every stage before it, and a
+lost deal reached the stages it passed through — `furthest(lead)` is `lost_from` for a lost
+deal and its current stage otherwise. Without that, every drop-off would read as if the deals
+had evaporated rather than been lost somewhere specific.
+
+**`ofPrevious` is the number worth a meeting.** "41 reached Presentation" is a fact; "only a
+quarter of the leads that got a presentation ever reached a viewing" is a decision.
+
+**`lost_from`** is stored on the lead at the moment of loss rather than read back out of the
+timeline text — a rule that parses a sentence breaks the day somebody rewords a label. It is
+absent on anything lost before the field existed, so `lostHere` under-counts by exactly
+`lost − lostStageKnown`, and the screen **says so** rather than quietly rounding.
+
+**`winRate: null`, not 0%.** A source with nothing decided yet has no win rate, and printing
+zero would libel a campaign that is simply young.
+
 ## Agencies, and the registrations that decide who gets paid
 
 Careful with the word **agent**. In this codebase it already means one of *our* salespeople —

@@ -485,6 +485,14 @@ export interface Lead {
      in a "Lost:" note; this field feeds reporting. */
   lost_reason?: string;
 
+  /* The stage the deal was in when it was lost. Stored rather than read back
+     out of the timeline text, because "where do deals die" is the question the
+     funnel exists to answer and a rule that parses a sentence breaks the day
+     somebody rewords a label. Absent on anything lost before this existed —
+     those deals are counted as lost, and honestly left out of the by-stage
+     breakdown rather than guessed at. */
+  lost_from?: Stage;
+
   /* ── Parked until a date ──
      While `nurture_until` is in the future the lead is out of the working
      queue and out of the automated sequence, and no stall or no-next-step rule

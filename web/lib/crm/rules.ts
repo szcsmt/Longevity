@@ -173,6 +173,15 @@ export function competingClaims(lead: Lead): AgencyClaim[] {
   });
 }
 
+/** When somebody first got hold of them — the timestamp behind `hasConversed`.
+    Used to measure how long a lead waited for a human, which is the one speed
+    number that predicts whether it turns into anything. */
+export function firstConversationAt(lead: Lead): string | undefined {
+  return (lead.history || []).find(
+    (h) => h.reached === true || h.kind === 'message' || (h.kind === 'email' && h.detail.startsWith('Reply received')),
+  )?.at;
+}
+
 /* ── Parked until a date ──
 
    True while the lead is deliberately set aside and the date has not arrived.
