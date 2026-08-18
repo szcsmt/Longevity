@@ -420,6 +420,7 @@ edits the commercial relationship, and a commission percentage is not a salesper
 | `update` | `patch` | Accepts `name`, `country`, `website`, `note`, `status` (a `AGENCY_STATUS` id), `commission_model` (a `COMMISSION_MODELS` id), `agreement_at` (`YYYY-MM-DD`), `commission_pct` (0–100), `commission_fixed`, `protection_days`. A value not on its list leaves the stored one alone; a non-positive number clears the field; a percentage over 100 is dropped as the typo it is. A blank `name` is ignored. |
 | `addContact` | `contact` `{name, email, phone, whatsapp}` | Appends a named agent. Missing name → `400`. |
 | `setContactActive` | `contactId`, `active` | Marks somebody as having left, or brings them back. Contacts are **never removed** — a claim can point at somebody who left last year and has to keep reading with their name on it. |
+| `addPayment` | `payment: {amount, at, reference?, against?, note?}` | Records commission actually paid. `amount` may be **negative** — that is how a mistake is corrected, because there is deliberately no way to delete one. Zero amount or an unparseable date → `400`. |
 | `archive` | — | Ends the relationship. The agency leaves every picker and every report; its registrations stay on the buyers, so a sale completing next year is still credited to whoever introduced it. |
 | `unarchive` | — | Restores it. |
 

@@ -390,6 +390,27 @@ export interface Broker {
   inactive?: boolean;
 }
 
+/* ── Commission actually paid ──
+
+   `performanceFor` works out what an agreement GENERATES on the won volume.
+   What has been paid is a different fact entirely, and guessing at it would be
+   worse than leaving it blank — so it is recorded, one payment at a time.
+
+   Append-only, like every other ledger in here. A payment entered by mistake is
+   corrected with a NEGATIVE entry rather than removed, which is accounting's
+   own answer to the problem and leaves the trail intact. */
+export interface CommissionPayment {
+  id: string;
+  /** THB. Negative for a correction — never zero, which would say nothing. */
+  amount: number;
+  at: string;          // ISO date the money moved
+  reference?: string;  // bank reference, invoice number
+  /** Which unit or deal it settles, when it is per-deal rather than on account. */
+  against?: string;
+  note?: string;
+  by?: string;         // who recorded it
+}
+
 export interface Agency {
   id: string;
   name: string;
@@ -405,6 +426,9 @@ export interface Agency {
      an agency that negotiated something different carries its own number. */
   protection_days?: number;
   contacts: Broker[];
+  /** What we have actually paid them, oldest first. Absent until the first
+      payment; a missing ledger reads as "nothing paid yet", which is true. */
+  payments?: CommissionPayment[];
   note?: string;
   created_at: string;
   updated_at: string;

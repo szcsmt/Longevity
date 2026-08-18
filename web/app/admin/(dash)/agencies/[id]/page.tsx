@@ -59,10 +59,11 @@ export default async function AgencyPage({ params }: { params: Promise<{ id: str
         {stat('Still live', String(perf.live))}
         {stat('Sold', String(perf.won))}
         {stat('Sales value', perf.wonValue ? fmtTHB(perf.wonValue) : '—')}
+        {admin && stat('Commission owed', perf.commissionOutstanding === undefined ? '—' : fmtTHB(perf.commissionOutstanding))}
       </div>
 
       {admin ? (
-        <AgencyEditor agency={agency} houseDays={houseProtectionDays()} />
+        <AgencyEditor agency={agency} houseDays={houseProtectionDays()} generated={perf.commission} />
       ) : (
         <div className="crm-card" style={{ marginBottom: 18 }}>
           <h3>The agreement</h3>

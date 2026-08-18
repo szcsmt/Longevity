@@ -79,6 +79,7 @@ export default async function AgenciesPage({
                 <th style={{ textAlign: 'right' }}>Conversion</th>
                 <th style={{ textAlign: 'right' }}>Sales value</th>
                 <th style={{ textAlign: 'right' }}>Commission</th>
+                <th style={{ textAlign: 'right' }}>Owed</th>
                 <th></th>
               </tr>
             </thead>
@@ -103,6 +104,12 @@ export default async function AgenciesPage({
                   {/* Blank, not zero, when nothing is agreed: a zero reads as
                       "they earn nothing", which is a different statement. */}
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.commission !== undefined ? fmtTHB(r.commission) : '—'}</td>
+                  {/* Generated minus paid. A dash when there is no agreement to
+                      compute the first half from — an unknown minus a known is
+                      not zero. */}
+                  <td className="tabnum" style={{ textAlign: 'right', color: (r.commissionOutstanding || 0) > 0 ? 'var(--c-gold-bright)' : undefined }}>
+                    {r.commissionOutstanding === undefined ? '—' : fmtTHB(r.commissionOutstanding)}
+                  </td>
                   <td style={{ textAlign: 'right' }}>
                     <Link href={`/admin/agencies/${r.agency.id}`} className="crm-btn ghost sm">Open</Link>
                   </td>

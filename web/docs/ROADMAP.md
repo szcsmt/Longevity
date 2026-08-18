@@ -108,9 +108,9 @@ the work is filling gaps and closing blind spots.
 - [x] **P2.3** Reservation as its own record — deposit agreed vs deposit received, an expiry
       that is watched, a release that needs a reason, and a refusal to hold a villa for nobody
 - [x] **P2.4** Contract / SPA status with the date each step was reached
-- [ ] Commission actually **paid**: a per-agency ledger with dates, so outstanding is a fact
-      rather than a subtraction. `performanceFor` computes only what an agreement *generates*,
-      and deliberately does not guess at the rest
+- [x] **P2.6** The commission ledger — what was paid recorded one entry at a time, corrected
+      with negative entries rather than deletions, and outstanding left undefined rather than
+      zero when there is no agreement to compute it from
 - [x] **P2.5** Configurable payment schedules — per project via `CRM_PAYMENT_SCHEDULE`, per unit
       when a buyer negotiates, and stamped onto the unit so changing the house terms never
       rewrites a deal already struck

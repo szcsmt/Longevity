@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Agency, Broker, Lead } from './types';
+import type { Agency, Broker, CommissionPayment, Lead } from './types';
 import { AGENCY_STATUS, COMMISSION_MODELS, atOrBeyond, isOpenStage } from './types';
 import { getBackend } from './backend';
 import { cleanText } from './store';
@@ -195,6 +195,55 @@ export async function setContactActive(agencyId: string, contactId: string, acti
 export const findContact = (agency: Agency, id?: string): Broker | undefined =>
   id ? agency.contacts.find((c) => c.id === id) : undefined;
 
+/* ── The commission ledger ──
+
+   Append-only. A payment entered by mistake is corrected with a NEGATIVE entry
+   rather than removed — accounting's own answer, and it leaves the trail
+   intact. There is deliberately no way to delete one: a money record that can
+   quietly disappear is not a record. */
+
+export interface PaymentInput {
+  amount?: number;
+  at?: string;
+  reference?: string;
+  against?: string;
+  note?: string;
+}
+
+export async function addPayment(
+  agencyId: string,
+  input: PaymentInput,
+  actor?: string,
+): Promise<Agency | null> {
+  const agency = await getAgency(agencyId);
+  if (!agency) return null;
+  const amount = Number(input.amount);
+  // Zero says nothing, and a non-number is a typo somebody will not notice.
+  if (!Number.isFinite(amount) || amount === 0) return null;
+  const day = String(input.at || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+
+  const payment: CommissionPayment = {
+    id: randomUUID(),
+    amount: Math.round(amount),
+    at: day,
+    reference: text(input.reference, 120),
+    against: text(input.against, 120),
+    note: text(input.note, 1000),
+    by: actor,
+  };
+  const next: Agency = {
+    ...agency,
+    payments: [...(agency.payments || []), payment].sort((a, b) => a.at.localeCompare(b.at)),
+    updated_at: now(),
+  };
+  await (await getBackend()).saveAgency(next);
+  return next;
+}
+
+export const paidTotal = (agency: Agency): number =>
+  (agency.payments || []).reduce((n, p) => n + p.amount, 0);
+
 /* ══════════════════ What each agency has actually produced ══════════════════
 
    The question the whole module exists to answer: which agencies bring buyers
@@ -206,8 +255,10 @@ export const findContact = (agency: Agency, id?: string): Broker | undefined =>
    registered the same person later.
 
    Archived leads are excluded, the same as everywhere else. `commission` is
-   what the agreement would generate on the won volume; what has actually been
-   PAID is not tracked yet and is deliberately not guessed at here. */
+   what the agreement WOULD generate on the won volume — a calculation — while
+   `commissionPaid` is what the ledger says actually moved. Outstanding is the
+   difference, and is undefined rather than zero when there is no agreement to
+   compute the first half from: an unknown minus a known is not a number. */
 
 export interface AgencyPerformance {
   agency: Agency;
@@ -224,6 +275,11 @@ export interface AgencyPerformance {
   /** What the agreement generates on the won volume, when the agreement says
       enough to compute it. Undefined when nothing is agreed yet. */
   commission?: number;
+  /** What has actually been paid — a recorded fact, not a calculation. */
+  commissionPaid: number;
+  /** Generated minus paid. Undefined when there is no agreement to compute
+      what was generated: an unknown minus a known is not zero. */
+  commissionOutstanding?: number;
 }
 
 export function performanceFor(agency: Agency, leads: Lead[]): AgencyPerformance {
@@ -239,6 +295,7 @@ export function performanceFor(agency: Agency, leads: Lead[]): AgencyPerformance
     commission = Math.round((wonValue * agency.commission_pct) / 100);
   else if (agency.commission_model === 'fixed' && agency.commission_fixed)
     commission = agency.commission_fixed * won;
+  const paid = paidTotal(agency);
 
   return {
     agency,
@@ -253,6 +310,8 @@ export function performanceFor(agency: Agency, leads: Lead[]): AgencyPerformance
     pipelineValue: open.reduce((n, l) => n + (l.value || 0), 0),
     conversion: mine.length ? Math.round((won / mine.length) * 100) : 0,
     commission,
+    commissionPaid: paid,
+    commissionOutstanding: commission === undefined ? undefined : commission - paid,
   };
 }
 

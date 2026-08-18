@@ -264,6 +264,24 @@ Alap adatok: név, ország, weboldal, hol tartunk (`In discussion` → `Active` 
 üresen — a riportban akkor `—` fog állni, nem `0`. A kettő nem ugyanaz: a nulla azt állítja,
 hogy nem keresnek semmit.
 
+**A jutalék-főkönyv** külön kártya az ügynökség lapján, és három számot mutat:
+
+| | |
+|---|---|
+| **Generated** | amennyit a megállapodás *termel* az eladott értéken — ez **számítás** |
+| **Paid** | amennyit ténylegesen kifizettünk — ez **rögzített tény**, nem becslés |
+| **Outstanding** | a kettő különbsége |
+
+Egy kifizetés rögzítése: összeg, dátum, opcionálisan hivatkozás (banki azonosító, számla) és
+hogy mire megy (villa vagy üzlet).
+
+**Törölni nem lehet.** Ha rossz összeget vittél be, **negatív tétellel** javítod — ez a
+könyvelés saját válasza a problémára, és így a nyom sértetlen marad. Egy pénzügyi bejegyzés,
+ami csendben eltűnhet, nem bejegyzés.
+
+Ha nincs jutalék-megállapodás, az „Outstanding" `—`, nem `0`: egy ismeretlenből kivonva egy
+ismertet nem szám jön ki.
+
 **Védelmi ablak (protection window)**: hány napig védi az ügynökség igényét egy regisztráció.
 Alapból **90 nap** (a `CRM_AGENCY_PROTECTION_DAYS` beállítás), de aki mást tárgyalt ki, annak
 saját száma lehet.

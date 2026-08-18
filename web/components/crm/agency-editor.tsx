@@ -10,14 +10,24 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Agency } from '@/lib/crm/types';
 import { AGENCY_STATUS, COMMISSION_MODELS } from '@/lib/crm/types';
+import { fmtTHB } from '@/lib/crm/villas';
 
 const num = (v?: number) => (v === undefined || v === null ? '' : String(v));
 
-export function AgencyEditor({ agency: initial, houseDays }: { agency: Agency; houseDays: number }) {
+export function AgencyEditor({
+  agency: initial, houseDays, generated,
+}: {
+  agency: Agency;
+  houseDays: number;
+  /** What the agreement generates on the won volume — computed server-side
+      from the leads, which this component has no business loading. */
+  generated?: number;
+}) {
   const router = useRouter();
   const [agency, setAgency] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [contact, setContact] = useState({ name: '', email: '', phone: '', whatsapp: '' });
+  const [payment, setPayment] = useState({ amount: '', at: '', reference: '', against: '' });
 
   async function send(payload: Record<string, unknown>) {
     setBusy(true);
@@ -46,6 +56,7 @@ export function AgencyEditor({ agency: initial, houseDays }: { agency: Agency; h
   };
 
   const model = agency.commission_model;
+  const paid = (agency.payments || []).reduce((n, p) => n + p.amount, 0);
 
   return (
     <div className="crm-detail">
@@ -169,6 +180,76 @@ export function AgencyEditor({ agency: initial, houseDays }: { agency: Agency; h
             >
               Add
             </button>
+          </div>
+        </div>
+
+        {/* ── The commission ledger ──
+
+            What the agreement GENERATES is a calculation. What has been paid is
+            a fact, and guessing at it would be worse than leaving it blank. So
+            it is recorded one payment at a time, append-only: a mistake is
+            corrected with a negative entry rather than removed, because a money
+            record that can quietly disappear is not a record. */}
+        <div className="crm-card">
+          <h3>Commission</h3>
+          <dl className="kv">
+            <dt>Generated</dt>
+            <dd>{generated === undefined ? '— no agreement yet' : fmtTHB(generated)}</dd>
+            <dt>Paid</dt>
+            <dd>{fmtTHB(paid)}</dd>
+            <dt>Outstanding</dt>
+            <dd style={{ color: generated !== undefined && generated - paid > 0 ? 'var(--c-gold-bright)' : undefined }}>
+              {generated === undefined ? '—' : fmtTHB(generated - paid)}
+            </dd>
+          </dl>
+
+          {(agency.payments || []).length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              {(agency.payments || []).map((p) => (
+                <div key={p.id} className="related-row">
+                  <div style={{ minWidth: 0 }}>
+                    <div className="crm-name" style={{ color: p.amount < 0 ? 'var(--c-hot)' : undefined }}>
+                      {fmtTHB(p.amount)}
+                    </div>
+                    <div className="crm-meta">
+                      {p.at}
+                      {p.against ? ` · ${p.against}` : ''}
+                      {p.reference ? ` · ${p.reference}` : ''}
+                      {p.by ? ` · ${p.by}` : ''}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ marginTop: 14 }}>
+            <label className="crm-label">Record a payment</label>
+            <div className="edit-grid">
+              <input className="crm-input" inputMode="numeric" placeholder="Amount (THB)" value={payment.amount}
+                disabled={busy} onChange={(e) => setPayment((p) => ({ ...p, amount: e.target.value }))} />
+              <input className="crm-input" type="date" value={payment.at}
+                disabled={busy} onChange={(e) => setPayment((p) => ({ ...p, at: e.target.value }))} />
+              <input className="crm-input" placeholder="Reference" value={payment.reference}
+                disabled={busy} onChange={(e) => setPayment((p) => ({ ...p, reference: e.target.value }))} />
+              <input className="crm-input" placeholder="Against (unit or deal)" value={payment.against}
+                disabled={busy} onChange={(e) => setPayment((p) => ({ ...p, against: e.target.value }))} />
+            </div>
+            <button
+              className="crm-btn sm"
+              style={{ marginTop: 10 }}
+              disabled={busy || !payment.amount.trim() || !payment.at}
+              onClick={async () => {
+                await send({ op: 'addPayment', payment: { ...payment, amount: Number(payment.amount) } });
+                setPayment({ amount: '', at: '', reference: '', against: '' });
+              }}
+            >
+              Add
+            </button>
+            <div className="crm-meta" style={{ marginTop: 8 }}>
+              Nothing here can be deleted. A payment entered by mistake is corrected with a
+              <strong> negative</strong> amount, so the trail stays intact.
+            </div>
           </div>
         </div>
 

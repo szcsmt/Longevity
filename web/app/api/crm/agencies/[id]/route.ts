@@ -1,6 +1,6 @@
 import { currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import {
-  addContact, archiveAgency, getAgency, setContactActive, unarchiveAgency, updateAgency,
+  addContact, addPayment, archiveAgency, getAgency, setContactActive, unarchiveAgency, updateAgency,
 } from '@/lib/crm/partners';
 
 export const dynamic = 'force-dynamic';
@@ -32,6 +32,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       break;
     case 'setContactActive':
       agency = await setContactActive(id, String(body.contactId || ''), body.active === true);
+      break;
+    case 'addPayment':
+      /* Append-only: there is no removePayment. A payment entered by mistake
+         is corrected with a NEGATIVE amount, which is accounting's own answer
+         and leaves the trail intact. */
+      agency = await addPayment(id, (body.payment || {}) as never, (await currentUser()) || undefined);
+      if (!agency) {
+        return Response.json(
+          { ok: false, error: 'A payment needs an amount that is not zero and a date.' },
+          { status: 400 },
+        );
+      }
       break;
     case 'archive':
       /* Archived, never deleted: the registrations made under this name decide

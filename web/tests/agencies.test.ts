@@ -272,3 +272,49 @@ describe('merging two records for the same person', () => {
     assert.equal(competingClaims(merged!).length, 2, 'and the second claim is still on the record');
   });
 });
+
+describe('the commission ledger', () => {
+  it('keeps what was generated and what was paid apart', async () => {
+    const before = partners.performanceFor(dubai, await store.listLeads());
+    assert.equal(before.commissionPaid, 0);
+    assert.equal(before.commissionOutstanding, before.commission);
+
+    await partners.addPayment(dubai.id, { amount: 500_000, at: '2026-05-02', reference: 'TT-9911' }, 'Anna');
+    const after = partners.performanceFor((await partners.getAgency(dubai.id))!, await store.listLeads());
+
+    assert.equal(after.commissionPaid, 500_000);
+    assert.equal(after.commissionOutstanding, after.commission! - 500_000);
+  });
+
+  it('has no outstanding figure when there is no agreement to compute one from', async () => {
+    const perf = partners.performanceFor((await partners.getAgency(berlin.id))!, await store.listLeads());
+    assert.equal(perf.commission, undefined);
+    assert.equal(perf.commissionOutstanding, undefined, 'an unknown minus a known is not zero');
+  });
+
+  it('corrects a mistake with a negative entry rather than a delete', async () => {
+    /* There is deliberately no removePayment: a money record that can quietly
+       disappear is not a record. */
+    const agency = (await partners.createAgency({ name: 'Ledger Test', commission_model: 'percent', commission_pct: 3 }))!;
+    await partners.addPayment(agency.id, { amount: 200_000, at: '2026-04-01' }, 'Anna');
+    const fixed = await partners.addPayment(agency.id, { amount: -200_000, at: '2026-04-02', note: 'Entered twice' }, 'Anna');
+
+    assert.equal(fixed!.payments!.length, 2, 'both entries stay on the record');
+    assert.equal(partners.paidTotal(fixed!), 0);
+  });
+
+  it('refuses a payment with no amount, a zero amount or no date', async () => {
+    const agency = (await partners.createAgency({ name: 'Strict Ledger' }))!;
+    assert.equal(await partners.addPayment(agency.id, { amount: 0, at: '2026-04-01' }), null);
+    assert.equal(await partners.addPayment(agency.id, { amount: 100, at: 'soon' }), null);
+    assert.equal(await partners.addPayment(agency.id, { at: '2026-04-01' }), null);
+    assert.equal((await partners.getAgency(agency.id))!.payments, undefined);
+  });
+
+  it('keeps the ledger in date order however it is entered', async () => {
+    const agency = (await partners.createAgency({ name: 'Out Of Order' }))!;
+    await partners.addPayment(agency.id, { amount: 10, at: '2026-06-01' }, 'Anna');
+    const after = await partners.addPayment(agency.id, { amount: 10, at: '2026-01-01' }, 'Anna');
+    assert.deepEqual(after!.payments!.map((p) => p.at), ['2026-01-01', '2026-06-01']);
+  });
+});

@@ -837,9 +837,24 @@ value, pipeline value, conversion %. Counted against `creditedClaim`, so an expi
 never quietly moves a sale to whoever registered the same person later. Archived leads are
 excluded, as everywhere.
 
-`commission` is what the agreement generates on the won volume, and is **absent** rather than
-zero when nothing is agreed — a zero reads as "they earn nothing", which is a different
-statement. What has actually been *paid* is not tracked yet and is deliberately not guessed at.
+`commission` is what the agreement **generates** on the won volume, and is **absent** rather
+than zero when nothing is agreed — a zero reads as "they earn nothing", which is a different
+statement.
+
+### The commission ledger
+
+What an agreement generates is a calculation. What has been **paid** is a fact, and guessing at
+it would be worse than leaving it blank — so `Agency.payments` records it one entry at a time:
+`amount` (THB), `at`, `reference`, `against` (the unit or deal it settles), `note`, `by`.
+
+Append-only. **There is no way to delete a payment**: a mistake is corrected with a **negative**
+entry, which is accounting's own answer to the problem and leaves the trail intact. A money
+record that can quietly disappear is not a record. Zero amounts and unparseable dates are
+refused — zero says nothing, and a bad date is a typo somebody will not notice.
+
+`commissionPaid` is the ledger total; `commissionOutstanding` is generated minus paid, and is
+**undefined rather than zero** when there is no agreement to compute the first half from — an
+unknown minus a known is not a number.
 
 ### Nurture — parked until a date
 
