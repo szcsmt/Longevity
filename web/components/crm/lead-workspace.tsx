@@ -8,7 +8,7 @@ import {
   CURRENCIES, DECISION, FINANCING, LOST_REASONS, MOTIVATIONS, OBJECTIONS,
   PURPOSES, SCORES, STAGES, TIMEFRAMES, TOUCHES, VISITS,
 } from '@/lib/crm/types';
-import { missingQualification } from '@/lib/crm/rules';
+import { REPLY_FLAG_DAYS, missingQualification } from '@/lib/crm/rules';
 import { fmtTHB } from '@/lib/crm/villas';
 import { messageTemplates } from '@/lib/crm/templates';
 import { SEQUENCE_STEPS, sequenceState, stepLabel } from '@/lib/crm/sequence';
@@ -72,6 +72,27 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
     } finally {
       setBusy(false);
     }
+  }
+
+  /* ── Pressing Email / WhatsApp / Call ──
+
+     The click's real job is opening the mail client, WhatsApp or the dialler,
+     and that must happen whatever the network does. So this rides alongside
+     it: never awaited, never blocking, and a failure is silent — the operator
+     is already in another app, and an alert they will never see is worse than
+     a missing timeline line. The server records that the channel was OPENED,
+     not that anything was sent. */
+  function noteOutreach(channel: 'email' | 'whatsapp' | 'phone') {
+    if (readOnly) return;
+    fetch(`/api/crm/leads/${lead.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ op: 'outreach', channel }),
+      keepalive: true,
+    })
+      .then((res) => res.json())
+      .then((data) => { if (data?.lead) setLead(data.lead); })
+      .catch(() => { /* the message still went out; the line can be added by hand */ });
   }
 
   async function setStage(stage: Stage) {
@@ -271,9 +292,9 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
                 <dt>Consent</dt><dd>{lead.gdpr_consent ? 'GDPR consent given' : '—'}</dd>
               </dl>
               <div className="act-row" style={{ marginTop: 18 }}>
-                {safeEmail(lead.email) && <a className="crm-btn sm" href={`mailto:${safeEmail(lead.email)}`}>✉ Email</a>}
-                {wa && <a className="crm-btn sm" href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer">WhatsApp</a>}
-                {lead.phone && <a className="crm-btn sm" href={`tel:${digits(lead.phone)}`}>Call</a>}
+                {safeEmail(lead.email) && <a className="crm-btn sm" href={`mailto:${safeEmail(lead.email)}`} onClick={() => noteOutreach('email')}>✉ Email</a>}
+                {wa && <a className="crm-btn sm" href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" onClick={() => noteOutreach('whatsapp')}>WhatsApp</a>}
+                {lead.phone && <a className="crm-btn sm" href={`tel:${digits(lead.phone)}`} onClick={() => noteOutreach('phone')}>Call</a>}
                 {/* Opens the offer filled from this lead: their name, their
                     residence, the payment schedule worked out from the price.
                     Print or save as PDF from the page itself. */}
@@ -294,6 +315,7 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
                     <a
                       className="crm-btn sm"
                       href={`mailto:${safeEmail(lead.email)}?subject=${encodeURIComponent(templates[tpl].subject)}&body=${encodeURIComponent(templates[tpl].body)}`}
+                      onClick={() => noteOutreach('email')}
                     >
                       Draft email
                     </a>
@@ -304,6 +326,7 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
                       href={`https://wa.me/${wa}?text=${encodeURIComponent(templates[tpl].body)}`}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={() => noteOutreach('whatsapp')}
                     >
                       Draft WhatsApp
                     </a>
@@ -570,7 +593,7 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
           <h3>Response tracking</h3>
           {lead.awaiting_reply_since ? (() => {
             const days = Math.floor((Date.now() - new Date(lead.awaiting_reply_since!).getTime()) / 86_400_000);
-            const late = days >= 3;
+            const late = days >= REPLY_FLAG_DAYS;
             return (
               <>
                 <div style={{ marginBottom: 12 }}>

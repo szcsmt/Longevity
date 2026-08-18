@@ -1,9 +1,9 @@
 import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import {
-  CrmConflict, addNote, addTask, archiveLead, blockContactOf, getLead, logTouch,
-  mergeLeads, purgeLead, setAwaitingReply, setQualification, toggleTask,
-  unarchiveLead, updateLead,
+  CrmConflict, addNote, addTask, archiveLead, blockContactOf, getLead, isOutreachChannel,
+  logOutreach, logTouch, mergeLeads, purgeLead, setAwaitingReply, setQualification,
+  toggleTask, unarchiveLead, updateLead,
 } from '@/lib/crm/store';
 import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
 import type { LeadPatch } from '@/lib/crm/types';
@@ -79,6 +79,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
          of the six it renders. */
       lead = await logTouch(id, String(body.touch || ''), body.note ? String(body.note) : undefined, actor);
       break;
+    case 'outreach': {
+      /* Fired by the lead page when somebody presses Email, WhatsApp or Call.
+         It records that the channel was OPENED, never that a message was sent.
+         An unknown channel is dropped rather than 400'd: this call rides along
+         with a navigation the operator has already started, and failing it
+         would surface as an error on a button that did its actual job. */
+      const channel = String(body.channel || '');
+      if (!isOutreachChannel(channel)) return Response.json({ ok: true, ignored: true });
+      lead = await logOutreach(id, channel, actor);
+      break;
+    }
     case 'merge':
       // Merging destroys one of the two records — an owner's decision.
       if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });

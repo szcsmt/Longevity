@@ -121,6 +121,15 @@ A listából egy sorra kattintva nyílik. Két oszlop:
 
 Alatta gyorsgombok: **✉ Email** (levelezőt nyit), **WhatsApp** (wa.me link), **Call** (tárcsázás).
 
+Mindhárom **felkerül az idővonalra** — pontosan azzal a szöveggel, ami tényleg történt:
+*„Opened WhatsApp to write to them"*, nem *„elküldve"*. A levelezőprogram megnyitása nem
+elküldött üzenet, és amit nem tudunk, azt nem írjuk le. Ezért ez a bejegyzés **nem számít
+kontaktnak**: nem állítja le az automata e-mail-sorozatot, és nem viszi a leadet Contactedbe.
+Ha tényleg beszéltetek, azt a lenti **Log:** gombokkal rögzíted.
+
+Ugyanezen belül 10 percen belüli ismételt kattintás egyetlen sorként jelenik meg — a kétszeri
+kattintás egy szándék.
+
 **Sablonok**: legördülőből választasz, majd *Draft email* vagy *Draft WhatsApp* — a levelező/WhatsApp előre kitöltve nyílik meg, a lead nevével és villájával személyre szabva. **Semmi nem megy ki magától** — te nézed át és te küldöd el. A négy sablon:
 
 | Sablon | Mikor |

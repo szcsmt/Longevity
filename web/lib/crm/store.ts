@@ -754,6 +754,56 @@ export async function logTouch(
   });
 }
 
+/* ── Reaching for the phone, or the keyboard ──
+
+   The two most-used buttons on the lead page open a `mailto:` and a `wa.me`
+   link, and until now the CRM saw nothing at all when they were pressed. The
+   two commonest sales channels in the building were its blind spot: "what
+   happened last?" simply could not answer for either of them.
+
+   What is recorded is what actually happened — the salesperson OPENED the
+   channel. Not "sent an e-mail": a mail client opening is not a message
+   leaving, and writing down something we do not know would be worse than the
+   silence it replaces. So the timeline says "Opened the mail client to write
+   to them", `reached` stays unset, nothing downstream treats it as contact,
+   and the sequence keeps running until somebody says otherwise.
+
+   Deduped inside a short window, because a double-click, a bounce back to the
+   tab and a second attempt are one intention, and a timeline that logs three
+   is a timeline people stop reading. */
+
+export type OutreachChannel = 'email' | 'whatsapp' | 'phone';
+
+const OUTREACH: Record<OutreachChannel, { kind: Activity['kind']; detail: string }> = {
+  email:    { kind: 'email',    detail: 'Opened the mail client to write to them' },
+  whatsapp: { kind: 'whatsapp', detail: 'Opened WhatsApp to write to them' },
+  phone:    { kind: 'call',     detail: 'Dialled their number' },
+};
+
+export const OUTREACH_WINDOW_MIN = 10;
+
+export function isOutreachChannel(v: string): v is OutreachChannel {
+  return Object.hasOwn(OUTREACH, v);
+}
+
+export async function logOutreach(
+  id: string,
+  channel: OutreachChannel,
+  actor?: string,
+): Promise<Lead | null> {
+  const entry = OUTREACH[channel];
+  const cut = new Date(Date.now() - OUTREACH_WINDOW_MIN * 60_000).toISOString();
+  return mutate(id, (lead) => {
+    const repeat = (lead.history || []).some((h) => h.detail === entry.detail && h.at >= cut);
+    if (repeat) return;
+    logActivity(lead, entry.kind, entry.detail, actor);
+    // Somebody went to write or call. That is a person acting on the lead,
+    // which is exactly what speed-to-lead measures — even if the message
+    // itself never left.
+    markFirstResponse(lead);
+  });
+}
+
 /* ── Setting a lead aside, and the one way to really destroy it ──
 
    Until now the only way to get rid of a lead was a real DELETE, which took the

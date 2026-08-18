@@ -311,6 +311,36 @@ It is a structured field rather than something parsed out of `detail`, because
 `sequenceState` depends on it, and a rule that reads text is a rule that breaks
 when somebody rewords a label.
 
+### Opening a channel — `logOutreach(id, channel, actor)`
+
+The lead page's **Email**, **WhatsApp** and **Call** buttons open a `mailto:`, a
+`wa.me` link and the dialler. The CRM used to see nothing at all when they were
+pressed, which made the two commonest sales channels in the building its blind
+spot.
+
+`logOutreach` records what actually happened — the channel was **opened**:
+
+| `channel` | `Activity.kind` | `detail` |
+|---|---|---|
+| `email` | `email` | Opened the mail client to write to them |
+| `whatsapp` | `whatsapp` | Opened WhatsApp to write to them |
+| `phone` | `call` | Dialled their number |
+
+Not "sent an e-mail". A mail client opening is not a message leaving, and
+writing down something we do not know would be worse than the silence it
+replaces. So `reached` stays **unset**: nothing downstream treats it as contact,
+the automated sequence keeps running, and a `new` lead stays `new`. It does set
+`first_response_at` — somebody went to write or call, which is exactly what
+speed-to-lead measures.
+
+Repeats of the same channel inside `OUTREACH_WINDOW_MIN` (10 minutes) are
+dropped. A double-click, a bounce back to the tab and a second attempt are one
+intention, and a timeline that logs three is a timeline people stop reading.
+
+The client fires it alongside the navigation — never awaited, failures silent.
+The click's real job is opening the other app, and an alert the operator has
+already navigated away from is worse than a missing line.
+
 ## SentEmail
 
 | Field | Type | Meaning |

@@ -1,7 +1,12 @@
 # Lead Management — Átláthatósági audit
 
 **Dátum:** 2026-08-18 · **Tárgy:** a `/admin` CRM teljes lead-management modulja
-**Módszer:** kódszintű átvizsgálás a 34 pontos checklist alapján. **Kód nem módosult.**
+**Módszer:** kódszintű átvizsgálás a 34 pontos checklist alapján. **Az audit nem módosított kódot.**
+
+> ⚠️ **Az audit közben a kódbázis változott.** 2026-08-18 10:40-kor egy párhuzamos munkamenet
+> implementálta a `?flag=` szűrőt, a `/admin/today` munkasort és a figyelem-szabályok
+> egyesítését a `rules.ts`-ben. Az alábbi anyag **ezt a frissített állapotot tükrözi**; ahol egy
+> megállapítás menet közben megoldódott, az **✔️ MEGOLDVA (2026-08-18 10:40)** jelöléssel szerepel.
 
 Vizsgált felület: `lib/crm/*` (domain), `app/admin/(dash)/*` (oldalak), `components/crm/*` (UI),
 `app/api/crm/*` + `app/api/lead|whatsapp|inbound` (be- és kimenet).
@@ -15,22 +20,28 @@ legtöbb rendszer elbukik: minden lead kap gazdát a beérkezés másodpercében
 auditált idővonalra kerül, az archiválás nem törlés, a duplikátumok magukban összefutnak, és a
 reggeli digest e-mail pontosan azt a listát írja meg, amit a checklist 9. pontja kér.
 
-**A rendszer legnagyobb hiányossága nem adathiány, hanem hozzáférés-hiány:** a „ki maradt ki"
-logika **kiszámolódik, de nem lehet listázni**. A dashboard kiírja, hogy *7 lead következő lépés
-nélkül*, majd a szűretlen lead-listára visz. Ugyanez a digest e-mailben már névre pontosan
-megvan — csak e-mailben, nem a felületen.
+**A rendszer visszatérő mintája nem adathiány, hanem hozzáférés-hiány:** sok minden
+kiszámolódik, amit utána nem lehet listázni. A legsúlyosabb esete ennek — a figyelmet igénylő
+leadek szűrése — az audit írása közben megoldódott; a minta viszont több helyen megmaradt
+(pipeline-érték, lezárási arány, forrásonkénti konverzió: mind kiszámolva, sehol megjelenítve).
 
-### A három legfontosabb megállapítás
+### A három legfontosabb nyitott megállapítás
 
-1. **Nincs szűrő az „elveszőben lévő" leadekre.** A `hasNoNextStep`, `isStalled`, `untouched`,
-   `awaiting` szabályok készen vannak és futnak, de a lead-lista nem tud rájuk szűrni. Ez az
-   egyetlen legolcsóbb és leghatásosabb javítás a rendszerben.
-2. **A kézzel küldött e-mail és WhatsApp nem kerül az idővonalra.** A gombok `mailto:` és
+1. **A kézzel küldött e-mail és WhatsApp nem kerül az idővonalra.** A gombok `mailto:` és
    `wa.me` linket nyitnak, a CRM nem lát belőle semmit. A két leggyakoribb értékesítői
-   csatorna a rendszer vakfoltja — a „mi történt legutóbb?" kérdés emiatt hiányos.
-3. **Nincs Nurture állapot.** Aki „most még nem", az vagy Lost lesz (és többé senki nem nyúl
-   hozzá), vagy örökre Qualified-ben ül. Ingatlanban a 6–18 hónapos érési idő normális —
-   ez a hiány közvetlenül elvesztett üzlet.
+   csatorna a rendszer vakfoltja — a „mi történt legutóbb?" kérdés emiatt hiányos, és az
+   automata levélszekvencia is fut tovább annak, akivel épp most beszéltünk.
+2. **Nincs Nurture állapot.** Aki „most még nem", az vagy Lost lesz (és többé senki nem nyúl
+   hozzá), vagy örökre Qualified-ben ül és minden nap „stalled"-ként zajong. Ingatlanban a
+   6–18 hónapos érési idő normális — ez a hiány közvetlenül elvesztett üzlet.
+3. **A lead fázisa és a villa státusza nincs szinkronban.** A masterplanon lefoglalt unit
+   nem mozdítja a leadet `reserved`-be. Emiatt a funnel, a konverziós arányok és az
+   értékesítői ranglista ugyanarról a személyről mást mondhat — és egy már fizető vevő
+   automata marketinglevelet kaphat.
+
+> **Menet közben megoldva (10:40):** a „figyelmet igénylő leadek nem szűrhetők" megállapítás —
+> ma már van `?flag=` szűrő, `/admin/today` munkasor, és a korábban négyfelé másolt
+> figyelem-logika egy helyre került (`lib/crm/rules.ts` → `QUEUE_RULES`).
 
 ### Státusz-eloszlás a 31 vizsgált szekcióban
 
@@ -84,25 +95,27 @@ Fájl-hivatkozások a `02 CRM/web/` mappához képest.
 | Lead minősítése / prioritás | ✅ | Score badge (hot/warm/cold) |
 | **Felelős sales személy** | ❌ | **A listában sehol nem látszik.** Csak szűrni lehet rá |
 | Utolsó kapcsolatfelvétel időpontja | ❌ | Nincs oszlop; az adat megvan (`history`), csak nincs kiszámolva |
-| Következő feladat időpontja | ❌ | Nincs oszlop |
-| Következő lépés | ❌ | Nincs oszlop; csak a „no next step" jelzés (van/nincs) |
+| Következő feladat időpontja | ✅ | ✔️ **MEGOLDVA (10:40)** — a „Next step" oszlop mutatja a dátumot, `late ·` / `today ·` előtaggal |
+| Következő lépés | ✅ | ✔️ **MEGOLDVA (10:40)** — „Next step" oszlop: a legkorábban esedékes nyitott teendő címe, vagy „Nothing planned" |
 | Lead kora | 🟡 | „Received" dátum látszik, kor napokban nem |
 | Túl régóta nem történt semmi | ✅ | `· stalled Xd` jelzés a Received oszlopban (`isStalled`) |
 | Fontos leadek vizuális kiemelése | 🟡 | Score badge színes, de a sor maga nem |
 | Nincs felesleges mező | ✅ | 7 oszlop, egy sem felesleges |
 | 5–10 mp alatt érthető | 🟡 | A *ki/honnan/hol tart* igen; a *ki kezeli / mi a következő lépés / mikor* nem |
 
-**Current state:** a lista 7 oszlopa a lead azonosítására és fázisára fókuszál. A „stalled" és
-„no next step" jelzés (`components/crm/leads-table.tsx:150-160`) jó irányba mutat, de bináris:
-megmondja, hogy baj van, nem mondja meg, mi a teendő és mikor.
+**Current state:** 8 oszlop. A 10:40-es változás óta van **Next step** oszlop (`NextStep`
+komponens, `components/crm/leads-table.tsx:15-30`): a legkorábban esedékes nyitott teendő címe és
+határideje, lejárt esetén `late ·` előtaggal, teendő hiányában „Nothing planned". A „stalled"
+jelzés a Received oszlopban maradt. Ezzel a lista **munkalistává vált**, nem csak címtárrá.
 
-**Problem:** a checklist négy legfontosabb oszlopa hiányzik — **owner, utolsó kontakt, következő
-lépés, következő lépés dátuma**. Egy 3 fős csapatnál ez azt jelenti, hogy a lista nem munkalista,
-hanem címtár: minden lead megnyitása külön kattintás ahhoz, hogy kiderüljön, egyáltalán az enyém-e.
+**Problem:** két oszlop még hiányzik — **owner** és **utolsó kontakt ideje**. Owner nélkül egy
+többfős csapatban minden sornál kérdés marad, hogy az enyém-e; utolsó kontakt nélkül nem
+látszik, hogy a „no next step" azért van-e, mert tegnap beszéltünk vele, vagy mert három hete
+senki nem nyúlt hozzá.
 
-**Recommended change:** két oszlop hozzáadása — **Owner** és **Next** (a legkorábbi nyitott task
-címe + határidő, lejárt esetén pirossal). Ez a `Lead` dokumentumból számolható, nincs szükség új
-mezőre. Az „Enquiry" és „Source" oszlop összevonható, hogy ne nőjön a szélesség.
+**Recommended change:** **Owner** oszlop (monogram vagy rövid név elég) + **Last touch**
+(`X napja`, az utolsó `reached` aktivitásból). Mindkettő a `Lead` dokumentumból számolható.
+Helyet az „Enquiry" és „Source" oszlop összevonása ad.
 
 **Priority:** High · **Complexity:** Small
 **Affected files:** `components/crm/leads-table.tsx`, `app/admin/(dash)/leads/page.tsx`
@@ -306,9 +319,9 @@ megtartják a nevét, de **semmilyen nézet nem listázza őket**.
 
 ---
 
-## 6. Next Action — 🟡 Részben (a rendszer leggyengébb pontja a legfontosabb helyen)
+## 6. Next Action — ✅ Nagyrészt teljesül *(a 10:40-es változás után)*
 
-`lib/crm/rules.ts:64` (`hasNoNextStep`), `app/admin/(dash)/tasks/page.tsx`
+`lib/crm/rules.ts` (`nextAction`, `nextActionState`, `QUEUE_RULES`), `app/admin/(dash)/tasks/page.tsx`
 
 | Elvárás | Státusz |
 |---|---|
@@ -320,35 +333,34 @@ megtartják a nevét, de **semmilyen nézet nem listázza őket**.
 | Mai feladatok külön | ✅ „Due today" |
 | Következő 7 nap | 🟡 Egyetlen „Upcoming" csoport, időbeli tagolás nélkül |
 | Lead nem tud eltűnni next step nélkül | 🟡 Jelezve van, nem blokkolva |
-| **A CRM külön listázza a Next Action nélküli leadeket** | ❌ **Kiszámolja a darabszámot, de nem lehet listázni** |
+| **A CRM külön listázza a Next Action nélküli leadeket** | ✅ ✔️ **MEGOLDVA (10:40)** |
 
-**Current state:** a `hasNoNextStep(lead)` szabály pontos: aktív fázis + nincs nyitott task +
-nem fut válasz-időzítő. Ez fut a nav badge-ben, a dashboard kapszulában és a digest e-mailben.
+**Current state:** a „következő lépés" nem külön mező, hanem **a legkorábban esedékes nyitott
+teendő** (`nextAction`, `rules.ts:88`). A kód indoklása helytálló: egy második hely, ahova
+ugyanazt a mondatot le kell írni, egy második hely, ahol elavul.
 
-**Problem — ez a legfontosabb hiba a rendszerben:** a dashboardon megjelenik, hogy
-`7 következő lépés nélkül`, a kapszulára kattintva pedig a **szűretlen** `/admin/leads` oldal
-nyílik meg (`components/crm/welcome-hero.tsx:78`). A felhasználó megkapja a számot, és utána
-kézzel keresheti meg, melyik az a 7. Ugyanez igaz mind az öt kapszulára (overdue, untouched,
-stalled, noNext, awaiting).
+A 10:40-es változás óta hat szabály (`QUEUE_RULES`) egyetlen definícióból szolgálja ki
+**mindhárom olvasatot**: a dashboard számait, a `/admin/leads?flag=…` szűrőt és a `/admin/today`
+munkasort. A kapszula, ami azt írja, hogy „7 következő lépés nélkül", most **pontosan azt a
+hetet nyitja meg**. A dátum-összehasonlítás naptári napokon történik, nem időpillanatokon —
+a Samui időzónában ez az a részlet, ami nélkül minden mai teendő hajnalban lejárttá válna.
 
-A `LeadFilter` (`store.ts:53`) nem ismer ilyen szűrőt, a lead-lista `searchParams`-a sem.
+**Maradó probléma 1:** a Next Action **határideje opcionális**. Egy dátum nélküli teendő nem
+következő lépés, hanem kívánság — a `nextAction` a lista végére sorolja (`'9999'` kulccsal),
+és sem az Overdue, sem a Due today csoportba nem kerül be.
 
-**Recommended change:** egy `flag` query-paraméter a lead-listán:
-`?flag=no-next | stalled | untouched | awaiting | overdue`, ami a `rules.ts` már meglévő
-tiszta függvényeit alkalmazza szűrőként. A kapszulák és a nav badge-ek erre mutassanak.
-**Ez kb. 30 sor kód, és önmagában megoldja a checklist 6., 9., 26. és 27. pontjának a felét.**
-
-**Priority:** Critical · **Complexity:** Small
-**Affected files:** `app/admin/(dash)/leads/page.tsx`, `lib/crm/store.ts` (`listLeads`),
-`components/crm/welcome-hero.tsx`, `components/crm/crm-nav.tsx`
-
-**Második probléma:** a Next Action határidő opcionális. Egy dátum nélküli teendő nem
-következő lépés, hanem kívánság — nem jelenik meg sem az Overdue, sem a Due today listában,
-csak az „Upcoming" végén.
-**Recommended change:** a due date legyen kötelező (alapérték: holnap), vagy a dátum nélküli
-taskok kapjanak külön „Nincs határidő" csoportot a Follow-ups oldalon.
+**Recommended change:** a due date alapértéke legyen holnap (kitörölhetően), vagy a dátum
+nélküli teendők kapjanak külön „Nincs határidő" csoportot a Follow-ups oldalon.
 **Priority:** High · **Complexity:** Small
 **Affected files:** `components/crm/lead-workspace.tsx`, `app/admin/(dash)/tasks/page.tsx`
+
+**Maradó probléma 2:** a teendőnek **nincs felelőse** (`Task.by` = ki hozta létre, nem ki
+csinálja meg). Lead-átadásnál a teendő nem megy a leaddel, és a Follow-ups oldal mindenki
+teendőjét egy kupacban mutatja.
+**Recommended change:** `Task.owner?: string`, alapértéke a lead ownere; owner-szűrő a
+Follow-ups oldalon.
+**Priority:** High · **Complexity:** Small
+**Affected files:** `lib/crm/types.ts`, `lib/crm/store.ts` (`addTask`), `app/admin/(dash)/tasks/page.tsx`
 
 ---
 
@@ -429,7 +441,7 @@ kézzel felülírható; szűrő + analitikai bontás.
 
 ---
 
-## 9. Prioritás — 🟡 Részben
+## 9. Prioritás — ✅ Teljesül *(a 10:40-es változás után)*
 
 | Elvárás | Státusz |
 |---|---|
@@ -438,11 +450,35 @@ kézzel felülírható; szűrő + analitikai bontás.
 | Lejárt follow-upok prioritást kapnak | ✅ Follow-ups oldal Overdue csoportja |
 | Nagy értékű dealek kiemelhetők | ❌ A `value` mező nem szerepel egyetlen listában sem |
 | Reservation / negotiation közeli leadek kiemelhetők | 🟡 Csak stage-szűrővel |
-| Hosszú ideje nem kontaktált leadek listázhatók | ❌ A `stalled` jelzés látszik, de nem szűrhető |
-| **„Who should I contact now?" nézet** | 🟡 **Létezik — de csak e-mailben** |
+| Hosszú ideje nem kontaktált leadek listázhatók | ✅ ✔️ **MEGOLDVA (10:40)** — `?flag=stalled` |
+| **„Who should I contact now?" nézet** | ✅ ✔️ **MEGOLDVA (10:40)** — `/admin/today` |
 
-**Current state:** a `lib/crm/digest.ts` **pontosan ezt a nézetet építi fel**, hét prioritási
-csoportban, a figyelmen kívül hagyás költsége szerint rendezve:
+**✔️ Current state (10:40 után):** létezik a **`/admin/today`** oldal — a checklist által kért
+„Who should I contact now?" nézet, hat prioritási szekcióban, sorrendben:
+
+1. `uncontacted` — új lead, akivel még senki nem beszélt
+2. `overdue` — lejárt következő lépés
+3. `today` — mára ütemezve
+4. `silent` — 3+ napja nem válaszol
+5. `nonext` — élő üzlet, amivel senki nem tudja, mi legyen
+6. `stalled` — beragadt a fázisában
+
+Két tervezési döntés kiemelendő: **minden lead pontosan egyszer szerepel** (az első illeszkedő
+szabálynál) — „egy név háromszor egy napi listán olyan lista, amit senki nem hisz el" —, és a
+szekción belül **a legrégebbi elöl**, mert az van a legközelebb az elvesztéshez. Az oldal
+alapból a bejelentkezett személy saját leadjeire szűr, egy kattintással váltható csapatnézetre.
+
+**A `digest.ts` továbbra is a saját, hét csoportos logikáját használja** (`unanswered`,
+`warming` — ez a kettő nincs a queue-ban), tehát a napi e-mail és a Today oldal még nem
+teljesen ugyanaz. A `warming` („tegnap megnyitotta a brossúrát") csoport a legértékesebb
+jelzés a rendszerben, és **csak e-mailben létezik**.
+
+**Recommended change:** a `warming` és `unanswered` szabály kerüljön be a `QUEUE_RULES`-ba, és
+a `buildDigest` épüljön a `workQueue`-ra. Így a napi e-mail és a Today oldal ugyanazt mondja.
+**Priority:** High · **Complexity:** Small
+**Affected files:** `lib/crm/rules.ts`, `lib/crm/digest.ts`
+
+<details><summary>A digest eredeti hét csoportja (referencia)</summary>
 
 1. `unanswered` — ők írtak nekünk, és senki nem válaszolt
 2. `overdue` — lejárt teendők
@@ -452,20 +488,9 @@ csoportban, a figyelmen kívül hagyás költsége szerint rendezve:
 6. `stalled` — beragadt fázisban
 7. `noNext` — nincs semmi ütemezve
 
-Ez **naponta egyszer, e-mailben megy ki** — és csak akkor, ha van benne valami (ami jó döntés).
-A felületen ez a lista sehol nem érhető el.
-
-**Problem:** a rendszer legjobb prioritási logikája egy olyan csatornán él, amit nem lehet
-frissíteni, szűrni, kipipálni vagy megnyitni. Aki délután háromkor kérdezi meg magától, hogy
-„kit hívjak most", annak nincs válasza a felületen.
-
-**Recommended change:** egy **„Ma" (Today / Kit hívjak most?) oldal** a dashboard helyén vagy
-mellette, ami a `buildDigest()` már meglévő kimenetét rendereli, csoportonként, kattintható
-lead-linkekkel és inline „Log: hívás" gombokkal. **A logika kész van — ez tisztán megjelenítés.**
-
-**Priority:** Critical · **Complexity:** Small–Medium
-**Affected files:** új `app/admin/(dash)/today/page.tsx`, `lib/crm/digest.ts` (a `buildDigest`
-már exportált és tiszta), `components/crm/crm-nav.tsx`
+Naponta egyszer megy ki, és csak akkor, ha van benne valami — ez jó döntés: az üres digest az,
+amitől egy napi levél tapétává válik.
+</details>
 
 ---
 
