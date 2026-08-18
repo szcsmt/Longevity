@@ -132,14 +132,48 @@ describe('a hold that ends', () => {
     await store.updateVillaSale(id, { op: 'reserve', amount: 800_000, expiresAt: day(-1), by: 'Anna' });
     await store.updateVillaSale(id, { op: 'releaseReservation', reason: 'Deposit never arrived' });
 
-    const r = (await rec(id))!;
-    assert.equal(r.status, 'free');
-    assert.equal(r.reservation, undefined);
+    // Nothing worth keeping is left, so the row goes entirely — exactly what a
+    // manual "back to free" does, and it reads as available everywhere.
+    assert.notEqual((await rec(id))?.status, 'reserved');
+    assert.equal((await rec(id))?.reservation, undefined);
 
     const { history } = await store.getVillaData();
     const line = history.find((h) => h.villaId === id && /Reservation released/.test(h.note || ''))!;
     assert.match(line.note!, /was Gone Quiet/);
     assert.match(line.note!, /Deposit never arrived/);
+  });
+
+  it('does not leave one buyer\u2019s negotiated price on a villa anybody can now buy', async () => {
+    /* The leak this caught: a released hold kept `contractValue`, and the
+       partner feed publishes that as the price of an AVAILABLE unit. A
+       discount agreed with one buyer is not a price list. */
+    const id = unit();
+    await withBuyer(id, 'Discount Buyer');
+    await store.updateVillaSale(id, { op: 'sale', patch: { contractValue: 9_500_000 } });
+    await store.updateVillaSale(id, { op: 'reserve', amount: 500_000, by: 'Anna' });
+    await store.updateVillaSale(id, { op: 'releaseReservation', reason: 'Changed their mind' });
+
+    const r = await rec(id);
+    assert.equal(r?.contractValue, undefined, 'the negotiated price goes with the deal');
+    assert.equal(r?.buyerLeadId, undefined, 'and so does the buyer link');
+    assert.equal(r?.buyerName, undefined);
+  });
+
+  it('lets the next buyer reserve it without a fight', async () => {
+    /* Leaving the buyer link behind would have refused the next reservation
+       with "already linked to …", on a villa the masterplan shows as free. */
+    const id = unit();
+    await withBuyer(id, 'First');
+    await store.updateVillaSale(id, { op: 'reserve', by: 'Anna' });
+    await store.updateVillaSale(id, { op: 'releaseReservation', reason: 'Lapsed' });
+
+    const next = await store.createManualLead({ name: 'Second', email: `${id}-2@example.com` });
+    await store.updateVillaSale(id, { op: 'sale', patch: { buyerLeadId: next.id } });
+    await store.updateVillaSale(id, { op: 'reserve', amount: 700_000, by: 'Anna' });
+
+    const r = (await rec(id))!;
+    assert.equal(r.status, 'reserved');
+    assert.equal(r.buyerName, 'Second');
   });
 
   it('needs a reason', async () => {

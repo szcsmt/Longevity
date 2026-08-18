@@ -1662,6 +1662,23 @@ async function partnerPush(id: string, status: VillaStatus, rec?: VillaRecord) {
   } catch { /* partner push is best-effort */ }
 }
 
+/* ── Back to free means the deal is off ──
+
+   One definition, because there are now two ways a unit returns to the market:
+   somebody setting the status by hand, and a reservation being released. They
+   drifted the moment the second one existed — a released villa kept the
+   previous buyer's negotiated contract value, which the 3D model then showed
+   to the public as the price of an available unit. A discount agreed with one
+   buyer is not a price list.
+
+   The audit trail keeps every one of these; `persistVilla` drops the row
+   entirely once nothing worth keeping is left on it. */
+function clearSaleData(rec: VillaRecord): void {
+  delete rec.buyerLeadId; delete rec.buyerName; delete rec.contractValue;
+  delete rec.promisedDate; delete rec.construction; delete rec.phases; delete rec.extras;
+  delete rec.reservation; delete rec.contract; delete rec.schedule;
+}
+
 export async function setVillaStatus(
   id: string,
   status: VillaStatus,
@@ -1688,11 +1705,7 @@ export async function setVillaStatus(
     rec.note = note;
 
     if (status === 'free') {
-      /* Back to free = the deal is off. Clear the sales data; the audit trail
-         keeps what it was. persistVilla drops the row entirely once nothing
-         worth keeping is left on it. */
-      delete rec.buyerLeadId; delete rec.buyerName; delete rec.contractValue;
-      delete rec.promisedDate; delete rec.construction; delete rec.phases; delete rec.extras;
+      clearSaleData(rec);
     } else if (defaultContractValue(id, rec)) {
       // A deal just started — price it from the list automatically.
       t.log(from, status, seller, `Contract value set from list price (${fmtTHB(rec.contractValue!)})`);
@@ -1877,7 +1890,11 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
       const why = cleanText(action.reason || '').trim().slice(0, 500);
       if (!rec.reservation || !why) return 'abort';
       const held = heldBy(rec);
-      rec.reservation = undefined;
+      /* Everything the deal put on the unit goes with it — the same clearing
+         a manual "back to free" does. Leaving the contract value behind would
+         put one buyer's negotiated price on a villa anybody can now buy, and
+         leaving the buyer link behind would refuse the next reservation. */
+      clearSaleData(rec);
       rec.status = 'free';
       t.log(from, 'free', rec.seller, `Reservation released${held ? ` (was ${held})` : ''} — ${why}`);
       t.after(() => sheetSync(id, 'free', rec.seller, rec.note));

@@ -470,9 +470,13 @@ Three operations on `updateVillaSale`:
 - `reservationPatch` — fills in what was not known at the time. A `paid_at` arriving writes its
   own line on the villa history.
 - `releaseReservation` — the hold lapsing or being cancelled. **Needs a reason.** The villa goes
-  back on the market and the reservation record goes with it, but the villa history keeps the
-  whole thing — which is what somebody will want in six months when the buyer comes back saying
-  they were promised it.
+  back on the market and **everything the deal put on it goes too** — buyer link, contract value,
+  phases, schedule, contract state — through the same `clearSaleData()` a manual "back to free"
+  uses. One definition, because the two paths drifted the moment the second one existed: a
+  released villa kept the previous buyer's negotiated contract value, and the partner feed
+  publishes that as the price of an **available** unit. A discount agreed with one buyer is not a
+  price list. The villa history keeps the whole thing, which is what somebody will want in six
+  months when the buyer comes back saying they were promised it.
 
 `reservationWatch(withinDays = 7)` reads the holds: `lapsed` / `due` / `held`, worst first.
 `daysLeft` goes **negative** past the date on purpose — "−9" reads as nine days overdue, where a
