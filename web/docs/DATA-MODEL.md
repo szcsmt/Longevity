@@ -569,6 +569,36 @@ that has **no open task and no running reply timer** — nobody owns its next mo
 a red badge in the nav (`attentionCounts()`), together with overdue tasks, untouched new leads,
 awaiting-reply leads past 3 days, and stalled leads.
 
+### Nurture — parked until a date
+
+Not every lead that will not buy this month is lost. The six-to-eighteen-month wait is normal
+here: they are waiting on a Thailand trip, a house sale, a partner, the next phase coming out of
+the ground. Before this there were two places to put such a lead and both destroyed something —
+Closed Lost meant nobody looked again and the lost-reason report filled with deals that were
+never lost; left in Qualified they were flagged stalled every day, which is how a team learns to
+ignore its own flags.
+
+| Field | |
+|---|---|
+| `nurture_until` | ISO **date** (`YYYY-MM-DD`), always in the future when set |
+| `nurture_reason` | one of `NURTURE_REASONS`: `visit`, `funds`, `later`, `partner`, `build`, `other` |
+
+`setNurture(id, until, reason, note, actor)` — refuses a date that is not in the future and drops
+a reason that is not on the list. Writes a `nurture` activity, and **clears the reply timer**: a
+lead must not wake up flagged for a silence we chose. `endNurture(id, actor)` brings it back
+early. `updateLead` clears it automatically on any **stage change** — real movement beats a
+parking date set weeks ago, and silently keeping it would hide a live deal for a month.
+
+While `isNurtured(lead, today)` is true the lead:
+
+- is out of the working queue and every `?flag=` count (`inPlay` excludes it),
+- is out of the automated sequence (`sequenceState` → *Parked until …*),
+- shows **Parked until …** in the leads table and on its pipeline card instead of a stall flag.
+
+Its **stage does not change** — a qualified buyer waiting on a house sale is still a qualified
+buyer. On the day the date arrives the lead returns in its own queue section, `wake`, with the
+reason still attached.
+
 ### The next step, and the working queue
 
 A lead's **next step** is its earliest-DATED open task — `nextAction()` in `rules.ts`. Not a
@@ -594,11 +624,12 @@ urgent reason that applies:
 | 1 | `uncontacted` | stage `new` and `hasConversed()` is false |
 | 2 | `overdue` | next step dated before today |
 | 3 | `today` | next step dated today |
-| 4 | `silent` | `awaiting_reply_since` older than `REPLY_FLAG_DAYS` (3) |
-| 5 | `nonext` | `hasNoNextStep()` — live deal, nothing planned |
-| 6 | `stalled` | `isStalled()` — past the stage threshold |
+| 4 | `wake` | `nurture_until` set and the date has arrived |
+| 5 | `silent` | `awaiting_reply_since` older than `REPLY_FLAG_DAYS` (3) |
+| 6 | `nonext` | `hasNoNextStep()` — live deal, nothing planned |
+| 7 | `stalled` | `isStalled()` — past the stage threshold |
 
-Archived leads and the `won` / `lost` stages are excluded. Inside a section the oldest lead
+Archived leads, the `won` / `lost` stages and leads still parked are excluded (`inPlay`). Inside a section the oldest lead
 sorts first: the one that has been waiting longest is the one most likely to be lost.
 
 The six rules live in `QUEUE_RULES` and are read **two ways**, from the one definition:

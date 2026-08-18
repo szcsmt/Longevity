@@ -4,8 +4,8 @@ import type {
   Qualification, VillaHistoryEntry, VillaRecord, VillaStatus,
 } from './types';
 import {
-  CARD_COLORS, CURRENCIES, DECISION, FINANCING, MOTIVATIONS, OBJECTIONS, PHASES,
-  PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, touchByKey,
+  CARD_COLORS, CURRENCIES, DECISION, FINANCING, MOTIVATIONS, NURTURE_REASONS, OBJECTIONS,
+  PHASES, PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, touchByKey,
 } from './types';
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
@@ -15,7 +15,8 @@ import { fmtTHB, phaseAmount, priceForSize, villaByName } from './villas';
 import unitCatalog from '../villas.json';
 export {
   STAGE_MAX_DAYS, REPLY_FLAG_DAYS, SECTION_META, stageAgeDays, stageEnteredAt, isStalled,
-  hasNoNextStep, nextAction, nextActionState, hasConversed, isQueueKey, matchesFlag, workQueue,
+  hasNoNextStep, nextAction, nextActionState, hasConversed, isNurtured, isQueueKey, matchesFlag,
+  workQueue,
 } from './rules';
 export type { QueueKey, QueueSection } from './rules';
 import { hasDatabase, type Backend } from './backend';
@@ -423,6 +424,14 @@ export async function updateLead(id: string, patch: LeadPatch, actor?: string): 
     if (patch.owner && patch.owner !== lead.owner)
       logActivity(lead, 'assigned', `Assigned to ${patch.owner}`, actor);
     if (patch.stage || patch.score || edited.length) markFirstResponse(lead);
+    /* Moving the stage means somebody is working this lead now, so a parking
+       date set weeks ago is stale by definition. Silently leaving it would
+       hide the lead from the queue for a month after real movement. */
+    if (patch.stage && patch.stage !== lead.stage && lead.nurture_until) {
+      logActivity(lead, 'nurture', `Back in play (was parked until ${lead.nurture_until})`, actor);
+      lead.nurture_until = undefined;
+      lead.nurture_reason = undefined;
+    }
     Object.assign(lead, patch);
     // A revived deal is no longer lost — drop the stale reason.
     if (patch.stage && patch.stage !== 'lost') lead.lost_reason = undefined;
@@ -751,6 +760,60 @@ export async function logTouch(
       logActivity(lead, 'stage', `${stageLabel('new')} → ${stageLabel('contacted')} (spoke with them)`, actor);
       lead.stage = 'contacted';
     }
+  });
+}
+
+/* ── Parking a lead until a date ──
+
+   The alternative to the two wrong answers. Closed Lost meant nobody looked
+   again and the lost-reason report filled with deals that were never lost;
+   left in Qualified they sat being flagged as stalled every day, which is how
+   a team learns to ignore its own flags.
+
+   A date and a reason. The stage does not change — a qualified buyer waiting
+   on a house sale is still a qualified buyer — but the lead leaves the working
+   queue, the automated sequence and every stall rule until the date arrives.
+   Then it comes back, in its own section, with the reason still attached. */
+
+export async function setNurture(
+  id: string,
+  until: string,
+  reason?: string,
+  note?: string,
+  actor?: string,
+): Promise<Lead | null> {
+  const day = String(until || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  // A date in the past would park the lead and wake it in the same breath.
+  if (day <= now().slice(0, 10)) return null;
+  const picked = NURTURE_REASONS.find((r) => r.id === reason);
+  const said = cleanText(note || '').trim().slice(0, 2000);
+
+  return mutate(id, (lead) => {
+    lead.nurture_until = day;
+    lead.nurture_reason = picked?.id;
+    logActivity(
+      lead,
+      'nurture',
+      `Parked until ${day}${picked ? ` — ${picked.label.toLowerCase()}` : ''}${said ? ` — ${said}` : ''}`,
+      actor,
+    );
+    /* Whatever we were waiting on them for, we are not any more. Leaving the
+       reply timer running would have the lead flagged the moment it wakes,
+       for a silence we chose. */
+    lead.awaiting_reply_since = undefined;
+    markFirstResponse(lead);
+  });
+}
+
+/** Back into the working queue, whether or not the date has arrived. */
+export async function endNurture(id: string, actor?: string): Promise<Lead | null> {
+  return mutate(id, (lead) => {
+    if (!lead.nurture_until) return;
+    const until = lead.nurture_until;
+    lead.nurture_until = undefined;
+    lead.nurture_reason = undefined;
+    logActivity(lead, 'nurture', `Back in play (was parked until ${until})`, actor);
   });
 }
 

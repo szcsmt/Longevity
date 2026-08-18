@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
-import { hasNoNextStep, isStalled, nextAction, nextActionState, stageAgeDays } from '@/lib/crm/rules';
+import { hasNoNextStep, isNurtured, isStalled, nextAction, nextActionState, stageAgeDays } from '@/lib/crm/rules';
 
 /* Fixed locale + UTC so server prerender and browser hydration agree. */
 const fmtDay = (iso?: string) =>
@@ -13,6 +13,16 @@ const fmtDay = (iso?: string) =>
 
 /* What is planned next, and whether it is late. */
 function NextStep({ lead }: { lead: Lead }) {
+  // Parked on purpose beats every other reading: this lead is not neglected,
+  // it is waiting, and saying "nothing planned" about it would be a lie.
+  if (isNurtured(lead)) {
+    return (
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13 }}>Parked</div>
+        <div className="crm-meta tabnum">until {fmtShort(lead.nurture_until!)}</div>
+      </div>
+    );
+  }
   const task = nextAction(lead);
   if (!task) {
     return hasNoNextStep(lead)
@@ -189,7 +199,7 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
                   </td>
                   <td className="crm-meta tabnum">
                     {fmtDay(l.submitted_at || l.created_at)}
-                    {isStalled(l) && (
+                    {isStalled(l) && !isNurtured(l) && (
                       <span className="flag stalled" title="Sitting in this stage past its threshold">
                         {' '}· stalled {stageAgeDays(l)}d
                       </span>

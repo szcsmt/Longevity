@@ -52,9 +52,10 @@ A szakaszok sorrendje kötött, mert ez a munka sorrendje is:
 | 1 | **Nobody has spoken to them yet** | új lead, akivel még senki nem beszélt (a kiment automata e-mail nem beszélgetés, a nem felvett hívás sem) |
 | 2 | **Late** | volt rá teendő határidővel, és lejárt |
 | 3 | **Due today** | mára időzített teendő |
-| 4 | **Gone quiet** | 3+ napja nincs válasz a kiküldött e-mailre |
-| 5 | **No next step** | élő üzlet, amin semmi nincs betervezve |
-| 6 | **Not moving** | a fázisában a megengedettnél régebb óta ül |
+| 4 | **Back from nurture** | félretett lead, aminek megjött a dátuma |
+| 5 | **Gone quiet** | 3+ napja nincs válasz a kiküldött e-mailre |
+| 6 | **No next step** | élő üzlet, amin semmi nincs betervezve |
+| 7 | **Not moving** | a fázisában a megengedettnél régebb óta ül |
 
 Szakaszon belül a **legrégebbi elöl** — aki a legrégebben vár, azt lehet a leghamarabb elveszíteni.
 
@@ -206,6 +207,38 @@ Akár a lead oldalán, akár a Pipeline-on teszed Lost-ra, egy párbeszédablak 
 Opcionális szöveges részlet is megadható — ez „Lost: …" jegyzetként kerül az idővonalra, és a riportokat táplálja. **Elveszett üzlet ok nélkül = elpazarolt tanulság.**
 
 Ha egy Lost lead később újra ír, a rendszer magától visszaemeli New-ba („re-engaged"), és törli az okot — a második esély nem előzmény.
+
+**Ha a „Timing — not now" okot választod, az ablak figyelmeztet:** ez a leggyakoribb hibás
+válasz. Aki *még* nem vesz, az nem elveszett. Ilyenkor lépj ki, és a lead oldalán a **Not now**
+kártyát használd helyette.
+
+### Not now — félretett lead (nurture)
+
+Ez a harmadik válasz a *Lost* és a *hagyjuk Qualifiedben porosodni* között. Ingatlanban a
+6–18 hónapos érési idő teljesen normális: várnak egy thaiföldi utazásra, egy házeladásra, a
+társ döntésére, a következő ütem elkészülésére. Mindkét másik megoldás tönkretesz valamit —
+a Lost eltemeti a leadet és tele szemeteli a veszteség-riportot olyan üzletekkel, amiket soha
+nem vesztettünk el; a Qualifiedben hagyás pedig minden nap „elakadt" jelzést ad, ami néhány hét
+alatt megtanítja a csapatot figyelmen kívül hagyni a saját jelzéseit.
+
+A lead oldalán, a jobb oszlopban: **Not now** kártya.
+
+1. Válaszd ki a **dátumot**, amikor vissza akarsz térni hozzá (csak jövőbeli dátum fogadható el).
+2. Válaszd ki, **mire várunk**: thaiföldi utazás · pénz · jövőre vásárol · társ döntése ·
+   építkezés · egyéb.
+3. **Park until then.**
+
+Ettől kezdve a lead:
+- **eltűnik a Mai teendők listájáról** és minden figyelmeztető számból,
+- **nem kap automata e-mailt** (a sorozat leáll: *Parked until …*),
+- **nem kap „elakadt" jelzést** — a listában és a Pipeline-on az áll rajta, hogy *Parked until …*,
+- **megtartja a fázisát**: egy házeladásra váró qualified vevő továbbra is qualified vevő,
+- **mindent megtart**: jegyzetek, előzmény, attribúció, gazda.
+
+**A megadott napon magától visszajön**, a Mai teendők **Back from nurture** szakaszába, és odaírja,
+mire vártunk. Hamarabb is visszahozhatod a **Back in play now** gombbal — és **bármilyen
+fázisváltás automatikusan feloldja**, mert ha valaki tényleg mozgatja az üzletet, akkor egy hetekkel
+korábban beállított dátum már elavult.
 
 ---
 

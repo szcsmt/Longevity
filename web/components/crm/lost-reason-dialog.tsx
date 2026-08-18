@@ -33,6 +33,21 @@ export function LostReasonDialog({
             </button>
           ))}
         </div>
+        {/* ── The most common wrong answer, caught at the moment it is given ──
+
+            "Timing" is almost never a lost deal in this business. It is a buyer
+            who will come back, and burying them under Closed Lost means nobody
+            ever looks again and the lost-reason report fills up with deals that
+            were never lost. The alternative is one card away on the lead page,
+            and this is the only moment anybody will think about it. */}
+        {reason === 'timing' && (
+          <div className="lost-hint">
+            Not buying <em>yet</em> is not the same as lost. Cancel, and use <strong>Not now</strong> on
+            the lead instead — pick the date to come back to them, and the CRM will bring them up
+            again on it with the reason attached.
+          </div>
+        )}
+
         <textarea
           className="crm-textarea"
           rows={2}

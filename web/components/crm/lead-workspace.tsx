@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Lead, Score, Stage } from '@/lib/crm/types';
 import {
-  CURRENCIES, DECISION, FINANCING, LOST_REASONS, MOTIVATIONS, OBJECTIONS,
+  CURRENCIES, DECISION, FINANCING, LOST_REASONS, MOTIVATIONS, NURTURE_REASONS, OBJECTIONS,
   PURPOSES, SCORES, STAGES, TIMEFRAMES, TOUCHES, VISITS,
 } from '@/lib/crm/types';
-import { REPLY_FLAG_DAYS, missingQualification } from '@/lib/crm/rules';
+import { REPLY_FLAG_DAYS, isNurtured, missingQualification } from '@/lib/crm/rules';
 import { fmtTHB } from '@/lib/crm/villas';
 import { messageTemplates } from '@/lib/crm/templates';
 import { SEQUENCE_STEPS, sequenceState, stepLabel } from '@/lib/crm/sequence';
@@ -35,7 +35,7 @@ const CONTACT_FIELDS = [
   { key: 'villa', label: 'Villa' },
 ] as const;
 
-export function LeadWorkspace({ lead: initial, related = [], roster = [], readOnly = false }: { lead: Lead; related?: Lead[]; roster?: string[]; readOnly?: boolean }) {
+export function LeadWorkspace({ lead: initial, related = [], roster = [], today, readOnly = false }: { lead: Lead; related?: Lead[]; roster?: string[]; today: string; readOnly?: boolean }) {
   const router = useRouter();
   const [lead, setLead] = useState<Lead>(initial);
   const [note, setNote] = useState('');
@@ -52,6 +52,17 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
   const [losing, setLosing] = useState(false);
   const [budgetDraft, setBudgetDraft] = useState(initial.qualification?.budget ? String(initial.qualification.budget) : '');
   const [budgetDirty, setBudgetDirty] = useState(false);
+  const [nurtureDate, setNurtureDate] = useState('');
+  const [nurtureReason, setNurtureReason] = useState<string>(NURTURE_REASONS[0].id);
+  /* Parked and still waiting, versus parked and the date has come — the panel
+     reads very differently either way, and so does the day list. */
+  const parked = isNurtured(lead, today);
+  /* The earliest date the picker offers. Derived from the server's `today`,
+     not the browser's, because the server is what validates it — a laptop set
+     a day ahead should not be able to offer a date the API will refuse. */
+  const tomorrow = new Date(`${today}T00:00:00Z`);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const earliest = tomorrow.toISOString().slice(0, 10);
 
   async function patch(payload: Record<string, unknown>) {
     setBusy(true);
@@ -62,6 +73,10 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
         body: JSON.stringify(payload),
       });
       const data = await res.json();
+      /* A refusal used to vanish: the button un-busied itself and nothing
+         changed on screen, which reads exactly like a bug. The server sends a
+         sentence an operator can act on — show it. */
+      if (!res.ok) alert(data?.error || 'That change could not be saved. Try again.');
       if (data.lead) {
         setLead(data.lead);
         // Keep the deal-value input in sync with server truth (merge can fill
@@ -622,6 +637,70 @@ export function LeadWorkspace({ lead: initial, related = [], roster = [], readOn
                 ✉ Email sent — awaiting reply
               </button>
             </>
+          )}
+        </div>
+
+        {/* ── Not now ──
+
+            The third answer, between "closed lost" and "leave it sitting in
+            Qualified going stale". In this business the six-to-eighteen-month
+            wait is normal, and both of the other answers destroy something:
+            one buries the lead, the other trains everybody to ignore the
+            stalled flag. */}
+        <div className="crm-card">
+          <h3>Not now</h3>
+          {lead.nurture_until ? (
+            <>
+              <div style={{ fontWeight: 600 }}>
+                {parked ? 'Parked until ' : '⚠ Was parked until '}{fmtDay(lead.nurture_until)}
+              </div>
+              <div className="crm-meta" style={{ marginTop: 4 }}>
+                {NURTURE_REASONS.find((r) => r.id === lead.nurture_reason)?.label || 'No reason recorded'}
+              </div>
+              <div className="crm-meta" style={{ marginTop: 8 }}>
+                {parked
+                  ? 'Out of the day list, out of the automated e-mails, and no stall flag until that date.'
+                  : 'The date has come — this lead is back in the day list.'}
+              </div>
+              {!readOnly && (
+                <button className="crm-btn sm" style={{ marginTop: 12 }} disabled={busy}
+                  onClick={() => patch({ op: 'nurture' })}>
+                  Back in play now
+                </button>
+              )}
+            </>
+          ) : !readOnly ? (
+            <>
+              <div className="crm-meta" style={{ marginBottom: 12 }}>
+                Buying, but not yet? Pick the date to come back to them. The lead keeps its stage and
+                everything on it, and simply stops asking for attention until then.
+              </div>
+              <label className="crm-label">Come back on</label>
+              <input
+                className="crm-input"
+                type="date"
+                value={nurtureDate}
+                min={earliest}
+                onChange={(e) => setNurtureDate(e.target.value)}
+              />
+              <label className="crm-label" style={{ marginTop: 12 }}>What are we waiting for</label>
+              <select className="crm-select" value={nurtureReason} onChange={(e) => setNurtureReason(e.target.value)}>
+                {NURTURE_REASONS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+              </select>
+              <button
+                className="crm-btn sm"
+                style={{ marginTop: 12 }}
+                disabled={busy || !nurtureDate}
+                onClick={async () => {
+                  await patch({ op: 'nurture', until: nurtureDate, reason: nurtureReason });
+                  setNurtureDate('');
+                }}
+              >
+                Park until then
+              </button>
+            </>
+          ) : (
+            <div className="crm-meta">Working normally — not parked.</div>
           )}
         </div>
 

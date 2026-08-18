@@ -210,6 +210,29 @@ export const LOST_REASONS = [
   { id: 'other',       label: 'Other' },
 ] as const;
 
+/* ── Nurture ──
+
+   Not every lead that will not buy this month is lost. In this business the
+   six-to-eighteen-month gap is normal: they are waiting on a Thailand trip, on
+   a house sale, on a partner, on the next phase coming out of the ground.
+
+   Until now there were two places to put them, and both were wrong. Closed
+   Lost meant nobody ever looked again and the lost-reason report filled up
+   with deals that were never lost. Left in Qualified they sat there being
+   flagged as stalled every single day, teaching everyone to ignore the flags.
+
+   Nurture is a date and a reason: the lead keeps its stage, leaves the working
+   queue until that date, and comes back on it. Nothing else changes. */
+
+export const NURTURE_REASONS = [
+  { id: 'visit',   label: 'Waiting on a trip to Thailand' },
+  { id: 'funds',   label: 'Waiting on funds' },
+  { id: 'later',   label: 'Buying, but not this year' },
+  { id: 'partner', label: 'Needs a partner’s decision' },
+  { id: 'build',   label: 'Waiting on construction progress' },
+  { id: 'other',   label: 'Other' },
+] as const;
+
 export interface Task {
   id: string;
   title: string;
@@ -231,7 +254,10 @@ export interface Activity {
        phone call could only live in a free-text note — so the single most
        important thing that happens to a lead was the one thing the CRM could
        not see, count or act on. */
-    | 'call' | 'video' | 'meeting' | 'visit' | 'whatsapp';
+    | 'call' | 'video' | 'meeting' | 'visit' | 'whatsapp'
+    /* Parked until a date, or brought back. Its own kind rather than a note,
+       because the queue rules read it and a report will want to count it. */
+    | 'nurture';
   /** Who did it, when a signed-in person did. Absent for anything the system
       or the customer did — those read as the CRM's own actions. */
   by?: string;
@@ -311,6 +337,16 @@ export interface Lead {
   /* Why the deal was lost — one of LOST_REASONS. The free-text detail lives
      in a "Lost:" note; this field feeds reporting. */
   lost_reason?: string;
+
+  /* ── Parked until a date ──
+     While `nurture_until` is in the future the lead is out of the working
+     queue and out of the automated sequence, and no stall or no-next-step rule
+     touches it. On the day it arrives the lead comes back, in its own section,
+     with the reason it was parked still attached. Cleared by reactivating, and
+     by any stage change — a lead that has moved is a lead somebody is
+     working. */
+  nurture_until?: string;   // ISO date
+  nurture_reason?: string;  // one of NURTURE_REASONS
 
   /* What the first real conversation established. Absent until somebody fills
      any of it in; a half-filled qualification is normal. */

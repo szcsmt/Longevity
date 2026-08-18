@@ -26,8 +26,16 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
       {/* The roster lives in env (server-only), so the workspace gets the names
-          it may assign to as a prop. */}
-      <LeadWorkspace lead={lead} related={related} roster={agents().map((a) => a.name)} readOnly={!(await canEdit())} />
+          it may assign to as a prop. `today` comes from here too: the earliest
+          date the parking picker will accept has to be the server's idea of
+          today, since the server is what validates it. */}
+      <LeadWorkspace
+        lead={lead}
+        related={related}
+        roster={agents().map((a) => a.name)}
+        today={new Date().toISOString().slice(0, 10)}
+        readOnly={!(await canEdit())}
+      />
     </>
   );
 }

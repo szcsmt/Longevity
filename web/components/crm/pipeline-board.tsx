@@ -5,9 +5,10 @@ import Link from 'next/link';
 import type { Lead, Stage } from '@/lib/crm/types';
 import { LOST_REASONS, STAGES } from '@/lib/crm/types';
 import { LostReasonDialog } from '@/components/crm/lost-reason-dialog';
-import { nextAction, nextActionState } from '@/lib/crm/rules';
+import { isNurtured, nextAction, nextActionState } from '@/lib/crm/rules';
 
 function NextStepLine({ lead }: { lead: Lead }) {
+  if (isNurtured(lead)) return <div className="mt">Parked until {lead.nurture_until!.slice(0, 10)}</div>;
   const task = nextAction(lead);
   const state = nextActionState(lead);
   if (!task) {

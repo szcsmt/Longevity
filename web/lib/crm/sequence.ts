@@ -1,4 +1,5 @@
 import type { EmailStep, Lead } from './types';
+import { isNurtured } from './rules';
 
 /* The sequence timetable — pure data, no Node APIs, so the admin UI can show
    an operator exactly where a lead stands without importing the mail engine.
@@ -48,6 +49,10 @@ export function sequenceState(l: Lead): SequenceState {
   const started = box.find((e) => e.step === 'welcome');
 
   if (l.unsubscribed) return { active: false, sent, reason: 'The customer opted out' };
+  /* Parked on purpose. Chasing somebody who told us to come back in November
+     is the fastest way to make sure they do not answer in November. */
+  if (isNurtured(l))
+    return { active: false, sent, reason: `Parked until ${l.nurture_until!.slice(0, 10)}` };
   if (!channelFor(l)) return { active: false, sent, reason: 'No e-mail address or WhatsApp number on file' };
   if (!['new', 'contacted', 'qualified'].includes(l.stage))
     return { active: false, sent, reason: 'The deal has moved on — a person is handling it' };

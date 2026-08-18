@@ -631,3 +631,10 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
   .q-tags { justify-content: flex-start; }
   .q-act { grid-column: 1 / -1; justify-content: flex-start; }
 }
+
+/* A warning inside the lost dialog, for the reason that is usually not a loss. */
+.lost-hint {
+  margin: 12px 0; padding: 11px 13px; border-radius: 10px; font-size: 12.5px; line-height: 1.5;
+  color: var(--c-cream); background: rgba(201,169,110,0.09); border: 1px solid rgba(201,169,110,0.35);
+}
+.lost-hint strong { color: var(--c-gold-bright); }

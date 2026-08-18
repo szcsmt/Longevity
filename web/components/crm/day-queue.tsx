@@ -14,7 +14,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Lead } from '@/lib/crm/types';
-import { STAGES } from '@/lib/crm/types';
+import { NURTURE_REASONS, STAGES } from '@/lib/crm/types';
 import { nextAction, stageAgeDays, type QueueSection } from '@/lib/crm/rules';
 
 const fmtDay = (iso?: string) =>
@@ -56,6 +56,14 @@ function reasonLine(lead: Lead, key: QueueSection['key']): string {
     }
     case 'stalled':
       return `${stageLabel(lead.stage)} for ${stageAgeDays(lead)} days`;
+    case 'wake': {
+      // Only leads whose date has already arrived reach this section, so the
+      // count is always "how long ago", never "how long until".
+      const since = daysSince(lead.nurture_until);
+      const when = since <= 0 ? 'due back today' : `due back ${since} ${since === 1 ? 'day' : 'days'} ago`;
+      const why = NURTURE_REASONS.find((r) => r.id === lead.nurture_reason)?.label;
+      return why ? `${why} — ${when}` : `Parked — ${when}`;
+    }
     case 'nonext':
       return 'Nothing planned';
     default: {

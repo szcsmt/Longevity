@@ -116,6 +116,15 @@ export function hasConversed(lead: Lead): boolean {
   );
 }
 
+/* ── Parked until a date ──
+
+   True while the lead is deliberately set aside and the date has not arrived.
+   On the day it does, this goes false and the lead reappears — in its own
+   queue section, not as a lead that mysteriously started stalling again. */
+export function isNurtured(lead: Lead, today = new Date().toISOString().slice(0, 10)): boolean {
+  return Boolean(lead.nurture_until && lead.nurture_until.slice(0, 10) > today);
+}
+
 /* ══════════════════ The working queue ══════════════════
 
    "Who should I contact today?" — answered as one ordered list rather than six
@@ -134,7 +143,7 @@ export function hasConversed(lead: Lead): boolean {
                    already claimed by a more urgent rule still belongs in the
                    answer. */
 
-export type QueueKey = 'uncontacted' | 'overdue' | 'today' | 'silent' | 'nonext' | 'stalled';
+export type QueueKey = 'uncontacted' | 'overdue' | 'today' | 'wake' | 'silent' | 'nonext' | 'stalled';
 
 interface QueueContext { today: string; silentCut: string }
 
@@ -143,15 +152,19 @@ const contextFor = (today = new Date().toISOString().slice(0, 10)): QueueContext
   silentCut: new Date(Date.now() - REPLY_FLAG_DAYS * 86_400_000).toISOString(),
 });
 
-/* A closed deal needs nothing, and an archived lead is out of every working
-   view by definition. Everything else is fair game for a rule. */
-const inPlay = (l: Lead): boolean =>
-  !l.archived_at && l.stage !== 'won' && l.stage !== 'lost';
+/* A closed deal needs nothing, an archived lead is out of every working view by
+   definition, and a lead parked until November is not stalling — it is waiting,
+   on purpose, with a date. Everything else is fair game for a rule. */
+const inPlay = (l: Lead, ctx: QueueContext): boolean =>
+  !l.archived_at && l.stage !== 'won' && l.stage !== 'lost' && !isNurtured(l, ctx.today);
 
 export const QUEUE_RULES: Record<QueueKey, (lead: Lead, ctx: QueueContext) => boolean> = {
   uncontacted: (l) => l.stage === 'new' && !hasConversed(l),
   overdue:     (l, c) => nextActionState(l, c.today) === 'overdue',
   today:       (l, c) => nextActionState(l, c.today) === 'today',
+  /* `inPlay` has already excluded anything still parked, so reaching this rule
+     at all means the date has arrived or passed. */
+  wake:        (l) => Boolean(l.nurture_until),
   silent:      (l, c) => Boolean(l.awaiting_reply_since && l.awaiting_reply_since < c.silentCut),
   nonext:      (l) => hasNoNextStep(l),
   stalled:     (l) => isStalled(l),
@@ -170,6 +183,7 @@ export const SECTION_META: { key: QueueKey; title: string; blurb: string }[] = [
   { key: 'uncontacted', title: 'Nobody has spoken to them yet', blurb: 'New leads with no conversation on record. These first, always.' },
   { key: 'overdue',     title: 'Late',                          blurb: 'A follow-up you promised yourself, past its date.' },
   { key: 'today',       title: 'Due today',                     blurb: 'Scheduled for today.' },
+  { key: 'wake',        title: 'Back from nurture',             blurb: 'You parked these until a date, and the date has come.' },
   { key: 'silent',      title: 'Gone quiet',                    blurb: `Waiting on a reply for more than ${REPLY_FLAG_DAYS} days.` },
   { key: 'nonext',      title: 'No next step',                  blurb: 'Live deals nobody has decided what to do with.' },
   { key: 'stalled',     title: 'Not moving',                    blurb: 'Sitting in the same stage past its threshold.' },
@@ -181,7 +195,8 @@ export const isQueueKey = (v: string): v is QueueKey => Object.hasOwn(QUEUE_RULE
 
 /** One rule, asked on its own — the lead list's `?flag=` filter. */
 export function matchesFlag(lead: Lead, key: QueueKey, today?: string): boolean {
-  return inPlay(lead) && QUEUE_RULES[key](lead, contextFor(today));
+  const ctx = contextFor(today);
+  return inPlay(lead, ctx) && QUEUE_RULES[key](lead, ctx);
 }
 
 /** Oldest first inside a section: the lead that has been waiting longest is
@@ -193,7 +208,7 @@ export function workQueue(leads: Lead[], today?: string): QueueSection[] {
   const buckets = new Map<QueueKey, Lead[]>(SECTION_META.map((s) => [s.key, []]));
 
   for (const lead of leads) {
-    if (!inPlay(lead)) continue;
+    if (!inPlay(lead, ctx)) continue;
     const hit = SECTION_META.find((s) => QUEUE_RULES[s.key](lead, ctx));
     if (hit) buckets.get(hit.key)!.push(lead);
   }

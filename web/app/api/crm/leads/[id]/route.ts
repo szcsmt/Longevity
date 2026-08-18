@@ -1,9 +1,9 @@
 import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import {
-  CrmConflict, addNote, addTask, archiveLead, blockContactOf, getLead, isOutreachChannel,
-  logOutreach, logTouch, mergeLeads, purgeLead, setAwaitingReply, setQualification,
-  toggleTask, unarchiveLead, updateLead,
+  CrmConflict, addNote, addTask, archiveLead, blockContactOf, endNurture, getLead,
+  isOutreachChannel, logOutreach, logTouch, mergeLeads, purgeLead, setAwaitingReply,
+  setNurture, setQualification, toggleTask, unarchiveLead, updateLead,
 } from '@/lib/crm/store';
 import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
 import type { LeadPatch } from '@/lib/crm/types';
@@ -88,6 +88,29 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const channel = String(body.channel || '');
       if (!isOutreachChannel(channel)) return Response.json({ ok: true, ignored: true });
       lead = await logOutreach(id, channel, actor);
+      break;
+    }
+    case 'nurture': {
+      /* Park the lead until a date, or bring it back. Sits with canEdit like
+         stages and tasks: deciding a buyer is a next-quarter conversation is
+         ordinary sales judgement, and the record of it is on the timeline. */
+      if (body.until) {
+        lead = await setNurture(
+          id,
+          String(body.until),
+          body.reason ? String(body.reason) : undefined,
+          body.note ? String(body.note) : undefined,
+          actor,
+        );
+        if (!lead) {
+          return Response.json(
+            { ok: false, error: 'Pick a date in the future to come back to them.' },
+            { status: 400 },
+          );
+        }
+      } else {
+        lead = await endNurture(id, actor);
+      }
       break;
     }
     case 'merge':
