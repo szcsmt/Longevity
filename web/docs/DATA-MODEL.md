@@ -685,6 +685,54 @@ that has **no open task and no running reply timer** — nobody owns its next mo
 a red badge in the nav (`attentionCounts()`), together with overdue tasks, untouched new leads,
 awaiting-reply leads past 3 days, and stalled leads.
 
+## Two scores — `lib/crm/scores.ts`
+
+The CRM has always had one score, hot / warm / cold, set from the form a lead arrived on and
+moved by the AI triage and by behaviour. It stays: it is the operator's own judgement, and a
+person's read is worth keeping.
+
+What it cannot do is separate two questions that pull in opposite directions:
+
+- **Fit** — *can this person buy?* Budget, timeframe, purpose, where the money comes from, and
+  whether they want a specific villa.
+- **Engagement** — *are they actually talking to us?* A visit, a conversation, a reply, a booked
+  call, documents opened, links followed.
+
+Mixing them produces the two most expensive mistakes in a pipeline. A buyer with the money and
+the timing who has gone quiet reads as "cold" and gets dropped, when they are the most valuable
+name on the list. Somebody who replies to everything and cannot afford an entry-level villa
+reads as "hot" and eats a fortnight. `scoreVerdict(fit, engagement)` says which of those is in
+front of you.
+
+**Both are derived.** Nothing is stored, nothing is migrated, and there is no second copy to
+drift — correcting a budget corrects the score on the next render.
+
+**The budget threshold is not a number somebody typed.** `entryPrice()` is the cheapest villa on
+the price list: below it, a person cannot buy here whatever else is true, and the threshold
+moves by itself when the prices do. A budget in a currency with no configured rate is neither
+credited nor penalised — we know the number and cannot compare it, and both guesses would be
+guesses.
+
+**Engagement counts only what THEY did**, or what a person did with them. An automated e-mail
+leaving the building is not engagement and neither is a call that rang out; counting either
+would let the CRM's own activity inflate a buyer's score. It is presence-based rather than
+counted: somebody who opened the brochure nine times is interested, not nine times more
+interested than somebody who opened it once.
+
+**The two scales band differently on purpose.** Fit is additive and roughly linear. Engagement's
+signals are events, and events are lumpy — somebody who flew to Samui and stood on the plot is
+deeply engaged on one signal, while somebody who has clicked three links is barely engaged on
+three. So engagement's thresholds sit far lower: any **two** of the four real signals is high,
+any one of them is at least medium. Treating the scales alike would call a site visit "low
+engagement", which is nonsense.
+
+`fit.missing` is the difference between a low score and an **unknown** one — the distinction the
+operator actually needs, and the reason the lead page says "nobody has asked" rather than
+showing a bar at zero.
+
+Rates are passed in from the server: `CRM_FX` is not a public variable, so reading it in the
+browser would give an empty set and the fit score would differ between the two renders.
+
 ## Country, and comparing budgets
 
 ### `country` — an override, not the source of truth

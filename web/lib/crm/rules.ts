@@ -1,15 +1,30 @@
 import type { AgencyClaim, Lead, Stage, Task } from './types';
-import { OPEN_STAGES } from './types';
+import { OPEN_STAGES, STAGES } from './types';
 
 /* Pure lead-management rules — importable from client components (no Node
    APIs). The structural contract: every active lead has a next step, and no
    lead sits in a stage past its threshold. */
 
-/* How long a deal may sit in a stage before it is asking to be looked at.
-   Reserved and Contract have no threshold on purpose: past a reservation the
-   payment schedule on the masterplan is the clock, and a second one competing
+/* ── How long a deal may sit before it is asking to be looked at ──
+
+   Defaults, not laws. A business that answers enquiries in an hour and one that
+   answers them in a day are both real, and a threshold in the code says the
+   second one is wrong. `NEXT_PUBLIC_CRM_STAGE_DAYS` overrides them, as
+   `new:1,contacted:3,qualified:7`; anything left out keeps its default and a
+   value of `0` removes a threshold entirely.
+
+   NEXT_PUBLIC_, because this same function runs in the browser — the leads
+   table decides what is stalled without asking the server — and a rule that
+   answered differently on the two sides would flag a lead in the list and not
+   in the report. The price is that changing it needs a redeploy rather than
+   just an env edit, which is the right trade for a number that has to be one
+   number everywhere.
+
+   Reserved and Contract have no default threshold on purpose: past a
+   reservation the payment schedule is the clock, and a second one competing
    with it would only produce flags nobody acts on. */
-export const STAGE_MAX_DAYS: Partial<Record<Stage, number>> = {
+
+const DEFAULT_STAGE_MAX_DAYS: Partial<Record<Stage, number>> = {
   new: 1,           // first response within a day
   contacted: 3,     // matches the reply-wait rhythm
   qualified: 7,     // a serious buyer gets weekly movement at minimum
@@ -17,6 +32,25 @@ export const STAGE_MAX_DAYS: Partial<Record<Stage, number>> = {
   visit: 10,        // somebody who has stood on the plot is deciding, not forgetting
   negotiation: 14,  // a fortnight of silence mid-negotiation is a deal in trouble
 };
+
+function configuredStageDays(): Partial<Record<Stage, number>> {
+  const raw = (process.env.NEXT_PUBLIC_CRM_STAGE_DAYS || '').trim();
+  if (!raw) return DEFAULT_STAGE_MAX_DAYS;
+  const out: Partial<Record<Stage, number>> = { ...DEFAULT_STAGE_MAX_DAYS };
+  for (const pair of raw.split(',')) {
+    const [key, value] = pair.split(':');
+    const stage = (key || '').trim() as Stage;
+    const days = Number((value || '').trim());
+    if (!STAGES.some((st) => st.id === stage)) continue;
+    if (!Number.isFinite(days) || days < 0) continue;
+    // Zero means "this stage has no clock", which is a real answer.
+    if (days === 0) delete out[stage];
+    else out[stage] = Math.round(days);
+  }
+  return out;
+}
+
+export const STAGE_MAX_DAYS: Partial<Record<Stage, number>> = configuredStageDays();
 
 /* Every stage where the CRM still expects somebody to be doing something —
    which is every open one. It used to stop at Qualified, so a reservation with
@@ -83,8 +117,14 @@ export function hasNoNextStep(lead: Lead): boolean {
    Lives here rather than in the store because it is a rule, not a persistence
    detail, and both the masterplan (a client component) and the digest need it.
    Three quiet days after an e-mail went out, the lead — and its plot — start
-   asking to be chased. */
-export const REPLY_FLAG_DAYS = 3;
+   asking to be chased. `NEXT_PUBLIC_CRM_REPLY_DAYS` moves it; see the note on
+   the stage thresholds for why the variable is a public one. */
+function configuredReplyDays(): number {
+  const n = Number((process.env.NEXT_PUBLIC_CRM_REPLY_DAYS || '').trim());
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 3;
+}
+
+export const REPLY_FLAG_DAYS = configuredReplyDays();
 
 /* ══════════════════ The next step ══════════════════
 

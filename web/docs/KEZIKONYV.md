@@ -164,6 +164,38 @@ feltöltöd a sablonjaikat, ugyanezekből az adatokból ki tudjuk tölteni azoka
 
 ### Jobb oldal
 
+**Fit & engagement** — két külön mérce, szándékosan **nem** egyetlen szám.
+
+| | Mit kérdez |
+|---|---|
+| **Can they buy** (fit) | keret, időtáv, mire kell, honnan a pénz, konkrét villa, ki dönt |
+| **Are they talking to us** (engagement) | volt-e megtekintés, beszéltetek-e, írt-e vissza, foglalt-e hívást, megnyitotta-e amit küldtünk |
+
+A kettő összekeverése a két legdrágább hiba egy pipeline-ban:
+
+- akinek **megvan a pénze és az időzítése, de elhallgatott**, egyetlen kevert számban „hidegnek"
+  látszik, és kiesik — pedig ő a legértékesebb név a listán;
+- aki **mindenre válaszol, de a belépő villát sem tudja megvenni**, „forrónak" látszik, és elvisz
+  két hetet.
+
+A kártya alján egy mondatban ki is mondja, melyikről van szó: *„Can buy, has gone quiet — chase
+this one"*, *„Talks to us, may not be able to buy — qualify properly"*, és így tovább.
+
+**Egyik szám sincs tárolva** — mindkettő az adatokból számolódik. Ha kijavítasz egy keretet, a
+pontszám a következő megnyitáskor már helyes. Nincs migráció, és nincs második másolat, ami
+elcsúszhatna.
+
+**A keret küszöbe nem egy beírt szám**: a **legolcsóbb villa lista-ára**. Aki ez alatt van, itt
+nem tud venni, bármi más igaz is — és a küszöb magától mozdul, ha az árlista változik.
+
+**Az engagement csak azt számolja, amit *ők* csináltak** (vagy amit valaki *velük*). A kiment
+automata levél nem engagement, és a nem felvett hívás sem. És nem szoroz: aki kilencszer nyitotta
+meg a brossúrát, érdeklődő — nem kilencszer érdeklődőbb annál, aki egyszer.
+
+Ami **hiányzik**, azt külön kiírja („Nobody has asked: budget, timeframe") — mert az alacsony
+pontszám és az *ismeretlen* pontszám két különböző dolog, és a különbség az, ami alapján
+cselekedni lehet.
+
 **Status** — fázis és hőfok legördülőből, plusz az **üzletérték (THB)**. Az érték a villaválasztásból magától kitöltődik a lista-árral, de bármikor átírható.
 
 **Owner — kié a lead.** Minden lead a beérkezés pillanatában kap gazdát, és **az ő nevével, telefonszámával megy ki minden automata levél** — az ügyfél nem „a csapattól", hanem egy embertől kap választ. Egy értékesítő esetén ez mindig te vagy. Ha többen lesztek, a rendszer körbeosztja az új leadeket: mindig az kapja, akinél éppen a **legkevesebb nyitott** lead van (a lezárt üzletek nem számítanak terhelésnek), és a legördülőből bármikor átadható másnak.

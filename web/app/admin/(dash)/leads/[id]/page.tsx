@@ -4,6 +4,7 @@ import { canEdit, isAdmin } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import { getLead, relatedLeads } from '@/lib/crm/store';
 import { listAgencies } from '@/lib/crm/partners';
+import { fxRates } from '@/lib/crm/money';
 import { LeadWorkspace } from '@/components/crm/lead-workspace';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         roster={agents().map((a) => a.name)}
         agencies={agencies}
         today={new Date().toISOString().slice(0, 10)}
+        rates={fxRates()}
         admin={owner}
         readOnly={!editor}
       />

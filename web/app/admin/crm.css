@@ -643,3 +643,16 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
 .claim { padding: 12px 0; border-bottom: 1px solid var(--c-line-2); }
 .claim:last-of-type { border-bottom: 0; }
 .claim-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+
+/* ── Fit and engagement, side by side ──
+   Two bars rather than one number, because the whole point is that they are
+   two different readings and a single figure hides which is which. */
+.score-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.score-block .crm-meta:first-child { margin-bottom: 6px; }
+.score-bar { display: block; height: 8px; border-radius: 100px; background: rgba(228,217,195,0.10); overflow: hidden; }
+.score-bar i { display: block; height: 100%; border-radius: 100px; background: var(--c-mut); }
+.score-bar.high i { background: linear-gradient(90deg, var(--c-gold), var(--c-gold-bright)); }
+.score-bar.medium i { background: var(--c-warm); }
+.score-bar.low i { background: var(--c-cold); }
+.score-block .tabnum { margin-top: 4px; }
+@media (max-width: 460px) { .score-pair { grid-template-columns: 1fr; } }

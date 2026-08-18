@@ -40,6 +40,7 @@ the work is filling gaps and closing blind spots.
 | Automated sequence | Six letters, minute 0 → day 60, stopping the moment a human owns the conversation |
 | Roles | admin / agent / viewer, with the irreversible and the exportable reserved to the owner |
 | Speed to lead | `first_response_at` — the first moment a *person* acted |
+| Scoring | Hot/warm/cold as the operator's judgement, plus derived fit and engagement scores kept apart, with a verdict for the pair |
 | Segmentation | Country read off the dialling code and correctable, budget comparison across currencies at configured rates (and an honest refusal to compare without them) |
 | Payment schedules | A step's percentage AND its construction gate are configuration: per project via env, per unit when negotiated, stamped at the moment money is agreed so old deals keep their terms |
 | Reservations and contracts | A reservation record with deposit agreed / received / expiry / agreement, a release that needs a reason, `reservationWatch()` for the holds running out, and a four-step SPA status stamping each date once |
@@ -52,7 +53,6 @@ the work is filling gaps and closing blind spots.
 
 | | What is missing |
 |---|---|
-| Scoring | One hot/warm/cold, from the form type plus AI triage. The specification asks for fit and engagement kept apart |
 | Filters | Stage, score, form, source, country, timeframe, budget, owner, free text and the attention flags. Not deal value |
 | Permissions | Three roles. Head of sales, marketing and finance all currently mean "admin" |
 | Global search | Leads only — not units, not agencies |
@@ -61,7 +61,6 @@ the work is filling gaps and closing blind spots.
 
 | | Why it matters |
 |---|---|
-| Configurable SLAs | `STAGE_MAX_DAYS` and `REPLY_FLAG_DAYS` are constants in code |
 
 ### NEEDS REFACTORING
 
@@ -98,7 +97,7 @@ the work is filling gaps and closing blind spots.
       its steps, cycle length, time to first contact, production by person / source / agency,
       and why we lose. `reports()` is gone; `lib/crm/performance.ts` is pure and tested
 
-### P2 — management and optimisation
+### P2 — management and optimisation ✅ *shipped*
 
 - [x] **P2.1** Source normalisation — `sources.ts`, applied on read so nothing is migrated and
       no raw value is ever overwritten; reports, the lead filter and the export all group by
@@ -116,10 +115,13 @@ the work is filling gaps and closing blind spots.
       rewrites a deal already struck
 - [x] **P2.7** Country on the lead — inferred from the dialling code, correctable from a picker,
       filterable, and its own row on the performance screen
-- [ ] Fit and engagement as two scores
+- [x] **P2.8** Fit and engagement as two derived scores, banded differently because their
+      signals behave differently, with a verdict naming which of the two expensive mistakes is
+      in front of you
 - [x] **P2.9** Filters on country, timeframe and budget — with exchange rates as configuration
       and no invented defaults, so the budget filter says which comparison it is actually making
-- [ ] Configurable SLA thresholds
+- [x] **P2.10** Configurable SLA thresholds — stage stall days and the reply timer, as public
+      env vars so the same number answers on the server and in the browser
 
 ### P3 — later
 

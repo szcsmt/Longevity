@@ -15,6 +15,8 @@ import { SEQUENCE_STEPS, sequenceState, stepLabel } from '@/lib/crm/sequence';
 import { DOCUMENTS } from '@/lib/crm/documents';
 import { COUNTRIES, countryName, guessLanguage, languageLabel, languageName, leadCountry } from '@/lib/crm/language';
 import { LostReasonDialog } from '@/components/crm/lost-reason-dialog';
+import { engagementScore, fitScore, scoreVerdict } from '@/lib/crm/scores';
+import type { Rates } from '@/lib/crm/money';
 
 /* What the picker needs about an agency — not the whole record, and not the
    commission terms, which have no business crossing to the browser on a lead
@@ -45,7 +47,7 @@ const CONTACT_FIELDS = [
 ] as const;
 
 export function LeadWorkspace({
-  lead: initial, related = [], roster = [], agencies = [], today, admin = false, readOnly = false,
+  lead: initial, related = [], roster = [], agencies = [], today, rates = {}, admin = false, readOnly = false,
 }: {
   lead: Lead;
   related?: Lead[];
@@ -55,6 +57,11 @@ export function LeadWorkspace({
       roster, because the workspace is a client component. */
   agencies?: AgencyOption[];
   today: string;
+  /** Exchange rates, from the server. Passed rather than read here because
+      `CRM_FX` is not a public variable — reading it in the browser would give
+      an empty set, and the fit score would differ between the server render
+      and the client one. */
+  rates?: Rates;
   /** Withdrawing a registration and recording over another agency's live claim
       both decide who gets paid. Hidden rather than shown-and-refused. */
   admin?: boolean;
@@ -86,6 +93,9 @@ export function LeadWorkspace({
      phone number" option with the answer that will actually be used. */
   const derivedCountry = guessLanguage(lead).country;
   const parked = isNurtured(lead, today);
+  const fit = fitScore(lead, rates);
+  const engagement = engagementScore(lead);
+  const verdict = scoreVerdict(fit, engagement);
   const claims = lead.claims || [];
   const credited = creditedClaim(lead);
   const todayStr = today;
@@ -734,6 +744,41 @@ export function LeadWorkspace({
 
       {/* ── Right column ── */}
       <div className="stack">
+        {/* ── Fit and engagement ──
+
+            Kept apart on purpose. Mixing them produces the two most expensive
+            mistakes in a pipeline: a buyer with the money and the timing who
+            has gone quiet reads as "cold" and gets dropped, and somebody who
+            replies to everything and cannot afford an entry-level villa reads
+            as "hot" and eats a fortnight. Both are derived — correcting a
+            budget corrects the score on the next render. */}
+        <div className="crm-card">
+          <h3>Fit &amp; engagement</h3>
+          <div className="score-pair">
+            {[
+              { label: 'Can they buy', s: fit },
+              { label: 'Are they talking to us', s: engagement },
+            ].map(({ label, s }) => (
+              <div key={label} className="score-block">
+                <div className="crm-meta">{label}</div>
+                <div className={`score-bar ${s.band}`}><i style={{ width: `${s.pct}%` }} /></div>
+                <div className="crm-meta tabnum">{s.pct}%</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, fontWeight: 600 }}>{verdict}</div>
+          {fit.reasons.concat(engagement.reasons).length > 0 && (
+            <div className="crm-meta" style={{ marginTop: 8 }}>
+              {fit.reasons.concat(engagement.reasons).join(' · ')}
+            </div>
+          )}
+          {fit.missing.length > 0 && (
+            <div className="crm-meta" style={{ marginTop: 6, color: 'var(--c-warm)' }}>
+              Nobody has asked: {fit.missing.join(', ').toLowerCase()}
+            </div>
+          )}
+        </div>
+
         {/* Stage / score */}
         <div className="crm-card">
           <h3>Status</h3>
