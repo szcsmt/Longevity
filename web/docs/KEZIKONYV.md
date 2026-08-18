@@ -369,6 +369,51 @@ semmit nem ad el, **költség**; aki hatot regisztrál és kettőt elad, az a me
 Lead-számban a kettő egyformán néz ki — ezért van ott a **Sold**, a **Conversion** és a
 **Sales value** oszlop is.
 
+### Partner portál — az ügynökség maga regisztrál
+
+`/portal`
+
+Az ügynökség **saját maga** rögzítheti a vevőt, és követheti azokat, akiket ő hozott — anélkül,
+hogy CRM-belépést kapna.
+
+Az egész egy feltevésre épül: **a partner nem munkatárs.** Egy harmadik fél, akinek üzleti
+érdeke fűződik a mi ügyféllistánkhoz. A portál legyen hasznos neki, de ne legyen ablak
+a listánkra. Ezért:
+
+- **csak azokat a vevőket látja, akiket ő hozott** — másik ügynökségét soha, közvetlenül
+  hozzánk érkezőt soha, archiváltat soha, és olyat sem, amire ő *más bevezetése fölé* rögzített
+  igényt (az a mi idővonalunkon van, de nem az ő vevője);
+- **öt szóban látja az állapotot** — *registered · in progress · reserved · completed · closed*.
+  A tíz fázisunk a mi értékesítési folyamatunk, nem az övé; kiadni annyit tenne, hogy vitázni
+  lehet róla, miért „csak" prezentációnál tart valaki;
+- ha a vevőt **más már regisztrálta**, azt megmondja — de **azt nem, hogy ki**. Az a másik
+  ügynökség dolga, és egy portál, ami megnevezi őket, a védelmi ablakból szivárgást csinál. A
+  lejárati dátumot viszont megkapja: az mondja meg neki, mikor próbálkozhat újra.
+
+**A regisztráció ugyanazon a kapun megy be, mint a weboldal űrlapjai.** Ha a személyt már
+ismerjük, a regisztráció **a meglévő rekordra** kerül, nem csinál mellé egy másodikat — ez az a
+duplikátum, amit egy ügynöki portál egyébként hetente gyártana.
+
+### Hozzáférés adása és visszavétele
+
+Az ügynökség lapján, a **Partner portal** kártyán:
+
+- **Open portal access** → megkapod a **belépőkódot**. **Egyszer látod.** Csak hash-elve tároljuk,
+  tehát tényleg nem lehet visszanézni — ez az egyetlen tisztességes módja egy jelszó tárolásának.
+  Másold ki rögtön.
+- **Issue a new code** → új kód, a régi azonnal halott, **és minden vele nyitott munkamenet is**.
+- **Close access** → a hozzáférés megszűnik. A regisztrációik érintetlenek maradnak.
+
+Egy kód **ügynökségenként**, nem emberenként: az ügynökség egy cég, akivel szerződésünk van, az
+emberei cserélődnek, és minden emberüknek belépőt adni annyi lenne, mintha felhasználó-nyilvántartást
+kezdenénk vezetni helyettük.
+
+Ha egy ügynökséget **archiválsz**, a portál-hozzáférése magától megszűnik — az együttműködés vége
+véget vet annak is, ami vele járt.
+
+A kártyán az is látszik, **mikor használták utoljára** — így elválik az az ügynökség, aki tényleg
+dolgozik vele, attól, aki megkapta a kódot és soha nem lépett be.
+
 ### Regisztráció — a lead oldalán
 
 A vevő oldalán, a bal oszlopban: **Introduced by** kártya.
