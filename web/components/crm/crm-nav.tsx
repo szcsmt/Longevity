@@ -86,9 +86,11 @@ export function CrmNav({
     : undefined;
   return (
     <nav className="crm-nav">
-      {/* Quick search — lands on the Leads list filtered to the query */}
-      <form action="/admin/leads" method="get" className="nav-search">
-        <input className="crm-input" name="q" placeholder="Search leads…" aria-label="Search leads" />
+      {/* Quick search. It used to filter the lead list, which is the right
+          answer to "where is that buyer" and no answer at all to "which agency
+          was Nok at" or "who is holding B12". */}
+      <form action="/admin/search" method="get" className="nav-search">
+        <input className="crm-input" name="q" placeholder="Search everything…" aria-label="Search" />
       </form>
       {items.filter((it) => !hidden.includes(it.href)).map((it) => {
         const active = it.href === '/admin' ? path === '/admin' : path.startsWith(it.href);

@@ -470,6 +470,14 @@ are grouped by shared e-mail OR shared phone key, linked transitively (union-fin
 - `POST` — folds each group into its **oldest** lead (the first enquiry keeps the original
   attribution) using the same merge as the `merge` op: `200 {"ok":true,"groups":N,"merged":N}`.
 
+### GET /admin/search?q=…
+
+Not an API route — a page. Searches leads (name, e-mail, phone, WhatsApp, residence),
+agencies (their name, their country, **and the people who work there**) and units (number,
+buyer). Phone numbers match on their **last nine digits**, the same `phoneKey` rule duplicate
+detection uses, so formatting and country codes do not matter. Archived leads and agencies are
+included and labelled. Queries under two characters return nothing.
+
 ### GET /api/crm/export
 
 CSV export of the (optionally filtered) lead list. Query params match the Leads page:

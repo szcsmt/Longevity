@@ -40,6 +40,7 @@ the work is filling gaps and closing blind spots.
 | Automated sequence | Six letters, minute 0 → day 60, stopping the moment a human owns the conversation |
 | Roles | admin / agent / viewer, with the irreversible and the exportable reserved to the owner |
 | Speed to lead | `first_response_at` — the first moment a *person* acted |
+| Search | One box over leads, agencies and their agents, and units — phone numbers matched on their last nine digits, archived records included and labelled |
 | Permissions | Six roles mapped to nine capabilities in one table; routes ask for the capability, archiving is separated from purging, and marketing is the one role the money is hidden from |
 | Scoring | Hot/warm/cold as the operator's judgement, plus derived fit and engagement scores kept apart, with a verdict for the pair |
 | Segmentation | Country read off the dialling code and correctable, budget comparison across currencies at configured rates (and an honest refusal to compare without them) |
@@ -55,7 +56,6 @@ the work is filling gaps and closing blind spots.
 | | What is missing |
 |---|---|
 | Filters | Stage, score, form, source, country, timeframe, budget, owner, free text and the attention flags. Not deal value |
-| Global search | Leads only — not units, not agencies |
 
 ### MISSING
 
@@ -128,7 +128,8 @@ the work is filling gaps and closing blind spots.
 - [x] **P3.1** Roles that match responsibilities — head of sales, finance and marketing added,
       and the permissions moved out of eleven `isAdmin()` call sites into one capability table
 - [ ] External agent portal
-- [ ] Global search across units and agencies
+- [x] **P3.2** Global search — leads, agencies (including their people) and units in one box,
+      with phone numbers matched on their digits rather than their formatting
 - [ ] `store.ts` split by aggregate
 
 ---

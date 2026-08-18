@@ -35,7 +35,30 @@ A lényeg az üdvözlés alatti **figyelmeztető kapszulák**. Csak akkor jelenn
 Korábban a kapszula megmondta, hogy *7 lead következő lépés nélkül*, aztán a szűretlen listát
 nyitotta meg, és neked kellett megkeresni, melyik az a hét.
 
-A menü tetején gyorskereső van — beírod a nevet/e-mailt/telefont, és a Leads listára visz szűrve.
+### Keresés — a menü tetején
+
+A gyorskereső **mindenben** keres, nem csak a leadek között:
+
+| Amit megtalál | Mi alapján |
+|---|---|
+| **Lead** | név, e-mail, telefon, WhatsApp, az érdeklődés tárgya (villa) |
+| **Ügynökség** | a saját neve, országa, **vagy bárki neve/e-mailje/telefonja, aki ott dolgozik** |
+| **Villa** | a telek száma, vagy annak a neve, aki tartja |
+
+Így a *„melyik ügynökségnél volt Nok?"* és a *„ki tartja a B12-t?"* is megválaszolható kérdés
+lett — eddig egyik sem volt az.
+
+**A telefonszám formátuma nem számít.** Aki `+66 81 234 5678`-ként van elmentve, azt megtalálod
+`0812345678`, `81 234 5678` és `66812345678` alakban is — az utolsó kilenc számjegy alapján
+egyezik, ugyanazzal a szabállyal, amivel a duplikátum-figyelés dolgozik. Így soha nem fordulhat
+elő, hogy a keresés nem találja, a rendszer viszont duplikátumnak nézi.
+
+Minden találat mellett ott áll, **melyik mező egyezett** („matched on phone") — hogy egy
+telefonszámra kapott találat ne tűnjön rejtélyes név-egyezésnek.
+
+Az **archivált leadek is szerepelnek** benne, megjelölve. Aki keres egy nevet, annak oka van rá,
+és a *„márciusban archiváltuk"* is válasz — az a kereső, ami ezeket csendben kihagyja, úgy néz
+ki, mintha a CRM elvesztette volna a rekordot.
 
 ---
 

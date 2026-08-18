@@ -685,6 +685,39 @@ that has **no open task and no running reply timer** — nobody owns its next mo
 a red badge in the nav (`attentionCounts()`), together with overdue tasks, untouched new leads,
 awaiting-reply leads past 3 days, and stalled leads.
 
+## Search — `lib/crm/search.ts`
+
+The sidebar box filtered the lead list, which is the right answer to "where is that buyer" and
+no answer at all to "which agency was Nok at" or "who is holding B12" — both of which get asked
+out loud every week. `/admin/search` answers all three.
+
+Pure: it takes `{ leads, agencies, villas }` and returns hits, so it is testable without a
+database and the page decides what to load.
+
+| Kind | Found by |
+|---|---|
+| lead | name, e-mail, phone, WhatsApp, residence of interest |
+| agency | its own name, its country, **or the name / e-mail / phone of anybody who works there** |
+| unit | the unit number, or the name of whoever is holding it |
+
+**Phone numbers are why this is not a substring match on a joined string.** A buyer saved as
+`+66 81 234 5678` is found by `0812345678`, by `81 234 5678` and by `66812345678`, because that
+is how the same number arrives from a business card, a WhatsApp export and somebody's memory.
+Matching is on the **last nine digits** — the same `phoneKey` rule duplicate detection has always
+used, so "the search cannot find it" and "the CRM thinks it is a different person" can never
+disagree. A query with too few digits is not treated as a phone number at all: `12` is a unit
+fragment, not a number.
+
+Every hit carries `matched`, in words, so a result that came from a phone number does not look
+like a mysterious one on the name.
+
+**Archived leads are included**, and labelled. Somebody searching a name has a reason, and "we
+archived them in March" is an answer — a search that silently omitted them would look like a CRM
+that had lost the record.
+
+Ordering: an exact title match first, then leads, then agencies, then units. Somebody typing a
+full name wants that person at the top, not a villa whose buyer field happens to contain it.
+
 ## Two scores — `lib/crm/scores.ts`
 
 The CRM has always had one score, hot / warm / cold, set from the form a lead arrived on and
