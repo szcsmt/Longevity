@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import type { Agency } from '@/lib/crm/types';
 import { AGENCY_STATUS, COMMISSION_MODELS } from '@/lib/crm/types';
 import { fmtTHB } from '@/lib/crm/villas';
+import { PortalAccess } from '@/components/crm/portal-access';
 
 const num = (v?: number) => (v === undefined || v === null ? '' : String(v));
 
@@ -252,6 +253,8 @@ export function AgencyEditor({
             </div>
           </div>
         </div>
+
+        <PortalAccess agency={agency} />
 
         <div className="crm-card">
           <h3>The relationship</h3>

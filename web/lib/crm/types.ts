@@ -429,6 +429,16 @@ export interface Agency {
   /** What we have actually paid them, oldest first. Absent until the first
       payment; a missing ledger reads as "nothing paid yet", which is true. */
   payments?: CommissionPayment[];
+
+  /* ── The partner portal ──
+     A SHA-256 of the access token, never the token itself: we hand it over
+     once and cannot show it again, which is the only honest way to store a
+     credential. Regenerating it silently invalidates every session opened with
+     the old one, because the session signature is derived from this hash —
+     revoking access is one click and needs no session store. */
+  portal_token_hash?: string;
+  portal_opened_at?: string;   // when access was granted
+  portal_seen_at?: string;     // when they last used it
   note?: string;
   created_at: string;
   updated_at: string;

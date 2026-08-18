@@ -2,6 +2,7 @@ import { can, currentUser, isAuthed } from '@/lib/crm/auth';
 import {
   addContact, addPayment, archiveAgency, getAgency, setContactActive, unarchiveAgency, updateAgency,
 } from '@/lib/crm/partners';
+import { closePortal, openPortal } from '@/lib/crm/portal';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           { status: 400 },
         );
       }
+      break;
+    case 'openPortal': {
+      /* The plain access code exists for exactly one response and is never
+         recoverable afterwards — it is stored as a hash. Re-issuing replaces
+         the old code AND kills every session opened with it. */
+      const opened = await openPortal(id);
+      if (!opened) return Response.json({ ok: false, error: 'not found' }, { status: 404 });
+      return Response.json({ ok: true, agency: opened.agency, token: opened.token });
+    }
+    case 'closePortal':
+      agency = await closePortal(id);
       break;
     case 'archive':
       /* Archived, never deleted: the registrations made under this name decide

@@ -287,6 +287,71 @@ Per-unit fields (unit metadata from `lib/villas.json`, live state from the CRM s
 
 ---
 
+## Partner portal (`/portal`, agency cookie)
+
+A way for an introducing agency to register a buyer themselves and follow the ones they
+introduced — **without** giving them a CRM login. Written from one assumption: a partner is not
+staff, they are a third party with a commercial interest in our customer list, and the portal
+must be useful to them without becoming a window into it.
+
+**The credential.** One access code per agency, not an account per person: an agency is a firm we
+have an agreement with, its people change, and issuing logins to each of them would be a user
+directory we then have to run. The code is generated once, shown once, and stored **only as a
+SHA-256**. The session signature is derived from that hash, so **re-issuing a code invalidates
+every session opened with the old one** — revoking access is one click and needs no session store
+to sweep. Archiving an agency kills its access too: ending a relationship has to end what came
+with it.
+
+Cookie `lr_partner` = `<base64url(agencyId)>.<sha256(id:tokenHash:salt)>`, httpOnly, `SameSite=Lax`,
+14 days — deliberately shorter than a staff session.
+
+### POST /api/partners/login
+
+Body `{ "token": "…" }`. **8 requests / minute / IP**, then `429`. Every failure — wrong code,
+revoked code, archived agency — returns the same `401` and the same sentence: saying which it was
+tells somebody whether the code ever existed.
+
+### POST /api/partners/logout
+
+Clears the cookie.
+
+### POST /api/partners/register
+
+Registers a buyer against the signed-in agency. **6 requests / minute / agency**, then `429`.
+Body: `name` (required), `email` / `phone` (at least one required), `whatsapp`, `villa`,
+`broker`, `note`.
+
+It goes through **the same `upsertLeadFromPayload` gate as every website form**. That is the
+point: if we already know this person the registration attaches to the record that exists rather
+than starting a second one beside it — the duplicate an agency portal would otherwise create
+every week.
+
+| | |
+|---|---|
+| `200 {"ok":true,"created":<bool>}` | Registered. `created` says whether the buyer was new to us |
+| `400` | No name, or neither an e-mail nor a phone — without one we cannot tell whether we already know them |
+| `409 {"error":"This buyer is already registered with us by another partner.","until":"<date>"}` | Somebody else holds the claim. **The other agency is never named** — that is their business, and a portal that names them turns a protection window into a leak. The date is shared, because it is what tells this agency when they may try again |
+
+### What the portal shows
+
+Only the leads the agency is **credited** with (its first registration, never withdrawn) — never
+another agency's buyer, never one who came to us directly, never an archived lead, and never a
+claim it recorded *over* somebody else's introduction. Per buyer: the name, the date registered,
+the protection expiry, the residence and the agent they named, and a status in **five words** —
+`registered`, `in progress`, `reserved`, `completed`, `closed`. Our ten-stage pipeline is how we
+work a deal and is not theirs; publishing it invites arguments about why a buyer is "only" at
+Presentation.
+
+`PartnerLeadView` is an explicit type for exactly that reason: adding a field to the portal has
+to be a decision somebody makes.
+
+### Granting access
+
+`PATCH /api/crm/agencies/[id]` with `op: "openPortal"` (returns `token` **once**) or
+`op: "closePortal"`. Both need `partners.write` — i.e. the owner. `/portal` is in `robots.txt`
+`disallow`: it is a door for people who were given a key, not a page anybody should arrive at
+from a search.
+
 ## CRM admin endpoints (session cookie)
 
 All routes below return `401 {"ok":false}` without a valid `lr_crm` session cookie
