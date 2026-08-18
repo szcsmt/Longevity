@@ -444,6 +444,50 @@ promised date, construction beyond `not_started`, any paid phase, any extra).
 | `phases` | Partial\<Record\<PhaseKey, VillaPhase\>\>? | Payment milestones (below) |
 | `extras` | VillaExtra[]? | `{ id, label (≤120), price? }` — presets in `EXTRA_PRESETS` (Podcast studio, Office setup, Gym corner, Sauna, Outdoor kitchen, EV charger) plus free text |
 
+### Reservation — `VillaRecord.reservation`
+
+A unit flipping to `reserved` says a villa is held. It does not say by when the deposit has to
+land, what the deposit was, whether it landed, or when the hold lapses if it does not — and
+those four facts are the entire content of a reservation agreement. Without them a hold that
+quietly expired looked exactly like a live one, and the way anybody found out was by trying to
+sell the villa to somebody else.
+
+| Field | |
+|---|---|
+| `at` | when the villa was reserved |
+| `amount` | the agreed deposit, THB |
+| `paid_at` | when the deposit **actually landed** — a separate fact from agreeing it |
+| `expires_at` | the date the hold lapses |
+| `agreement` | where the signed agreement lives — a filename, a link, a reference. Free text on purpose: the CRM is not a document store, and pretending otherwise would mean holding files it cannot look after |
+| `by` | who recorded it — stamped from the session, never trusted from the request body |
+
+Three operations on `updateVillaSale`:
+
+- `reserve` — takes the villa off the market **and** records the agreement. **Refused without a
+  buyer on the record**: a held villa nobody can name is the reservation equivalent of a sold
+  unit still marked free. The existing double-reservation guard sits above it, so a unit
+  somebody else already holds never reaches this code.
+- `reservationPatch` — fills in what was not known at the time. A `paid_at` arriving writes its
+  own line on the villa history.
+- `releaseReservation` — the hold lapsing or being cancelled. **Needs a reason.** The villa goes
+  back on the market and the reservation record goes with it, but the villa history keeps the
+  whole thing — which is what somebody will want in six months when the buyer comes back saying
+  they were promised it.
+
+`reservationWatch(withinDays = 7)` reads the holds: `lapsed` / `due` / `held`, worst first.
+`daysLeft` goes **negative** past the date on purpose — "−9" reads as nine days overdue, where a
+report that clamps at zero throws away how bad it is. A hold with no agreed expiry stays `held`
+with `daysLeft: null` rather than having one invented for it. Shown on the Payments page.
+
+### Contract — `VillaRecord.contract`
+
+Between a reservation and a sale there used to be nothing: a deal sat at "reserved" for three
+months whether the SPA had gone out that morning or was signed and sitting in a drawer.
+
+`CONTRACT_STEPS`: `none` → `sent` → `review` → `signed`, each stamping its own date **the first
+time it is reached**. Stepping back to correct a mis-click never rewrites when the contract
+actually went out.
+
 ### Payment phases (7 / 43 / 40 / 10)
 
 `PHASES` in `types.ts` — the resort's payment schedule as percentages of `contractValue`:

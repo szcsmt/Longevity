@@ -60,6 +60,52 @@ export interface VillaExtra {
   price?: number;  // THB, optional
 }
 
+/* ── The reservation, as a process rather than a status word ──
+
+   A unit flipping to `reserved` says a villa is held. It does not say by when
+   the deposit has to land, what the deposit was, whether it landed, or when the
+   hold lapses if it does not — and those four facts are the entire content of a
+   reservation agreement.
+
+   Without them, a hold that quietly expired looked exactly like a live one, and
+   the only way anybody found out was by trying to sell the villa to somebody
+   else. */
+export interface Reservation {
+  at: string;             // ISO — when the villa was reserved
+  amount?: number;        // the agreed deposit, THB
+  paid_at?: string;       // ISO date the deposit actually landed
+  expires_at?: string;    // ISO date the hold lapses if it has not
+  /** Where the signed reservation agreement lives — a filename, a drive link,
+      a reference. Free text on purpose: the CRM is not a document store, and
+      pretending otherwise would mean uploading files it cannot look after. */
+  agreement?: string;
+  note?: string;
+  by?: string;            // who recorded it
+}
+
+/* ── The SPA ──
+
+   Four states and the dates they happened. Between a reservation and a sale
+   there used to be nothing at all: a deal sat at "reserved" for three months
+   whether the contract had gone out that morning or was signed and sitting in a
+   drawer. */
+export const CONTRACT_STEPS = [
+  { id: 'none',   label: 'Not started' },
+  { id: 'sent',   label: 'Sent to the buyer' },
+  { id: 'review', label: 'Under review' },
+  { id: 'signed', label: 'Signed' },
+] as const;
+
+export type ContractStatus = (typeof CONTRACT_STEPS)[number]['id'];
+
+export interface ContractState {
+  status: ContractStatus;
+  sent_at?: string;
+  reviewed_at?: string;
+  signed_at?: string;
+  note?: string;
+}
+
 export interface VillaRecord {
   status: VillaStatus;
   seller?: string;   // who sold / reserved it
@@ -74,6 +120,12 @@ export interface VillaRecord {
   construction?: Construction;
   phases?: Partial<Record<PhaseKey, VillaPhase>>;
   extras?: VillaExtra[];
+
+  /* The reservation and the contract, once either is a real thing rather than
+     a status word. Both absent on a free unit, and on everything reserved
+     before they existed — those keep working exactly as they did. */
+  reservation?: Reservation;
+  contract?: ContractState;
 
   /* Optimistic-concurrency revision, bumped on every save — the same guard the
      Lead has carried since v3. A unit is the one record two salespeople can

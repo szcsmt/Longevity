@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { Construction, VillaRecord, VillaHistoryEntry, VillaStatus } from '@/lib/crm/types';
-import { CONSTRUCTION, PHASES } from '@/lib/crm/types';
+import { CONSTRUCTION, CONTRACT_STEPS, PHASES } from '@/lib/crm/types';
 import { EXTRA_PRESETS, VILLAS, fmtTHB, nextPhase, paidTotal, phaseAmount } from '@/lib/crm/villas';
 import { REPLY_FLAG_DAYS } from '@/lib/crm/rules';
 
@@ -38,6 +38,11 @@ export function Masterplan({
   const [editingValue, setEditingValue] = useState(false);
   const [extraLabel, setExtraLabel] = useState('');
   const [extraPrice, setExtraPrice] = useState('');
+  const [resAmount, setResAmount] = useState('');
+  const [resExpiry, setResExpiry] = useState('');
+  /* Calendar day, for reading a reservation's expiry. Computed once per render
+     rather than per row. */
+  const today = new Date().toISOString().slice(0, 10);
   /* Why a refusal has to be visible: the server now declines to reserve a unit
      somebody else already holds, and it says which buyer holds it. Swallowing
      that turns a deliberate safeguard into a button that appears broken. */
@@ -84,6 +89,7 @@ export function Masterplan({
     setContractDraft(r?.contractValue ? String(r.contractValue) : '');
     setEditingValue(false);
     setExtraLabel(''); setExtraPrice('');
+    setResAmount(''); setResExpiry('');
     setSel(id);
     setErr(null);
   }
@@ -401,6 +407,122 @@ export function Masterplan({
                 </select>
               </div>
 
+              {/* ── Foglalás ──
+
+                  Eddig a „foglalt" státusz annyit mondott, hogy a villa tartva
+                  van. Azt nem, hogy meddig, mekkora előlegre, és hogy az előleg
+                  megérkezett-e — pedig a foglalási szerződés pontosan ebből a
+                  négy adatból áll. Enélkül a lejárt foglalás pontosan úgy nézett
+                  ki, mint az élő. */}
+              <div className="mp-sec">
+                <h3>Foglalás</h3>
+                {rec?.reservation ? (
+                  <>
+                    <div className="crm-meta" style={{ marginBottom: 10 }}>
+                      Foglalva {fmtDay(rec.reservation.at)}{rec.reservation.by ? ` · ${rec.reservation.by}` : ''}
+                    </div>
+                    <div className="edit-grid">
+                      <div>
+                        <label className="crm-label">Előleg (THB)</label>
+                        <input className="crm-input" inputMode="numeric" defaultValue={rec.reservation.amount || ''}
+                          disabled={saving}
+                          onBlur={(e) => sel && api({ id: sel, op: 'reservationPatch', patch: { amount: Number(e.target.value) || null } })} />
+                      </div>
+                      <div>
+                        <label className="crm-label">Előleg beérkezett</label>
+                        <input className="crm-input" type="date" defaultValue={rec.reservation.paid_at || ''}
+                          disabled={saving}
+                          onChange={(e) => sel && api({ id: sel, op: 'reservationPatch', patch: { paidAt: e.target.value || null } })} />
+                      </div>
+                      <div>
+                        <label className="crm-label">Meddig tartjuk</label>
+                        <input className="crm-input" type="date" defaultValue={rec.reservation.expires_at || ''}
+                          disabled={saving}
+                          onChange={(e) => sel && api({ id: sel, op: 'reservationPatch', patch: { expiresAt: e.target.value || null } })} />
+                      </div>
+                      <div>
+                        <label className="crm-label">Foglalási szerződés</label>
+                        <input className="crm-input" placeholder="fájlnév vagy link" defaultValue={rec.reservation.agreement || ''}
+                          disabled={saving}
+                          onBlur={(e) => sel && api({ id: sel, op: 'reservationPatch', patch: { agreement: e.target.value || null } })} />
+                      </div>
+                    </div>
+                    {rec.reservation.expires_at && (
+                      <div className="crm-meta" style={{ marginTop: 8, color: rec.reservation.expires_at < today ? 'var(--c-hot)' : undefined }}>
+                        {rec.reservation.expires_at < today
+                          ? '⚠ A foglalás lejárt — vagy hosszabbítsd meg, vagy engedd el.'
+                          : `A foglalás ${rec.reservation.expires_at}-ig él.`}
+                      </div>
+                    )}
+                    {!readOnly && (
+                      <button className="crm-btn danger sm" style={{ marginTop: 12 }} disabled={saving}
+                        onClick={async () => {
+                          const why = window.prompt('Miért engedjük el a foglalást?\n\nA villa visszakerül a piacra; az indoklás bekerül az előzményekbe.');
+                          if (why && why.trim() && sel) await api({ id: sel, op: 'releaseReservation', reason: why });
+                        }}>
+                        Foglalás elengedése
+                      </button>
+                    )}
+                  </>
+                ) : !readOnly ? (
+                  <>
+                    <div className="crm-meta" style={{ marginBottom: 10 }}>
+                      {rec?.buyerLeadId || rec?.buyerName
+                        ? 'Rögzítsd a foglalást a mögötte álló megállapodással együtt, ne csak a státuszt.'
+                        : 'Előbb kösd hozzá a vevőt — egy foglalás, aminek nincs neve, nem foglalás.'}
+                    </div>
+                    <div className="edit-grid">
+                      <div>
+                        <label className="crm-label">Előleg (THB)</label>
+                        <input className="crm-input" inputMode="numeric" value={resAmount}
+                          disabled={saving} onChange={(e) => setResAmount(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="crm-label">Meddig tartjuk</label>
+                        <input className="crm-input" type="date" value={resExpiry}
+                          disabled={saving} onChange={(e) => setResExpiry(e.target.value)} />
+                      </div>
+                    </div>
+                    <button className="crm-btn gold sm" style={{ marginTop: 12 }}
+                      disabled={saving || !(rec?.buyerLeadId || rec?.buyerName)}
+                      onClick={async () => {
+                        if (!sel) return;
+                        const ok = await api({
+                          id: sel, op: 'reserve',
+                          amount: Number(resAmount) || undefined,
+                          expiresAt: resExpiry || undefined,
+                        });
+                        if (ok) { setResAmount(''); setResExpiry(''); }
+                      }}>
+                      Foglalás rögzítése
+                    </button>
+                  </>
+                ) : (
+                  <div className="crm-meta">Nincs foglalás ezen a villán.</div>
+                )}
+              </div>
+
+              {/* ── Adásvételi (SPA) ──
+                  A foglalás és az eladás között eddig semmi nem volt: egy üzlet
+                  három hónapig „foglalt" volt akkor is, ha a szerződés aznap
+                  reggel ment ki, és akkor is, ha alá volt írva egy fiókban. */}
+              <div className="mp-sec">
+                <h3>Adásvételi szerződés</h3>
+                <select className="crm-select" value={rec?.contract?.status || 'none'} disabled={saving || readOnly}
+                  onChange={(e) => sel && api({ id: sel, op: 'contract', status: e.target.value })}>
+                  {CONTRACT_STEPS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+                {rec?.contract && (
+                  <div className="crm-meta" style={{ marginTop: 8 }}>
+                    {[
+                      rec.contract.sent_at && `kiküldve ${rec.contract.sent_at}`,
+                      rec.contract.reviewed_at && `véleményezve ${rec.contract.reviewed_at}`,
+                      rec.contract.signed_at && `aláírva ${rec.contract.signed_at}`,
+                    ].filter(Boolean).join(' · ') || 'Még nincs dátum rögzítve.'}
+                  </div>
+                )}
+              </div>
+
               {/* ── Fizetési fázisok ── */}
               <div className="mp-sec">
                 <h3>Fizetési ütem — 7 / 43 / 40 / 10</h3>
@@ -490,6 +612,7 @@ export function Masterplan({
                         const raw = extraPrice.replace(/[^\d]/g, '');
                         if (await api({ id: sel, op: 'extraAdd', label: extraLabel, price: raw ? parseInt(raw, 10) : undefined })) {
                           setExtraLabel(''); setExtraPrice('');
+    setResAmount(''); setResExpiry('');
                         }
                       }}>
                       + Hozzáadás

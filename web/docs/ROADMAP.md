@@ -40,6 +40,7 @@ the work is filling gaps and closing blind spots.
 | Automated sequence | Six letters, minute 0 → day 60, stopping the moment a human owns the conversation |
 | Roles | admin / agent / viewer, with the irreversible and the exportable reserved to the owner |
 | Speed to lead | `first_response_at` — the first moment a *person* acted |
+| Reservations and contracts | A reservation record with deposit agreed / received / expiry / agreement, a release that needs a reason, `reservationWatch()` for the holds running out, and a four-step SPA status stamping each date once |
 | Attribution | Channel / campaign / ad, each walking leads → qualified → reserved → sold → money. Sources are normalised on read (`fb`, `Facebook`, `FB_ads` are one row) without ever overwriting the raw value |
 | Management reporting | `/admin/performance`: funnel with stage-to-stage drop, cycle length, time to first conversation, production by salesperson / source / agency, lost reasons from the structured field |
 | Pipeline | Ten ordered stages with what each one means, positional helpers (`atOrBeyond`, `OPEN_STAGES`), a refusal on the stages that assert a unit, and the qualification gap written onto the stage entry |
@@ -59,8 +60,6 @@ the work is filling gaps and closing blind spots.
 
 | | Why it matters |
 |---|---|
-| **Reservation as a process** | A unit flips to `reserved` and a `slot` phase gets ticked. No reservation date, amount, expiry, agreement document or deposit status of its own |
-| **Contract / SPA tracking** | There is a `contract` STAGE now, which is where a deal is. What is still missing is what it is doing there: sent → reviewed → signed, with dates and the document |
 | **Configurable payment schedules** | 7 / 43 / 40 / 10 is hard-coded in `PHASES`. It is right for this project and wrong as a permanent assumption |
 | Configurable SLAs | `STAGE_MAX_DAYS` and `REPLY_FLAG_DAYS` are constants in code |
 
@@ -106,11 +105,12 @@ the work is filling gaps and closing blind spots.
       channel instead of by spelling
 - [x] **P2.2** Attribution by campaign and by ad — the same leads → qualified → reserved → sold
       → money chain one and two levels down, rendered only when the links actually carry tags
-- [ ] Reservation as its own record: date, amount, expiry, agreement, deposit status
+- [x] **P2.3** Reservation as its own record — deposit agreed vs deposit received, an expiry
+      that is watched, a release that needs a reason, and a refusal to hold a villa for nobody
+- [x] **P2.4** Contract / SPA status with the date each step was reached
 - [ ] Commission actually **paid**: a per-agency ledger with dates, so outstanding is a fact
       rather than a subtraction. `performanceFor` computes only what an agreement *generates*,
       and deliberately does not guess at the rest
-- [ ] Contract / SPA status with dates
 - [ ] Configurable payment schedules per project or deal
 - [ ] Country / nationality on the lead, inferred and correctable, filterable
 - [ ] Fit and engagement as two scores

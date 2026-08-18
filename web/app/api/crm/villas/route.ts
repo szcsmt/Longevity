@@ -1,10 +1,15 @@
-import { isAdmin, isAuthed } from '@/lib/crm/auth';
+import { currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import {
   VillaConflict, getVillaData, setVillaStatus, updateVillaSale,
   type VillaSaleOp, type VillaStatus,
 } from '@/lib/crm/store';
 
 export const dynamic = 'force-dynamic';
+
+const SALE_OPS = [
+  'sale', 'phase', 'extraAdd', 'extraRemove',
+  'reserve', 'reservationPatch', 'releaseReservation', 'contract',
+];
 
 export async function GET() {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
@@ -24,8 +29,12 @@ export async function PATCH(req: Request) {
   try {
     // Sales ops (payment phases, buyer link, extras…) ride on `op`; a plain
     // status change (the original masterplan drawer contract) has none.
-    if (typeof b.op === 'string' && ['sale', 'phase', 'extraAdd', 'extraRemove'].includes(b.op)) {
-      const data = await updateVillaSale(id, b as unknown as VillaSaleOp);
+    if (typeof b.op === 'string' && SALE_OPS.includes(b.op)) {
+      /* Who reserved it is stamped here rather than trusted from the body —
+         a claim on a villa carrying somebody else's name would be worse than
+         one carrying none. */
+      const payload = b.op === 'reserve' ? { ...b, by: (await currentUser()) || undefined } : b;
+      const data = await updateVillaSale(id, payload as unknown as VillaSaleOp);
       if (!data) return Response.json({ ok: false, error: 'invalid op' }, { status: 400 });
       return Response.json({ ok: true, ...data });
     }

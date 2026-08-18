@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { isAdmin } from '@/lib/crm/auth';
-import { getVillaData, integrityIssues } from '@/lib/crm/store';
+import { getVillaData, integrityIssues, reservationWatch, type HeldUnit } from '@/lib/crm/store';
 import { financeReport, type DueState, type Instalment } from '@/lib/crm/finance';
 import { fmtTHB, fmtTHBShort } from '@/lib/crm/villas';
 
@@ -57,6 +57,33 @@ function Row({ i }: { i: Instalment }) {
   );
 }
 
+function HoldRow({ h }: { h: HeldUnit }) {
+  const lapsed = h.state === 'lapsed';
+  return (
+    <div className="task" style={{ alignItems: 'center' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="task-title" style={{ fontWeight: 500 }}>
+          {h.id} · {h.buyerName || 'Unnamed buyer'}
+        </div>
+        <div className="crm-meta">
+          {h.depositPaid
+            ? 'Deposit received'
+            : h.amount ? `Deposit of ${fmtTHB(h.amount)} not received` : 'No deposit recorded'}
+          {h.expiresAt ? ` · holds to ${h.expiresAt}` : ''}
+        </div>
+      </div>
+      <span className={`task-due${lapsed ? ' over' : ''}`} style={{ whiteSpace: 'nowrap' }}>
+        {h.daysLeft === null
+          ? 'no expiry'
+          : lapsed
+            ? `${Math.abs(h.daysLeft)} ${Math.abs(h.daysLeft) === 1 ? 'day' : 'days'} past`
+            : `${h.daysLeft} ${h.daysLeft === 1 ? 'day' : 'days'} left`}
+      </span>
+      {h.buyerLeadId && <Link href={`/admin/leads/${h.buyerLeadId}`} className="crm-btn ghost sm">Open lead</Link>}
+    </div>
+  );
+}
+
 function Group({ state, items }: { state: DueState; items: Instalment[] }) {
   const total = items.reduce((s, i) => s + i.amount, 0);
   return (
@@ -81,7 +108,10 @@ export default async function FinancePage() {
     );
   }
 
-  const [{ villas }, issues] = await Promise.all([getVillaData(), integrityIssues()]);
+  const [{ villas }, issues, holds] = await Promise.all([
+    getVillaData(), integrityIssues(), reservationWatch(),
+  ]);
+  const pressing = holds.filter((h) => h.state !== 'held');
   const r = financeReport(villas);
   const by = (s: DueState) => r.instalments.filter((i) => i.state === s);
   const collected = r.contracted ? Math.round((r.received / r.contracted) * 100) : 0;
@@ -121,6 +151,19 @@ export default async function FinancePage() {
           <Group state="later" items={by('later')} />
         </div>
       </div>
+
+      {/* ── Holds that need a decision ──
+
+          A reservation with an expiry only helps if somebody is told when it
+          passes. Before this an expired hold looked exactly like a live one on
+          the masterplan, and the way anybody found out was by trying to sell
+          the villa to somebody else. */}
+      {pressing.length > 0 && (
+        <div className="crm-card" style={{ marginTop: 16, borderColor: 'var(--c-hot)' }}>
+          <h3 style={{ color: 'var(--c-hot)' }}>Reservations running out · {pressing.length}</h3>
+          {pressing.map((h) => <HoldRow key={h.id} h={h} />)}
+        </div>
+      )}
 
       {issues.length > 0 && (
         <div className="crm-card" style={{ marginTop: 16, borderColor: 'var(--c-hot)' }}>

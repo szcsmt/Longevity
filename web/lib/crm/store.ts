@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type {
-  Activity, AgencyClaim, CardColor, CardItem, Construction, CrmEvent, Lead, LeadPatch, Note, PhaseKey,
-  ProjectNote, Score, Stage, Task, Qualification, VillaHistoryEntry, VillaRecord, VillaStatus,
+  Activity, AgencyClaim, CardColor, CardItem, Construction, ContractStatus, CrmEvent, Lead, LeadPatch,
+  Note, PhaseKey, ProjectNote, Score, Stage, Task, Qualification, VillaHistoryEntry, VillaRecord,
+  VillaStatus,
 } from './types';
 import {
-  CARD_COLORS, CURRENCIES, DECISION, FINANCING, MOTIVATIONS, NURTURE_REASONS, OBJECTIONS,
-  PHASES, PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, atOrBeyond, isOpenStage, touchByKey,
+  CARD_COLORS, CONTRACT_STEPS, CURRENCIES, DECISION, FINANCING, MOTIVATIONS, NURTURE_REASONS,
+  OBJECTIONS, PHASES, PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, atOrBeyond, isOpenStage,
+  touchByKey,
 } from './types';
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
@@ -1686,7 +1688,16 @@ export type VillaSaleOp =
     } }
   | { op: 'phase'; key: PhaseKey; paid: boolean; amount?: number }
   | { op: 'extraAdd'; label: string; price?: number }
-  | { op: 'extraRemove'; extraId: string };
+  | { op: 'extraRemove'; extraId: string }
+  /* ── The reservation as a process ──
+     `reserve` takes the villa off the market AND records the agreement behind
+     it; `reservationPatch` fills in what was not known at the time (the deposit
+     landing, the signed agreement); `releaseReservation` is the hold lapsing or
+     being cancelled, which puts the villa back on the market and says why. */
+  | { op: 'reserve'; amount?: number; expiresAt?: string; agreement?: string; note?: string; by?: string }
+  | { op: 'reservationPatch'; patch: { amount?: number | null; paidAt?: string | null; expiresAt?: string | null; agreement?: string | null; note?: string } }
+  | { op: 'releaseReservation'; reason: string }
+  | { op: 'contract'; status: ContractStatus; note?: string };
 
 const num = (v: unknown): number | undefined =>
   typeof v === 'number' && isFinite(v) && v > 0 ? Math.round(v) : undefined;
@@ -1758,6 +1769,91 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
       }
       break;
     }
+    /* ── Reserving ──
+
+       Refused without a buyer on the record. A held villa nobody can name is
+       the reservation equivalent of a sold unit still marked free: it looks
+       fine on the masterplan and there is no way to answer "held for whom".
+
+       The existing double-reservation guard still applies above this — a unit
+       already reserved or sold for somebody else never reaches here. */
+    case 'reserve': {
+      if (!rec.buyerLeadId && !rec.buyerName) {
+        throw new VillaConflict(`Link the buyer to ${id} before reserving it — a hold nobody can name is not a reservation.`);
+      }
+      const day = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v.slice(0, 10)) ? v.slice(0, 10) : undefined);
+      rec.reservation = {
+        at: now(),
+        amount: num(action.amount),
+        expires_at: day(action.expiresAt),
+        agreement: cleanText(action.agreement || '').trim().slice(0, 300) || undefined,
+        note: cleanText(action.note || '').trim().slice(0, 2000) || undefined,
+        by: action.by,
+      };
+      rec.status = 'reserved';
+      t.log(from, 'reserved', action.by,
+        `Reserved for ${heldBy(rec)}` +
+        (rec.reservation.amount ? ` · deposit ${fmtTHB(rec.reservation.amount)}` : '') +
+        (rec.reservation.expires_at ? ` · holds to ${rec.reservation.expires_at}` : ''));
+      if (from !== 'reserved') {
+        t.after(() => sheetSync(id, 'reserved', rec.seller, rec.note));
+        t.after(() => partnerPush(id, 'reserved', rec));
+      }
+      break;
+    }
+    case 'reservationPatch': {
+      const r = rec.reservation;
+      if (!r) return 'abort';
+      const p = action.patch;
+      const day = (v?: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v.slice(0, 10)) ? v.slice(0, 10) : undefined);
+      if ('amount' in p) r.amount = p.amount === null ? undefined : num(p.amount);
+      if ('paidAt' in p) {
+        const was = r.paid_at;
+        r.paid_at = p.paidAt === null ? undefined : day(p.paidAt);
+        if (r.paid_at && r.paid_at !== was) {
+          t.log(from, rec.status, undefined,
+            `Reservation deposit received${r.amount ? ` (${fmtTHB(r.amount)})` : ''} on ${r.paid_at}`);
+        }
+      }
+      if ('expiresAt' in p) r.expires_at = p.expiresAt === null ? undefined : day(p.expiresAt);
+      if ('agreement' in p) r.agreement = p.agreement === null ? undefined : cleanText(p.agreement || '').trim().slice(0, 300) || undefined;
+      if ('note' in p) r.note = cleanText(p.note || '').trim().slice(0, 2000) || undefined;
+      break;
+    }
+    /* The hold lapsing or being cancelled. The villa goes back on the market
+       and the reservation record goes — but the villa history keeps the whole
+       thing, with the reason, which is what somebody will want in six months
+       when the buyer comes back and says they were promised it. */
+    case 'releaseReservation': {
+      const why = cleanText(action.reason || '').trim().slice(0, 500);
+      if (!rec.reservation || !why) return 'abort';
+      const held = heldBy(rec);
+      rec.reservation = undefined;
+      rec.status = 'free';
+      t.log(from, 'free', rec.seller, `Reservation released${held ? ` (was ${held})` : ''} — ${why}`);
+      t.after(() => sheetSync(id, 'free', rec.seller, rec.note));
+      t.after(() => partnerPush(id, 'free', rec));
+      break;
+    }
+    /* ── The SPA ──
+       Each step stamps its own date the first time it is reached, so going
+       back a step to correct a mis-click never rewrites when the contract
+       actually went out. */
+    case 'contract': {
+      const step = CONTRACT_STEPS.find((c) => c.id === action.status);
+      if (!step) return 'abort';
+      const c = (rec.contract ??= { status: 'none' });
+      const today = now().slice(0, 10);
+      if (action.status === 'sent' && !c.sent_at) c.sent_at = today;
+      if (action.status === 'review' && !c.reviewed_at) c.reviewed_at = today;
+      if (action.status === 'signed' && !c.signed_at) c.signed_at = today;
+      if ('note' in action) c.note = cleanText(action.note || '').trim().slice(0, 2000) || undefined;
+      if (c.status !== step.id) {
+        c.status = step.id;
+        t.log(from, rec.status, undefined, `Contract: ${step.label.toLowerCase()}`);
+      }
+      break;
+    }
     case 'extraAdd': {
       const label = action.label.trim().slice(0, 120);
       if (!label) return 'abort';
@@ -1773,6 +1869,64 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
     }
   }
   });
+}
+
+/* ── Holds that are about to lapse, and holds that already have ──
+
+   A reservation with an expiry date is only useful if somebody is told when it
+   passes. Before this, an expired hold looked exactly like a live one on the
+   masterplan, and the way anybody found out was by trying to sell the villa to
+   somebody else.
+
+   `daysLeft` is negative once the date has passed, which is deliberate: "−9"
+   reads as nine days overdue, and a report that clamps it at zero throws away
+   how bad the situation is. */
+
+export type HoldState = 'lapsed' | 'due' | 'held';
+
+export interface HeldUnit {
+  id: string;
+  buyerName?: string;
+  buyerLeadId?: string;
+  reservedAt: string;
+  expiresAt?: string;
+  amount?: number;
+  depositPaid: boolean;
+  daysLeft: number | null;   // null when no expiry was agreed
+  state: HoldState;
+}
+
+export async function reservationWatch(withinDays = 7): Promise<HeldUnit[]> {
+  const { villas } = await getVillaData();
+  const today = now().slice(0, 10);
+  const out: HeldUnit[] = [];
+
+  for (const [id, rec] of Object.entries(villas)) {
+    const r = rec.reservation;
+    if (!r || rec.status !== 'reserved') continue;
+    const daysLeft = r.expires_at
+      ? Math.round((Date.parse(`${r.expires_at}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000)
+      : null;
+    const state: HoldState =
+      daysLeft === null ? 'held' : daysLeft < 0 ? 'lapsed' : daysLeft <= withinDays ? 'due' : 'held';
+    out.push({
+      id,
+      buyerName: rec.buyerName,
+      buyerLeadId: rec.buyerLeadId,
+      reservedAt: r.at,
+      expiresAt: r.expires_at,
+      amount: r.amount,
+      depositPaid: Boolean(r.paid_at),
+      daysLeft,
+      state,
+    });
+  }
+
+  /* Worst first: lapsed, then closest to lapsing, then the open-ended ones. */
+  const rank: Record<HoldState, number> = { lapsed: 0, due: 1, held: 2 };
+  return out.sort(
+    (a, b) => rank[a.state] - rank[b.state] || (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999),
+  );
 }
 
 /* ── Broken references, found before somebody trips over one ──

@@ -426,7 +426,45 @@ A státuszváltozások a háttérben a Google Sheet-tel és a 3D-modellel (3DEst
 
 ---
 
+### Foglalás — a villa lapján
+
+Eddig a „foglalt" státusz annyit mondott, hogy a villa tartva van. Azt nem, hogy **meddig**,
+**mekkora előlegre**, és hogy az **előleg megérkezett-e** — pedig a foglalási szerződés pontosan
+ebből a négy adatból áll. Enélkül egy lejárt foglalás pontosan úgy nézett ki, mint egy élő, és
+úgy derült ki, hogy valaki el akarta adni a villát valaki másnak.
+
+A masterplanon a villa lapján, a **Foglalás** blokkban:
+
+1. **Előbb kösd hozzá a vevőt.** A rendszer **nem enged** foglalást névtelen villára — egy
+   foglalás, aminek nincs neve, nem foglalás.
+2. Add meg az **előleget** és hogy **meddig tartjuk**.
+3. **Foglalás rögzítése.**
+
+Utána a lapon szerkeszthető, hogy az **előleg mikor érkezett be** (ez külön tény attól, hogy
+megállapodtatok róla), meddig él a foglalás, és hol van a **foglalási szerződés** (fájlnév vagy
+link — a CRM nem dokumentumtár, és nem is tesz úgy, mintha az lenne).
+
+Ha a dátum lejárt, a lap pirosan szól. A **Foglalás elengedése** gomb indoklást kér: a villa
+visszakerül a piacra, a foglalás lekerül a lapról, de **az egész bekerül a villa előzményeibe** —
+ez az, amit fél év múlva keresni fogsz, amikor a vevő visszajön, hogy neki ígértétek.
+
+### Adásvételi szerződés (SPA)
+
+A foglalás és az eladás között eddig **semmi nem volt**: egy üzlet három hónapig „foglalt" volt
+akkor is, ha a szerződés aznap reggel ment ki, és akkor is, ha alá volt írva egy fiókban.
+
+Négy állapot — *Nincs elkezdve → Kiküldve → Véleményezés alatt → Aláírva* —, és mindegyik
+**rögzíti a saját dátumát az első alkalommal**. Ha visszalépsz egy elgépelés miatt, az nem írja
+felül, hogy mikor ment ki tényleg a szerződés.
+
+---
+
 ## 7. Payments — mennyi pénz áll kint
+
+**Reservations running out** — ha van lejárt vagy héten belül lejáró foglalás, az oldal tetején
+piros dobozban felsorolja: melyik villa, kinek, megjött-e az előleg, és hány napja járt le (a
+„9 nappal ezelőtt" szándékosan negatív napokból számolódik — nullára kerekítve eltűnne, milyen
+rossz a helyzet).
 
 `/admin/finance` — a Masterplan ugyanazokat a számokat mutatja telkenként, ez pedig
 oldalra fordítva: nem azt, hogy a B12-es mivel tartozik, hanem azt, hogy **mennyi jár
