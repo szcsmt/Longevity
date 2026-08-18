@@ -984,3 +984,444 @@ lejárt teendő · next action nélkül`. Egyetlen pass a `leads` tömbön, ami 
 **Affected files:** `lib/crm/analytics.ts`, `app/admin/(dash)/analytics/page.tsx`
 
 ---
+
+## 23. Automatizálás — ✅ Teljesül (erős)
+
+| Elvárás | Státusz | Hol |
+|---|---|---|
+| Lead automatikusan bekerül | ✅ | `/api/lead`, `/api/whatsapp`, `/api/inbound` |
+| Source automatikusan felismerhető | ✅ | `lib/source.ts` — session-tartós UTM |
+| Lead automatikusan assignolható | ✅ | `pickOwner` — nyelv + terhelés szerint |
+| Új lead notification | ✅ | `notifyNewLead` (Resend), márkázott e-mail |
+| Response SLA warning | ✅ | `untouched` kapszula + digest |
+| Follow-up reminder | ✅ | Napi digest |
+| Overdue warning | ✅ | Nav badge + kapszula + digest |
+| No Activity warning | ✅ | `isStalled` |
+| No Next Action warning | ✅ | `hasNoNextStep` |
+| **Stage alapján automatikus task** | ❌ | Csak az „awaiting reply" ág (lásd 12. szekció) |
+| Nurture reminder | ❌ | (nincs nurture) |
+| Duplicate detection | ✅ | Automatikus a beérkezésnél |
+
+**Plusz, amit a checklist nem kért:**
+- **6 lépéses ügyfél-szekvencia** (0. perc → 60. nap), e-mailen vagy WhatsAppon, ha nincs
+  e-mail cím. Leáll, ha az ügyfél válaszol, ha valaki telefonon eléri, ha leiratkozik, vagy ha
+  az üzlet továbblép. Legfeljebb **egy levél/lead/futás** — cron-kimaradás után sem érkezik
+  négy levél egyszerre (`sequence.ts:78`).
+- **AI-triage** (`lib/crm/triage.ts`): a beérkező ügyfélválaszt elolvassa, szándékot, hőfokot
+  és sürgősséget állapít meg, és **kész válaszpiszkozatot** ír az ügyfél nyelvén. Ha nincs API
+  kulcs, a rendszer ettől még hibátlanul működik.
+- **Nyomon követett dokumentum-linkek**: minden megnyitás az idővonalra kerül, így a
+  „elolvasta-e egyáltalán?" nem találgatás.
+
+Ez a szekció a rendszer legjobban megcsinált része, és jóval a checklist elvárása felett van.
+
+---
+
+## 24. Adatminőség — 🟡 Részben
+
+| Elvárás | Státusz |
+|---|---|
+| Nincsenek felesleges kötelező mezők | ✅ Csak név **vagy** e-mail **vagy** telefon kötelező |
+| Ugyanaz az információ nincs több helyen | ⚠️ **Van**: `lead.value` ↔ `villa.contractValue`; `lead.owner` ↔ `villa.seller`; `lead.villa` (szöveg) ↔ `villa.buyerLeadId` |
+| Dropdown ott, ahol fix a lista | ✅ Minden qualification-mező, stage, score, lost reason |
+| Szabad szöveg csak ahol kell | ✅ |
+| Telefonszámok egységes formátuma | ❌ Nyersen tárolva; az egyezés-vizsgálat normalizál (`phoneKey`), a **megjelenítés és az export nem** |
+| Országnevek egységesek | ➖ Nincs ország-mező |
+| Lead source értékek egységesek | ❌ Lásd 10. szekció |
+| Stage-ek egységesek | ✅ Enum, szerveroldali validációval |
+| Sales owner egységes | ✅ Csak roster-név fogadható el |
+| Duplicate adatok kezelve | ✅ |
+| Régi / hibás rekordok azonosíthatók | ✅ `integrityIssues()` — 5 típusú néma hiba |
+
+**Kiemelendő:** minden bejövő szöveg átmegy a `cleanText()`-en (vezérlőkarakterek, NUL, árva
+surrogate-ok), hosszkorlátokkal — a Postgres `jsonb` ezeken elhasalna. A CSV-export
+képlet-injekció ellen is védett (`=`, `@`, `+` prefix semlegesítés).
+
+**Problem — kettős igazságforrás:** három mezőpár tárolja ugyanazt kétszer, szinkronizálás
+nélkül (lásd 18. szekció). Ez nem elméleti: az analitika értékesítői ranglistája és a
+lead-statisztika **más választ ad ugyanarra a kérdésre**.
+
+**Recommended change:** deklarálni, melyik az igazság forrása, és a másikat származtatottá
+tenni. Javaslat: `reserved`/`won` fázisban **a unit a forrás** (ott van a pénz és az ütemterv),
+minden más fázisban **a lead**.
+**Priority:** High · **Complexity:** Medium
+**Affected files:** `lib/crm/store.ts`, `lib/crm/analytics.ts`
+
+---
+
+## 25. UI / UX egyszerűség — 🟡 Részben
+
+| Elvárás | Státusz |
+|---|---|
+| Lead létrehozása gyors | ✅ Egy űrlap, egy kötelező mező |
+| Lead módosítása gyors | ✅ Inline edit, azonnal mentődő dropdownok |
+| Follow-up néhány kattintás | ✅ Cím + dátum + gomb |
+| Telefonszám kattintható | ✅ `tel:` |
+| Email kattintható | ✅ `mailto:`, injekció-védett címellenőrzéssel |
+| WhatsApp indítható | ✅ `wa.me` |
+| Nem kell feleslegesen scrollozni | ❌ Az adatlapon a legfontosabb két információ a két hasáb alján van |
+| A legfontosabb információ felül | ❌ Felül a Contact és az Attribution van |
+| Ritkán használt információ collapse alatt | ❌ Nincs collapse sehol |
+| Nem jelenik meg túl sok információ egyszerre | 🟡 Az adatlapon 11 kártya, mind kinyitva |
+| Mobilon használható | ✅ 13 breakpoint a `crm.css`-ben; az adatlap 960px alatt egy hasábra vált |
+| Színek következetes jelentése | ⚠️ **A `--c-hot` egyszerre jelent „forró lead"-et és „lejárt/probléma"-t** |
+| Red = overdue / probléma | 🟡 Ugyanaz a szín a pozitív „hot"-ra is |
+| Green = completed / sold | ✅ |
+| Warning jelölés következetes | ✅ |
+| Ugyanaz a funkció = ugyanaz az ikon | ✅ |
+
+**Problem 1 — a nyelv keveredik.** A bal menü: „Dashboard, Leads, Pipeline, Masterplan,
+Payments, Follow-ups, **Jegyzetek**, Analytics, Activity". A lead-felület végig angol, az
+analitika végig magyar, az Activity-oldal magyar, a dashboard HU/EN kapcsolóval rendelkezik,
+ami **öt szót** vált át. Egy új értékesítőnek ez folyamatos apró súrlódás, és a checklist
+25. pontjának „következetesség" elvárását sérti.
+**Recommended change:** döntés: **a CRM nyelve legyen egy** (javaslat: magyar a belső
+felületen, mert a csapat így beszél; az ügyfélnek menő szövegek maradnak angolul). A HU/EN
+kapcsoló vagy legyen valódi i18n, vagy kerüljön ki.
+**Priority:** Medium · **Complexity:** Medium
+**Affected files:** minden `app/admin` és `components/crm` fájl, vagy egy `lib/i18n` réteg
+(a nyilvános oldalnak már van: `lib/i18n.tsx`)
+
+**Problem 2 — a színszemantika ütközik.** A „hot" lead és a „lejárt teendő" ugyanazt a piros
+árnyalatot használja. Egy hot lead **jó hír**, egy lejárt teendő **rossz hír**.
+**Recommended change:** a hot lead kapjon meleg arany/borostyán jelölést (a márka amúgy is
+arany), a piros maradjon kizárólag a problémáé.
+**Priority:** Medium · **Complexity:** Small
+**Affected files:** `app/admin/crm.css`, `lib/crm/chart-theme.ts`
+
+**Problem 3 — 6 másodperces auto-refresh.** Az `AutoRefresh` (`app/admin/(dash)/layout.tsx:13`)
+6 másodpercenként újrafuttatja a layoutot, ami minden alkalommal `attentionCounts()`-ot hív —
+az pedig **minden leadet beolvas**. Jelenlegi méretben rendben van; néhány ezer lead felett ez
+6 másodpercenkénti teljes tábla-olvasás minden megnyitott fülre. Emellett zavaró is: a lista
+kifrissülhet kattintás közben.
+**Recommended change:** 6 → 30 másodperc, és a badge-számokhoz külön, könnyű végpont.
+**Priority:** Medium · **Complexity:** Small
+**Affected files:** `app/admin/(dash)/layout.tsx`, `components/crm/auto-refresh.tsx`
+
+---
+
+## 26. „Zero lead left behind" ellenőrzés — 🟡 Részben
+
+| A rendszer meg tudja mutatni… | Kiszámolja? | Listázható? |
+|---|---|---|
+| New lead, amit senki nem kontaktált | ✅ | ❌ |
+| Lead owner nélkül | ✅ (`integrityIssues`) | 🟡 Csak a Payments oldalon |
+| Lead Next Action nélkül | ✅ | ❌ |
+| Overdue lead | ✅ | ✅ Follow-ups oldal |
+| X napja activity nélküli lead | ✅ (`isStalled`) | ❌ |
+| Hot lead lejárt follow-uppal | ❌ | ❌ |
+| Negotiation stage-ben beragadt lead | ➖ | ➖ |
+| Reservation után beragadt deal | 🟡 A Payments oldal „Needs chasing" blokkja | ✅ |
+| Nurture lead, amit újra kell keresni | ❌ | ❌ |
+
+**Ez a szekció foglalja össze a rendszer központi problémáját egyetlen táblázatban:** a
+„kiszámolja?" oszlop szinte végig zöld, a „listázható?" oszlop szinte végig piros.
+
+**Recommended change:** a 6. és 9. szekcióban javasolt két fejlesztés (`flag` szűrő + „Ma"
+oldal) ezt a táblázatot **egyetlen lépésben** zöldre viszi, a nurture-sor kivételével.
+
+**Priority:** Critical · **Complexity:** Small
+
+---
+
+## 27. Management exception view — 🟡 Részben
+
+| Elvárt sor | Van? | Hol |
+|---|---|---|
+| Unassigned leads | ✅ | Payments oldal integritás-blokk |
+| Uncontacted new leads | ✅ | Dashboard kapszula (szám) |
+| SLA breached leads | ✅ | Ugyanaz |
+| Overdue follow-ups | ✅ | Follow-ups + nav badge |
+| Leads without Next Action | ✅ | Kapszula (szám) |
+| Hot leads without recent activity | ❌ | — |
+| Stuck opportunities | 🟡 | Payments „Needs chasing" (pénzügyi oldalról) |
+| Missing critical data | ✅ | `integrityIssues` — 5 típus |
+| Duplicate leads | ✅ | Dedupe gomb (admin) |
+| Salespeople with high overdue count | ❌ | — |
+
+**Current state:** a szükséges logika **három külön helyen** él:
+- `attentionCounts()` (`store.ts:1108`) — a badge-ek számai,
+- `stats().attention` (`store.ts:1665`) — ugyanez, részletesebben, **sehol nem megjelenítve**,
+- `buildDigest()` (`digest.ts:60`) — ugyanez, hét csoportban, csak e-mailben,
+- `integrityIssues()` (`store.ts:1479`) — a néma adathibák, a Payments oldal alján.
+
+**Problem:** **négy implementáció ugyanarra a kérdésre**, egyik sem teljes, egyikük sincs
+vezetői nézetben. A szabályok elcsúszhatnak egymástól (pl. az „untouched" definíció három
+helyen van leírva), és ha valaki módosít egyet, a másik három csendben mást fog mondani.
+
+**Recommended change:**
+1. Egy **„Needs attention"** oldal (`/admin/attention`), ami a `buildDigest()` csoportjait +
+   az `integrityIssues()` sorait egy helyen mutatja, kattintható lead-linkekkel.
+2. A számoló logika **egy helyre**: az `attentionCounts` és a `stats().attention` épüljön a
+   `buildDigest()`-re (vagy fordítva), ne legyen négy külön implementáció.
+
+**Priority:** High · **Complexity:** Medium
+**Affected files:** új `app/admin/(dash)/attention/page.tsx`, `lib/crm/digest.ts`,
+`lib/crm/store.ts` (`attentionCounts`, `stats` — utóbbi törlendő)
+
+---
+
+## 28. Minimum required information — ✅ Teljesül
+
+| Javasolt kötelező | Jelenleg |
+|---|---|
+| Name | 🟡 Opcionális (név **vagy** e-mail **vagy** telefon) |
+| Phone vagy Email | ✅ Kötelező |
+| Source | ✅ Automatikus |
+| Owner | ✅ Automatikus (ha van roster) |
+| Stage | ✅ Automatikus (`new`) |
+| Project / Interest | 🟡 Opcionális |
+| Next Action | ❌ Nem kötelező |
+| Next Action Date | ❌ Nem kötelező |
+
+**Értékelés:** a rendszer helyesen dönt. A beérkező webes lead **nem tudhat** többet, mint amit
+az ügyfél kitöltött, és minden kötelező mező, ami nincs meg, vagy blokkolja a rögzítést (lead
+elvész), vagy kitalált adatot szül (rosszabb, mint az üres mező). A hét mezőből öt automatikus.
+
+**Az egyetlen valódi hiány a Next Action.** Itt sem kötelezővé tenni kell — hanem a fázisba
+lépéskor **automatikusan létrehozni** (lásd 12. szekció), és **listázhatóvá tenni**, ahol
+hiányzik (lásd 6. szekció). A checklist alapelve („Ha nincs Next Action, a lead gyakorlatilag
+nincs menedzselve") így teljesül anélkül, hogy bárkit űrlapkitöltésre kényszerítenénk.
+
+---
+
+## 29. 10 másodperces teszt — 🟡 6/10
+
+Az adatlapot végigmérve, hogy melyik kérdés válaszolható meg görgetés és kattintás nélkül:
+
+| Kérdés | Válaszolható? | Hol van a válasz |
+|---|---|---|
+| Ki ez? | ✅ | Contact kártya, legfelül |
+| Honnan jött? | ✅ | Attribution kártya |
+| Mit akar? | ✅ | Qualification + `villa` mező |
+| Ki kezeli? | 🟡 | Jobb hasáb, Status kártya (jobbra el kell nézni) |
+| Hol tart? | ✅ | Status kártya |
+| Mikor beszéltünk vele utoljára? | ❌ | **Le kell görgetni a bal hasáb aljára, az idővonalra** |
+| Mi történt legutóbb? | ❌ | Ugyanott |
+| Mi a következő lépés? | ❌ | **A jobb hasáb legalján, 4 kártyával lejjebb** |
+| Mikor kell megcsinálni? | ❌ | Ugyanott |
+| Mekkora potenciális üzlet? | ✅ | Status kártya, „Deal value" |
+
+**Eredmény: 6/10 (részben 6,5).** A négy hiányzó válasz mind ugyanaz a probléma: az idő-
+és cselekvés-dimenzió a képernyő aljára esik, miközben a ritkán használt UTM-attribúció felül van.
+
+**Recommended change:** összefoglaló sáv az adatlap tetején (lásd 2. szekció). Ez a négy hiányzó
+kérdést egyszerre megválaszolja, új adat nélkül.
+**Priority:** Critical · **Complexity:** Small
+**Affected files:** `components/crm/lead-workspace.tsx`, `app/admin/crm.css`
+
+---
+
+## 30. Sales manager 30 másodperces teszt — 🟡 6/11
+
+| Kérdés | Válaszolható 30 mp alatt? | Hol |
+|---|---|---|
+| Hány új lead érkezett? | ✅ | Analitika KPI |
+| Hányat nem kontaktáltunk? | ✅ | Dashboard kapszula |
+| Mely leadek igényelnek azonnali figyelmet? | ❌ | **Csak a darabszám látszik, a leadek nem** |
+| Mennyi Hot Lead van? | ✅ | Analitika KPI |
+| Mennyi aktív opportunity van? | 🟡 | Fázis-bontásból összeadható |
+| Mennyi a pipeline értéke? | ❌ | **Kiszámolva, nem megjelenítve** |
+| Mennyi reservation van? | ✅ | Analitika / Masterplan |
+| Mennyi sale történt? | ✅ | Analitika / Payments |
+| Ki teljesít jól? | 🟡 | Csak lezárt villa-eladás szerint |
+| Kinél vannak elmaradt leadek? | ❌ | **Nincs owner-bontás sehol** |
+| Melyik marketing source hozza a legjobb leadeket? | ❌ | **Csak darabszám; konverzió forrásonként nincs megjelenítve** |
+
+**Eredmény: 6/11.** Ráadásul a 11 válasz **három különböző képernyőn** oszlik el
+(dashboard, analitika, payments), tehát a „30 másodperc egy képernyőről" feltétel akkor sem
+teljesül, ha az adat megvan.
+
+---
+
+# RÉSZ II. — 31. MIT KELL ELTÁVOLÍTANI
+
+| Elem | Megállapítás |
+|---|---|
+| **`stats()` — `lib/crm/store.ts:1603-1717` (115 sor)** | **Halott kód.** Egyetlen oldal sem hívja (csak az `archive.test.ts`). Kiszámolja a `byStage`, `funnel`, `wonRate`, `pipelineValue`, `wonValue`, `attention` értékeket — amiket az `analytics.ts` **másodszor is** kiszámol, más módszerrel. |
+| **`reports()` — `store.ts:1736-1804` (68 sor)** | **Halott kód.** `bySource` konverzióval, `byMonth`, `byVilla`, `lostReasons` — semmi nincs megjelenítve. |
+| Négyszeres „mi igényel figyelmet" logika | `attentionCounts()`, `stats().attention`, `buildDigest()`, `integrityIssues()` — négy implementáció, elcsúszhatnak |
+| A dashboard HU/EN kapcsolója | Öt szót fordít le; a felület többi része keverten magyar-angol. Vagy valódi i18n, vagy törlendő |
+| `Lost` opció a tömeges stage-váltásban | Megkerüli a kötelező indoklást (16. szekció) |
+| `KineticField` (99 sor animáció) | Nem hiba, de a dashboard helyét egy vezetői KPI-sor jobban hasznosítaná |
+| Felesleges mező | **Nincs.** A `Lead` minden mezője használatban van, mindnek van olvasója |
+| Felesleges stage | **Nincs.** 6 fázis, egyik sem redundáns |
+| Manuálisan bevitt, automatizálható adat | **Nincs jelentős.** A source, owner, score, timestamp mind automatikus |
+
+**Fontos megállapítás:** ez a CRM **nem a felesleges funkcióktól szenved**. Az „eltávolítandó"
+lista lényegében két halott függvényből és egy szétcsúszott logikából áll. A probléma az
+ellenkezője: **kiszámolt, de meg nem jelenített információ**.
+
+---
+
+# RÉSZ III. — LEAD MANAGEMENT IMPROVEMENT PLAN
+
+Rendezési elv: **mennyi üzletet veszítünk el, ha nem csináljuk meg** — nem az, hogy mennyire
+látványos. A ★ jelölés azt jelenti: a logika már készen van a kódban, csak a felület hiányzik.
+
+---
+
+## P0 — Critical
+*Ami nélkül leadek veszhetnek el vagy sales maradhat el.*
+
+### P0-1 ★ Szűrők a „figyelmet igénylő" leadekre
+**Probléma:** a dashboard kiírja, hogy *7 lead következő lépés nélkül*, majd a szűretlen listára
+visz. A `hasNoNextStep`, `isStalled`, `untouched`, `awaiting` szabályok készen vannak, de nem
+listázhatók.
+**Megoldás:** `?flag=no-next|stalled|untouched|awaiting|overdue` a lead-listán; a kapszulák és a
+nav badge-ek erre mutatnak. `owner=__none__` opció is ide tartozik.
+**Complexity:** Small (~30–50 sor) · **Files:** `app/admin/(dash)/leads/page.tsx`,
+`lib/crm/store.ts`, `components/crm/welcome-hero.tsx`, `components/crm/crm-nav.tsx`
+**Checklist:** 6, 9, 14, 26, 27
+
+### P0-2 ★ „Ma" munkalista oldal
+**Probléma:** a rendszer legjobb prioritási logikája (`buildDigest`) csak e-mailben létezik.
+**Megoldás:** `/admin/today` oldal, ami a `buildDigest()` hét csoportját rendereli, kattintható
+lead-linkekkel és inline „Log: hívás" gombokkal. Ez legyen a saleses kezdőoldala.
+**Complexity:** Small–Medium · **Files:** új `app/admin/(dash)/today/page.tsx`, `lib/crm/digest.ts`
+**Checklist:** 9, 13, 26, 30
+
+### P0-3 Kézzel küldött e-mail és WhatsApp naplózása
+**Probléma:** a „Draft email" / „Draft WhatsApp" gomb nem naplóz semmit. A két leggyakoribb
+csatorna a rendszer vakfoltja; az automata szekvencia is fut tovább az ügyfélnek, akivel épp
+most beszéltünk.
+**Megoldás:** a gombok kattintáskor `logTouch`-ot is indítanak (új `email-sent` touch típus).
+**Complexity:** Small · **Files:** `components/crm/lead-workspace.tsx`, `lib/crm/types.ts`,
+`lib/crm/store.ts`
+**Checklist:** 7, 23
+
+### P0-4 Owner láthatóvá tétele + Unassigned nézet
+**Probléma:** a felelős csak az adatlapon látszik; owner nélküli aktív lead csak a Payments
+oldal alján, admin-only.
+**Megoldás:** Owner oszlop a lead-listán, owner a kanban-kártyán, „Unassigned" szűrőopció.
+**Complexity:** Small · **Files:** `components/crm/leads-table.tsx`,
+`components/crm/pipeline-board.tsx`, `app/admin/(dash)/leads/page.tsx`
+**Checklist:** 1, 5, 27
+
+### P0-5 Lost indoklás kikényszerítése minden úton
+**Probléma:** a tömeges „Move to stage → Lost" megkerüli a kötelező indoklást; a PATCH végpont
+is elfogadja indok nélkül. 200 lead veszhet el egy kattintással, nyom nélkül.
+**Megoldás:** `Lost` kikerül a bulk stage-listából; a szerver visszautasítja a `stage:'lost'`
+patchet `lost_reason` nélkül.
+**Complexity:** Small · **Files:** `components/crm/leads-table.tsx`,
+`app/api/crm/leads/bulk/route.ts`, `app/api/crm/leads/[id]/route.ts`
+**Checklist:** 16
+
+### P0-6 Nurture állapot
+**Probléma:** aki „most még nem", az vagy Lost lesz (és soha többé nem keressük), vagy örökre
+„stalled"-ként zajongva ül a listán, tönkretéve a riasztások hitelét. Ingatlanban a
+6–18 hónapos érési idő normális.
+**Megoldás:** `nurture` fázis lezáró állapotként + kötelező „mikor keressük újra" dátum
+(30/60/90/180 gyorsgomb) + a napi cron esedékességkor visszaébreszti a leadet.
+**Complexity:** Medium · **Files:** `lib/crm/types.ts`, `lib/crm/rules.ts`, `lib/crm/sequence.ts`,
+`lib/crm/store.ts`, `lib/crm/digest.ts`, `app/api/crm/cron/route.ts`,
+`components/crm/lead-workspace.tsx`, `components/crm/pipeline-board.tsx`
+**Checklist:** 3, 17, 26
+
+### P0-7 Adatlap-fejléc: az öt kérdés egy sorban
+**Probléma:** a 10 másodperces teszt 6/10-en áll. A *mikor beszéltünk utoljára*, *mi történt*,
+*mi a következő lépés*, *mikorra* — mind a képernyő alján van, miközben az UTM-attribúció felül.
+**Megoldás:** összefoglaló sáv az adatlap tetején:
+`Owner · Stage · Score · Deal value · Utolsó kontakt (mi, mikor) · Következő lépés (mi, mikor)`.
+Az Attribution kártya collapse alá.
+**Complexity:** Small · **Files:** `components/crm/lead-workspace.tsx`, `app/admin/crm.css`
+**Checklist:** 2, 25, 29
+
+---
+
+## P1 — Important
+*Ami jelentősen javítja az értékesítési folyamatot és az átláthatóságot.*
+
+| # | Fejlesztés | Complexity | Fő fájlok | Checklist |
+|---|---|---|---|---|
+| P1-1 | **Next Action felelőse és határideje** — `Task.owner` mező, kötelező (vagy alapértelmezett) due date, owner-szűrő a Follow-ups oldalon | Small | `types.ts`, `store.ts`, `tasks/page.tsx` | 2, 6, 12, 13 |
+| P1-2 | **Stage-alapú automatikus teendő** — fázisba lépéskor javasolt következő lépés jön létre | Small | `store.ts` (`updateLead`), `rules.ts` | 12, 23, 28 |
+| P1-3 | ★ **Villa ↔ lead fázis szinkron** — a `reserved`/`won` egyetlen igazságforrásból; ma a két szám ellentmondhat, és egy fizető vevő automata marketinglevelet kaphat | Medium | `store.ts` (`updateVillaSale`), `analytics.ts` | 18, 24 |
+| P1-4 | ★ **Analitika KPI-sor 4 → 8** — contact rate, kvalifikációs arány, lezárási arány (`closeRatePct` már számolva), pipeline érték, lost rate, átlagos üzleti ciklus | Small | `analytics.ts`, `analytics/page.tsx` | 19, 20 |
+| P1-5 | **Analitika szűrők: source / campaign / owner** — az egész oldalra hat, nem csak a funnelre. Ez teszi a funnelt döntéstámogatóvá | Small | `analytics.ts`, `analytics/page.tsx` | 10, 21 |
+| P1-6 | **Értékesítői teljesítmény-tábla** — ownerenként: kapott lead, kontaktált %, medián reakcióidő, kvalifikált, foglalás, eladás, érték, lejárt, next action nélkül. Minden adat megvan | Medium | `analytics.ts`, `analytics/page.tsx` | 22, 30 |
+| P1-7 | **„Needs attention" vezetői nézet** + a négy párhuzamos figyelem-logika egyesítése | Medium | új `attention/page.tsx`, `digest.ts`, `store.ts` | 26, 27 |
+| P1-8 | **Negotiation fázis** a `qualified` és `reserved` közé | Medium | `types.ts`, `rules.ts`, `sequence.ts`, `analytics.ts` | 3, 13, 19 |
+| P1-9 | ★ **`source` szűrő a lead-listán** — a `LeadFilter` már támogatja, csak a select hiányzik | Small | `leads/page.tsx` | 14 |
+| P1-10 | **Lead-lista: Next és Utolsó kontakt oszlop** | Small | `leads-table.tsx` | 1 |
+| P1-11 | **Lost reason a riportba** — a `lost_reason` mezőből, ne a jegyzet szövegéből; + hiányzó okok (financing, wrong product, location) | Small | `analytics.ts`, `types.ts` | 16, 20 |
+| P1-12 | **First-response SLA percben** — `CRM_SLA_MINUTES` env, alapérték 60; ma 1 nap, kódba égetve | Small | `rules.ts`, `store.ts`, `digest.ts` | 4 |
+| P1-13 | **Dashboard KPI-sor** — pipeline érték, foglalás előtt álló érték, hó eleje óta lezárt, figyelmet igénylő | Small | `page.tsx`, `welcome-hero.tsx` | 19, 30 |
+| P1-14 | **Kanban-kártya: owner, fázisban töltött idő, érték; oszlopfejlécben az összérték** | Small | `pipeline-board.tsx` | 3 |
+| P1-15 | **Export javítás** — az `owner` szűrő figyelembe vétele + owner, value, qualification, next task oszlopok | Small | `export/route.ts` | 14 |
+
+---
+
+## P2 — Nice to have
+*Hasznos, de nem kritikus.*
+
+| # | Fejlesztés | Complexity | Checklist |
+|---|---|---|---|
+| P2-1 | **External agent / broker modul** — agent+agency+kontakt+regisztráció dátuma, bróker-nézet, jutalék a unithoz kötve, duplikátum-konfliktus jelzése. **Prioritása kizárólag üzleti döntés kérdése** (van-e bróker-csatorna); ha van, ez azonnal P1 | Medium | 11, 15 |
+| P2-2 | Lead source normalizálás (`fb`/`facebook`/`Meta` → egy érték) | Small | 10, 24 |
+| P2-3 | `country` mező (előhívóból származtatva, kézzel javítható) + szegmentáció | Small | 2, 8, 14 |
+| P2-4 | Qualification-szűrők (budget-sáv, timeframe) | Small | 8, 14 |
+| P2-5 | Expected close date + fázisból származtatott probability → súlyozott forecast | Small | 18, 19 |
+| P2-6 | Dátumtartomány-szűrő a lead-listán | Small | 14 |
+| P2-7 | Ismétlődő follow-up | Small | 12 |
+| P2-8 | **Halott kód törlése**: `stats()` és `reports()` (~183 sor) | Small | 31 |
+| P2-9 | Színszemantika rendezése (hot ≠ probléma) | Small | 25 |
+| P2-10 | Egységes felületnyelv (i18n vagy egynyelvűsítés) | Medium | 25 |
+| P2-11 | Auto-refresh 6 → 30 mp + könnyű badge-végpont | Small | 25 |
+| P2-12 | Telefonszám-normalizálás E.164 formátumra megjelenítéskor és exportban | Small | 24 |
+| P2-13 | Meeting-arány mérése a `TOUCHES` adatból | Small | 20, 22 |
+
+---
+
+## Amit szándékosan NEM javaslok
+
+A checklist 34. pontjának elve („a cél nem a komplex CRM") alapján az alábbiakat **nem** kellene
+megcsinálni, noha a checklist felsorolja őket:
+
+| Checklist-elvárás | Miért nem |
+|---|---|
+| **9 pipeline-fázis** (Presentation/Meeting, Interested külön fázisként) | A meeting **esemény**, nem állapot: attól, hogy volt találkozó, az üzlet nem lépett előre. A rendszer ezt már helyesen naplózott érintésként kezeli. Az „Interested" pedig nem különböztethető meg a „Qualified"-tól működési szabállyal — két fázis, amit senki nem tud következetesen szétválasztani, rosszabb, mint egy. **Javaslat: 6 + negotiation + nurture = 8 összesen.** |
+| **Kötelező Next Action mező** | Egy kötelező mező vagy blokkolja a rögzítést, vagy kitalált adatot szül. Helyette: automatikus teendő fázisváltáskor (P1-2) + listázható hiány (P0-1). |
+| **Külön „Opportunity" entitás** | A masterplan-unit már ez, fizetési ütemtervvel együtt. Egy harmadik rekordtípus a lead és a unit közé csak szinkronizálási hibát termelne. |
+| **Kézi „probability" mező** | Amit kézzel karban kell tartani, azt nem tartják karban. Fázisból származtatva ingyen van, és soha nem elavult. |
+| **50 KPI** | A checklist maga is 8–12-t kér. A jelenlegi 4 kevés, a javasolt 8 elég. |
+
+---
+
+## Végső értékelés a 34. pont elve szerint
+
+**Amit egy saleses mindig tud:**
+
+| Kérdés | Ma |
+|---|---|
+| 1. Kivel kell foglalkoznom? | 🟡 Csak számként, listaként nem → **P0-1, P0-2** |
+| 2. Mi történt vele eddig? | ✅ Teljes, auditált idővonal — **kivéve a kézi e-mailt és WhatsAppot** → P0-3 |
+| 3. Mi a következő lépés? | 🟡 Létezik, de a képernyő alján és felelős nélkül → **P0-7, P1-1** |
+| 4. Mikor kell megtennem? | 🟡 Van dátum, de opcionális → **P1-1** |
+
+**Amit a management mindig tud:**
+
+| Kérdés | Ma |
+|---|---|
+| 1. Hol vannak a leadek? | ✅ Pipeline + analitika |
+| 2. Hol akadnak el? | ✅ Funnel + stalled-logika |
+| 3. Ki foglalkozik velük? | 🟡 Adat megvan, nézet nincs → **P0-4, P1-6** |
+| 4. Ki nem foglalkozik velük? | ❌ → **P0-1, P1-6, P1-7** |
+| 5. Melyik lead source működik? | 🟡 Darabszám igen, konverzió nem → **P1-5** |
+| 6. Mennyi üzlet várható? | ❌ Pipeline-érték kiszámolva, nem látszik → **P1-4, P1-13** |
+
+---
+
+## Zárómegjegyzés
+
+Ez a CRM az **alapoktól** jól van megcsinálva: az adatmodell tiszta, a szabályok tiszta
+függvényekben élnek, az archiválás nem törlés, a duplikátumok maguktól összefutnak, az
+automatizmus nem spamel, és minden változás auditált. Ezek azok a dolgok, amiket utólag nagyon
+drága megépíteni.
+
+Ami hiányzik, az szinte kivétel nélkül **megjelenítés**: kiszámolt számok, amik mögé nem lehet
+belépni, és eldugott logikák, amik e-mailben vagy egy pénzügyi képernyő alján élnek. A P0-lista
+hét eleméből öt tisztán felületi munka meglévő logikára — ezért éri meg először ezekkel kezdeni.
+
+**A kiindulási mondat a fejlesztéshez: minden szám, ami megjelenik a felületen, legyen
+kattintható, és vezessen el arra a listára, amiből számolva lett.**

@@ -121,12 +121,41 @@ export function hasConversed(lead: Lead): boolean {
    "Who should I contact today?" — answered as one ordered list rather than six
    counters an operator has to reconcile in their head.
 
-   Every lead appears in exactly ONE section, the most urgent one that applies.
-   A lead that is uncontacted, stalled AND has no next step is one phone call,
-   not three, and a day-list that says the same name three times is a day-list
-   nobody trusts. */
+   Six rules, each a plain predicate. They are read two ways, and both readings
+   come from this one definition so they can never drift apart:
+
+     workQueue()   assigns every lead to the FIRST rule it matches, so it
+                   appears exactly once. A lead that is uncontacted, stalled
+                   AND unplanned is one phone call, and a day-list that says
+                   the same name three times is a day-list nobody trusts.
+
+     matchesFlag() asks one rule on its own, for `/admin/leads?flag=stalled` —
+                   where the question is "show me ALL of them", and a lead
+                   already claimed by a more urgent rule still belongs in the
+                   answer. */
 
 export type QueueKey = 'uncontacted' | 'overdue' | 'today' | 'silent' | 'nonext' | 'stalled';
+
+interface QueueContext { today: string; silentCut: string }
+
+const contextFor = (today = new Date().toISOString().slice(0, 10)): QueueContext => ({
+  today,
+  silentCut: new Date(Date.now() - REPLY_FLAG_DAYS * 86_400_000).toISOString(),
+});
+
+/* A closed deal needs nothing, and an archived lead is out of every working
+   view by definition. Everything else is fair game for a rule. */
+const inPlay = (l: Lead): boolean =>
+  !l.archived_at && l.stage !== 'won' && l.stage !== 'lost';
+
+export const QUEUE_RULES: Record<QueueKey, (lead: Lead, ctx: QueueContext) => boolean> = {
+  uncontacted: (l) => l.stage === 'new' && !hasConversed(l),
+  overdue:     (l, c) => nextActionState(l, c.today) === 'overdue',
+  today:       (l, c) => nextActionState(l, c.today) === 'today',
+  silent:      (l, c) => Boolean(l.awaiting_reply_since && l.awaiting_reply_since < c.silentCut),
+  nonext:      (l) => hasNoNextStep(l),
+  stalled:     (l) => isStalled(l),
+};
 
 export interface QueueSection {
   key: QueueKey;
@@ -135,7 +164,9 @@ export interface QueueSection {
   leads: Lead[];
 }
 
-const SECTION_META: { key: QueueKey; title: string; blurb: string }[] = [
+/* Order matters: it is both the priority of the day and the tie-break that
+   decides which single section a lead lands in. */
+export const SECTION_META: { key: QueueKey; title: string; blurb: string }[] = [
   { key: 'uncontacted', title: 'Nobody has spoken to them yet', blurb: 'New leads with no conversation on record. These first, always.' },
   { key: 'overdue',     title: 'Late',                          blurb: 'A follow-up you promised yourself, past its date.' },
   { key: 'today',       title: 'Due today',                     blurb: 'Scheduled for today.' },
@@ -144,32 +175,27 @@ const SECTION_META: { key: QueueKey; title: string; blurb: string }[] = [
   { key: 'stalled',     title: 'Not moving',                    blurb: 'Sitting in the same stage past its threshold.' },
 ];
 
+/* Object.hasOwn, not `in`: `'constructor' in QUEUE_RULES` is true, and a
+   query string reaching a filter is exactly where that matters. */
+export const isQueueKey = (v: string): v is QueueKey => Object.hasOwn(QUEUE_RULES, v);
+
+/** One rule, asked on its own — the lead list's `?flag=` filter. */
+export function matchesFlag(lead: Lead, key: QueueKey, today?: string): boolean {
+  return inPlay(lead) && QUEUE_RULES[key](lead, contextFor(today));
+}
+
 /** Oldest first inside a section: the lead that has been waiting longest is
     the one most likely to be lost. */
 const byAge = (a: Lead, b: Lead) => (a.created_at || '').localeCompare(b.created_at || '');
 
-export function workQueue(
-  leads: Lead[],
-  today = new Date().toISOString().slice(0, 10),
-): QueueSection[] {
+export function workQueue(leads: Lead[], today?: string): QueueSection[] {
+  const ctx = contextFor(today);
   const buckets = new Map<QueueKey, Lead[]>(SECTION_META.map((s) => [s.key, []]));
-  const silentCut = new Date(Date.now() - REPLY_FLAG_DAYS * 86_400_000).toISOString();
 
   for (const lead of leads) {
-    if (lead.archived_at) continue;
-    if (lead.stage === 'won' || lead.stage === 'lost') continue;
-
-    const state = nextActionState(lead, today);
-    const key: QueueKey | null =
-      lead.stage === 'new' && !hasConversed(lead) ? 'uncontacted'
-      : state === 'overdue' ? 'overdue'
-      : state === 'today' ? 'today'
-      : lead.awaiting_reply_since && lead.awaiting_reply_since < silentCut ? 'silent'
-      : hasNoNextStep(lead) ? 'nonext'
-      : isStalled(lead) ? 'stalled'
-      : null;
-
-    if (key) buckets.get(key)!.push(lead);
+    if (!inPlay(lead)) continue;
+    const hit = SECTION_META.find((s) => QUEUE_RULES[s.key](lead, ctx));
+    if (hit) buckets.get(hit.key)!.push(lead);
   }
 
   return SECTION_META.map((meta) => ({ ...meta, leads: buckets.get(meta.key)!.sort(byAge) }));

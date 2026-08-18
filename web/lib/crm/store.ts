@@ -10,13 +10,14 @@ import {
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel } from './language';
-import { ACTIVE_STAGES, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, hasNoNextStep, isStalled, workQueue } from './rules';
+import { ACTIVE_STAGES, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, matchesFlag, workQueue, type QueueKey } from './rules';
 import { fmtTHB, phaseAmount, priceForSize, villaByName } from './villas';
 import unitCatalog from '../villas.json';
 export {
-  STAGE_MAX_DAYS, REPLY_FLAG_DAYS, stageAgeDays, stageEnteredAt, isStalled, hasNoNextStep,
-  nextAction, nextActionState, hasConversed, workQueue,
+  STAGE_MAX_DAYS, REPLY_FLAG_DAYS, SECTION_META, stageAgeDays, stageEnteredAt, isStalled,
+  hasNoNextStep, nextAction, nextActionState, hasConversed, isQueueKey, matchesFlag, workQueue,
 } from './rules';
+export type { QueueKey, QueueSection } from './rules';
 import { hasDatabase, type Backend } from './backend';
 import { fileBackend } from './backend-file';
 export type { VillaHistoryEntry, VillaRecord, VillaStatus } from './types';
@@ -66,6 +67,11 @@ export interface LeadFilter {
       which must hold everything or it is not a backup; `only` is the operator
       looking through what was set aside. */
   archived?: 'exclude' | 'include' | 'only';
+  /** One of the six working-queue rules, applied on its own: the answer to
+      "show me every stalled lead" rather than "show me today's list". Until
+      this existed the CRM could say there were seven leads with no next step
+      and could not name one of them. */
+  flag?: QueueKey;
 }
 
 export const isArchived = (l: Lead): boolean => Boolean(l.archived_at);
@@ -97,6 +103,7 @@ export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
       if (filter.form_type && l.form_type !== filter.form_type) return false;
       if (filter.source && (l.source || l.utm_source || '') !== filter.source) return false;
       if (filter.owner && (l.owner || '') !== filter.owner) return false;
+      if (filter.flag && !matchesFlag(l, filter.flag)) return false;
       if (q) {
         const hay = `${l.name || ''} ${l.email || ''} ${l.phone || ''} ${l.villa || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -1099,39 +1106,45 @@ export async function setAwaitingReply(id: string, on: boolean): Promise<Lead | 
 /* What needs a human RIGHT NOW — shown as red badges in the nav on every admin
    page (re-read on each auto-refresh, so it is always current). The rules
    themselves live in rules.ts (pure, shared with client components). */
+/* ── The numbers on the dashboard ──
+
+   Every count here except `overdueTasks` is a LEAD count, produced by the same
+   six rules as the Today queue and the `?flag=` filter. That is the whole
+   point: a capsule reading "7 without a next step" now opens a list of exactly
+   those seven. Before, the capsule and the page it pointed at were computed
+   from different definitions, and nobody could tell which was right. */
 export interface AttentionCounts {
-  overdue: number;    // open tasks past their calendar due date
-  untouched: number;  // new leads past the first-response threshold, untouched
-  awaiting: number;   // leads silent past the reply threshold
-  stalled: number;    // sitting in a stage past its max days
-  noNext: number;     // active leads with no next step at all
-  /* DISTINCT leads the working queue would put in front of somebody — the same
-     number the Today screen shows, because it is computed from the same rule.
-     A badge that disagrees with the page it points at is worse than no badge. */
+  overdue: number;      // leads whose next step is past its date
+  untouched: number;    // new leads nobody has had a conversation with
+  awaiting: number;     // leads silent past the reply threshold
+  stalled: number;      // sitting in a stage past its max days
+  noNext: number;       // live leads with no next step at all
+  /** Open TASKS past their date — the Follow-ups badge, which points at a page
+      that lists tasks rather than leads. The only count here that is not a
+      lead count, and it is labelled that way for exactly that reason. */
+  overdueTasks: number;
+  /** DISTINCT leads the working queue would put in front of somebody — the
+      total of the Today screen, computed by calling it. */
   actionable: number;
 }
 
 export async function attentionCounts(): Promise<AttentionCounts> {
   const leads = await liveLeads();
   const today = now().slice(0, 10);
-  const newCut = daysAgo(STAGE_MAX_DAYS.new ?? 1);
-  const replyCut = daysAgo(REPLY_FLAG_DAYS);
-  let overdue = 0, untouched = 0, awaiting = 0, stalled = 0, noNext = 0;
-  for (const l of leads) {
-    overdue += l.tasks.filter((t) => !t.done && t.due && t.due.slice(0, 10) < today).length;
-    const isUntouched =
-      l.stage === 'new' && (l.created_at || '') < newCut && l.notes.length === 0 && l.tasks.length === 0;
-    const isAwaiting =
-      Boolean(l.awaiting_reply_since && l.awaiting_reply_since < replyCut && l.stage !== 'lost' && l.stage !== 'won');
-    const stall = isStalled(l);
-    const none = hasNoNextStep(l);
-    if (isUntouched) untouched++;
-    if (isAwaiting) awaiting++;
-    if (stall) stalled++;
-    if (none) noNext++;
-  }
-  const actionable = workQueue(leads).reduce((n, sec) => n + sec.leads.length, 0);
-  return { overdue, untouched, awaiting, stalled, noNext, actionable };
+  const count = (key: QueueKey) => leads.filter((l) => matchesFlag(l, key, today)).length;
+  const overdueTasks = leads.reduce(
+    (n, l) => n + l.tasks.filter((t) => !t.done && t.due && t.due.slice(0, 10) < today).length,
+    0,
+  );
+  return {
+    overdue: count('overdue'),
+    untouched: count('uncontacted'),
+    awaiting: count('silent'),
+    stalled: count('stalled'),
+    noNext: count('nonext'),
+    overdueTasks,
+    actionable: workQueue(leads, today).reduce((n, sec) => n + sec.leads.length, 0),
+  };
 }
 
 // ── Villa availability & sales (masterplan) ──

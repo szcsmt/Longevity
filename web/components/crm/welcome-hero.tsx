@@ -17,12 +17,12 @@ const T: Record<Lang, {
 }> = {
   hu: {
     hello: 'Isten hozta', today: 'Mai teendők', leads: 'Leadek', analytics: 'Analitika', masterplan: 'Masterplan',
-    overdue: 'lejárt teendő', untouched: 'érintetlen új lead', awaiting: 'válaszra vár',
+    overdue: 'lejárt követés', untouched: 'érintetlen új lead', awaiting: 'válaszra vár',
     stalled: 'elakadt lead', noNext: 'következő lépés nélkül',
   },
   en: {
     hello: 'Welcome', today: 'Today', leads: 'Leads', analytics: 'Analytics', masterplan: 'Masterplan',
-    overdue: 'overdue tasks', untouched: 'untouched new leads', awaiting: 'awaiting reply',
+    overdue: 'overdue follow-ups', untouched: 'untouched new leads', awaiting: 'awaiting reply',
     stalled: 'stalled leads', noNext: 'without a next step',
   },
 };
@@ -73,11 +73,11 @@ export function WelcomeHero({ user, alerts }: { user: string; alerts?: HeroAlert
         {/* What needs doing — quiet when everything is handled. */}
         {alerts && (alerts.overdue + alerts.untouched + alerts.awaiting + alerts.stalled + alerts.noNext > 0) && (
           <div className="welcome-alerts">
-            {alerts.overdue > 0 && <Link href="/admin/today?owner=all">⚠ {alerts.overdue} {t.overdue}</Link>}
-            {alerts.untouched > 0 && <Link href="/admin/today?owner=all">{alerts.untouched} {t.untouched}</Link>}
-            {alerts.stalled > 0 && <Link href="/admin/today?owner=all">{alerts.stalled} {t.stalled}</Link>}
-            {alerts.noNext > 0 && <Link href="/admin/today?owner=all">{alerts.noNext} {t.noNext}</Link>}
-            {alerts.awaiting > 0 && <Link href="/admin/today?owner=all">{alerts.awaiting} {t.awaiting}</Link>}
+            {alerts.overdue > 0 && <Link href="/admin/leads?flag=overdue">⚠ {alerts.overdue} {t.overdue}</Link>}
+            {alerts.untouched > 0 && <Link href="/admin/leads?flag=uncontacted">{alerts.untouched} {t.untouched}</Link>}
+            {alerts.stalled > 0 && <Link href="/admin/leads?flag=stalled">{alerts.stalled} {t.stalled}</Link>}
+            {alerts.noNext > 0 && <Link href="/admin/leads?flag=nonext">{alerts.noNext} {t.noNext}</Link>}
+            {alerts.awaiting > 0 && <Link href="/admin/leads?flag=silent">{alerts.awaiting} {t.awaiting}</Link>}
           </div>
         )}
       </div>

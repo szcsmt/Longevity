@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { canEdit, currentUser, isAdmin } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import { listLeads } from '@/lib/crm/store';
+import { SECTION_META, isQueueKey } from '@/lib/crm/rules';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
 import { LeadsTable } from '@/components/crm/leads-table';
@@ -32,12 +33,17 @@ export default async function LeadsPage({
      URL rather than a prominent tab: setting leads aside should be easy to
      undo and uninteresting to browse. */
   const showArchived = str(sp.archived) === 'only';
+  /* One of the six working-queue rules, asked on its own — "show me every
+     stalled lead". The dashboard used to give the count and then open the
+     unfiltered list, leaving the operator to find the seven leads themselves. */
+  const flag = isQueueKey(str(sp.flag)) ? str(sp.flag) : '';
   const filter = {
     stage: str(sp.stage),
     score: str(sp.score),
     form_type: str(sp.form_type),
     owner: str(sp.owner),
     q: str(sp.q),
+    flag,
     // Left undefined off the archive view, so it stays out of every link qs() builds.
     archived: (showArchived ? 'only' : undefined) as 'only' | undefined,
   };
@@ -70,6 +76,7 @@ export default async function LeadsPage({
           <h1 className="crm-title">{showArchived ? 'Archived leads' : 'Leads'}</h1>
           <p className="crm-sub">
             {leads.length} {leads.length === 1 ? 'lead' : 'leads'} matching your view.
+            {flag && ` ${SECTION_META.find((sec) => sec.key === flag)?.blurb}`}
             {showArchived && ' Hidden from every count and report, and the automated e-mails have stopped. Open one to restore it.'}
           </p>
         </div>
@@ -126,6 +133,14 @@ export default async function LeadsPage({
             </select>
           </div>
         )}
+        {/* The attention rules as a filter. Same definitions the Today queue
+            uses, asked one at a time. */}
+        <div className="fld">
+          <select className="crm-select" name="flag" defaultValue={flag} aria-label="Filter by what needs attention">
+            <option value="">Any state</option>
+            {SECTION_META.map((sec) => <option key={sec.key} value={sec.key}>{sec.title}</option>)}
+          </select>
+        </div>
         {showArchived && <input type="hidden" name="archived" value="only" />}
         <button className="crm-btn gold" type="submit">Filter</button>
         <Link className="crm-btn ghost" href="/admin/leads">Reset</Link>

@@ -149,7 +149,15 @@ export function DayQueue({ sections, readOnly = false }: { sections: QueueSectio
     <div className="stack">
       {live.map((s) => (
         <div key={s.key} className={`crm-card${s.key === 'overdue' || s.key === 'uncontacted' ? ' attention' : ''}`}>
-          <h3>{s.title} · {s.leads.length}</h3>
+          <h3 style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+            <span>{s.title} · {s.leads.length}</span>
+            {/* The same rule on the list, where it can be sorted, bulk-acted
+                and exported. The queue is for working; the list is for
+                managing, and they are the same set of leads. */}
+            <Link href={`/admin/leads?flag=${s.key}`} className="crm-row" style={{ color: 'var(--c-gold)' }}>
+              in the list →
+            </Link>
+          </h3>
           <p className="crm-meta" style={{ margin: '-10px 0 14px' }}>{s.blurb}</p>
           {s.leads.map((l) => <Row key={l.id} lead={l} section={s.key} readOnly={readOnly} />)}
         </div>

@@ -31,7 +31,9 @@ A lényeg az üdvözlés alatti **figyelmeztető kapszulák**. Csak akkor jelenn
 | következő lépés nélkül | aktív lead, amin nincs nyitott teendő és nem fut válasz-időzítő sem |
 | válaszra vár | 3+ napja nem jött válasz a kiküldött e-mailre |
 
-A kapszulák a **Mai teendők** oldalra visznek, ahol a nevek is ott vannak, nem csak a számok.
+**Minden kapszula a saját, leszűrt lead-listájára visz** — a szám és a lista mindig ugyanannyi.
+Korábban a kapszula megmondta, hogy *7 lead következő lépés nélkül*, aztán a szűretlen listát
+nyitotta meg, és neked kellett megkeresni, melyik az a hét.
 
 A menü tetején gyorskereső van — beírod a nevet/e-mailt/telefont, és a Leads listára visz szűrve.
 
@@ -75,17 +77,24 @@ a szabály számolja, tehát a jelvény és az oldal soha nem mondhat mást.
 
 **Szűrés** (a lista feletti sáv):
 - szabadszavas keresés (név, e-mail, telefon, villa),
+- **állapot** (`Any state`) — pontosan a Mai teendők hat szabálya, egyesével kérdezve:
+  akivel még senki nem beszélt · lejárt · mára időzített · elhallgatott · nincs betervezve semmi ·
+  nem mozdul. Ugyanaz a szabály fut, mint a Mai teendők oldalon — csak ez a nézet rendezhető,
+  tömegesen kezelhető és exportálható. A Mai teendők a munkára való, ez a vezetésre.
+  A Mai teendők minden szakaszfejlécéből egy „in the list →" link ide hoz át,
 - fázis (New / Contacted / Qualified / Reserved / Won / Lost),
 - hőfok (Hot / Warm / Cold),
 - űrlaptípus (enquiry / reserve / brochure request / manual).
 
 **Rendezés**: a Name, Score, Stage, Received oszlopfejlécekre kattintva. Alapértelmezés: beérkezés szerint, legújabb elöl. A rendezés megtartja az aktív szűrőket.
 
-**Jelzések a sorokban** (a Received oszlopban):
-- `· stalled Xd` — a lead X napja ül a jelenlegi fázisában, a küszöbön túl,
-- `· no next step` — aktív lead, aminek senki nem gazdája: se nyitott teendő, se válasz-időzítő.
+**Next step oszlop** — mi a következő lépés ezen a leaden, és mikorra van időzítve. Pirosan és
+`late ·` előtaggal, ha lejárt; `today ·`, ha mára szól. Ha semmi nincs betervezve, a cella azt
+írja ki, hogy **Nothing planned** — szavakkal, nem üres cellával, mert az üres cella ugyanúgy néz
+ki, mint egy be nem töltött adat.
 
-Mindkettő azt jelenti: nyisd meg, és csinálj vele valamit.
+**Jelzés a Received oszlopban**: `· stalled Xd` — a lead X napja ül a jelenlegi fázisában, a
+küszöbön túl. Nyisd meg, és csinálj vele valamit.
 
 **Tömeges műveletek**: pipáld ki a sorokat (vagy a fejlécben mindet), majd a lista feletti sávban:
 - *Move to stage…* — a kijelöltek átrakása egy fázisba,

@@ -25,7 +25,7 @@ export default async function DashLayout({ children }: { children: React.ReactNo
           </div>
           {/* The badge sits on the screen that RESOLVES it: Today is the
               queue, so that is where "something needs a human" points. */}
-          <CrmNav alerts={{ today: att.actionable, followups: att.overdue }} />
+          <CrmNav alerts={{ today: att.actionable, followups: att.overdueTasks }} />
           <div className="crm-side-foot">
             {/* Knowing which account you are signed in as matters the moment
                 more than one person uses the CRM — an agent who does not know

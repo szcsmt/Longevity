@@ -571,9 +571,24 @@ urgent reason that applies:
 Archived leads and the `won` / `lost` stages are excluded. Inside a section the oldest lead
 sorts first: the one that has been waiting longest is the one most likely to be lost.
 
-`attentionCounts().actionable` is the total of this queue, computed by calling `workQueue()` —
-so the badge and the page it points at can never disagree. `REPLY_FLAG_DAYS` lives in `rules.ts`
-(pure, client-importable) rather than the store, because the masterplan needs it too.
+The six rules live in `QUEUE_RULES` and are read **two ways**, from the one definition:
+
+- `workQueue()` assigns each lead to the **first** rule it matches — the Today screen.
+- `matchesFlag(lead, key)` asks one rule on its own — the lead list's `?flag=` filter, where
+  "show me every stalled lead" must include the ones the queue already gave to a louder rule.
+
+`LeadFilter.flag` applies it in `listLeads()`. The query value is validated with
+`isQueueKey()`, which uses `Object.hasOwn` rather than `in`: `'constructor' in QUEUE_RULES` is
+true, and a query string reaching a filter is exactly where that matters.
+
+Every count in `attentionCounts()` comes from these same predicates — `untouched` is
+`uncontacted`, `awaiting` is `silent`, and so on — so a dashboard capsule reading "7 without a
+next step" opens a list of exactly those seven. The one exception is `overdueTasks`, which
+counts TASKS rather than leads because it badges the Follow-ups page, which lists tasks.
+`actionable` is the queue's own total.
+
+`REPLY_FLAG_DAYS` lives in `rules.ts` (pure, client-importable) rather than the store, because
+the masterplan needs it too.
 
 ### Score upgrades only on a hotter signal
 

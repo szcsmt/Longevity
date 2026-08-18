@@ -24,7 +24,8 @@ process.env.CRM_AGENTS = 'Anna|anna@example.com||en';
 
 const store = await import('../lib/crm/store');
 const {
-  nextAction, nextActionState, hasConversed, workQueue, REPLY_FLAG_DAYS,
+  nextAction, nextActionState, hasConversed, workQueue, matchesFlag, isQueueKey,
+  SECTION_META, REPLY_FLAG_DAYS,
 } = await import('../lib/crm/rules');
 
 after(() => rmSync(dir, { recursive: true, force: true }));
@@ -169,5 +170,63 @@ describe('the working queue', () => {
     const leads = await store.listLeads();
     const queued = workQueue(leads).reduce((sum, s) => sum + s.leads.length, 0);
     assert.equal((await store.attentionCounts()).actionable, queued);
+  });
+});
+
+describe('the same rules, asked one at a time', () => {
+  it('lists every stalled lead, including the ones the queue gave to a louder rule', async () => {
+    const lead = await fresh();
+    // Late follow-up AND past the stage threshold. The queue files it under
+    // "late"; the filter must still find it when asked for stalled leads.
+    await store.logTouch(lead.id, 'call', undefined, 'Anna');   // → Contacted
+    await store.addTask(lead.id, 'Call back', day(-9), 'Anna');
+    const fetched = (await store.getLead(lead.id))!;
+    // Backdate the stage move so the contacted threshold (3 days) is passed.
+    fetched.history = (fetched.history || []).map((h) =>
+      h.kind === 'stage' ? { ...h, at: day(-9) } : h);
+
+    const queued = workQueue([fetched], today).find((s) => s.leads.length);
+    assert.equal(queued?.key, 'overdue', 'the queue shows it once, under the most urgent rule');
+    assert.equal(matchesFlag(fetched, 'stalled', today), true, 'the filter still counts it as stalled');
+    assert.equal(matchesFlag(fetched, 'overdue', today), true);
+  });
+
+  it('never matches a closed or archived lead', async () => {
+    const won = await fresh();
+    await store.updateLead(won.id, { stage: 'won' }, 'Anna');
+    const closed = (await store.getLead(won.id))!;
+    for (const key of SECTION_META.map((s) => s.key)) {
+      assert.equal(matchesFlag(closed, key, today), false, `won lead must not match ${key}`);
+    }
+  });
+
+  it('filters the lead list by the same rule', async () => {
+    const all = await store.listLeads();
+    for (const { key } of SECTION_META) {
+      const filtered = await store.listLeads({ flag: key });
+      const expected = all.filter((l) => matchesFlag(l, key));
+      assert.equal(filtered.length, expected.length, `?flag=${key} must return what the rule matches`);
+    }
+  });
+
+  it('rejects a flag nobody defined, rather than filtering on nonsense', () => {
+    assert.equal(isQueueKey('nonext'), true);
+    assert.equal(isQueueKey('constructor'), false);
+    assert.equal(isQueueKey('everything'), false);
+  });
+
+  it('gives the dashboard the same number as the list it links to', async () => {
+    const counts = await store.attentionCounts();
+    const pairs: [number, string][] = [
+      [counts.untouched, 'uncontacted'],
+      [counts.overdue, 'overdue'],
+      [counts.awaiting, 'silent'],
+      [counts.noNext, 'nonext'],
+      [counts.stalled, 'stalled'],
+    ];
+    for (const [n, key] of pairs) {
+      const listed = (await store.listLeads({ flag: key as never })).length;
+      assert.equal(n, listed, `the ${key} capsule must open a list of exactly that many leads`);
+    }
   });
 });
