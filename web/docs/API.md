@@ -332,7 +332,7 @@ All writes go through optimistic concurrency (per-lead `rev`; up to 4 retries on
 
 | `op` | Body fields | Behaviour |
 |---|---|---|
-| `update` | `patch` object | Only these keys are accepted, everything else is silently dropped (attribution/history/timestamps can never be overwritten): `name`, `email`, `phone`, `whatsapp`, `villa` (strings, capped 300); `stage` (must be `new`/`contacted`/`qualified`/`reserved`/`won`/`lost`); `score` (`hot`/`warm`/`cold`); `value` (`null`/`''` clears; non-negative finite number → rounded); `lost_reason` (`price`/`timing`/`competitor`/`unreachable`/`other`, `null`/`''` clears); `owner` (must be a name on the `CRM_AGENTS` roster — anything else is dropped; `null`/`''` unassigns). Stage/score/contact/value changes are logged to the timeline; moving to any stage other than `lost` clears `lost_reason`. A stage, score or contact edit also stamps `first_response_at` if it is still empty. |
+| `update` | `patch` object | Only these keys are accepted, everything else is silently dropped (attribution/history/timestamps can never be overwritten): `name`, `email`, `phone`, `whatsapp`, `villa` (strings, capped 300); `stage` (must be `new`/`contacted`/`qualified`/`presentation`/`visit`/`negotiation`/`reserved`/`contract`/`won`/`lost`); `score` (`hot`/`warm`/`cold`); `value` (`null`/`''` clears; non-negative finite number → rounded); `lost_reason` (`price`/`timing`/`competitor`/`unreachable`/`other`, `null`/`''` clears); `owner` (must be a name on the `CRM_AGENTS` roster — anything else is dropped; `null`/`''` unassigns). Stage/score/contact/value changes are logged to the timeline; moving to any stage other than `lost` clears `lost_reason`. A stage, score or contact edit also stamps `first_response_at` if it is still empty. Moving to `reserved`, `contract` or `won` on a lead with **no `villa`** is refused with **`409`** and a sentence — those three stages assert a specific unit, and without one the masterplan cannot show who holds the plot. Moving to `qualified` or beyond with qualification answers missing is allowed and the gap is written onto the timeline entry (`New → Presentation — still unknown: budget, timeframe`). |
 | `addNote` | `body` (required, non-empty → else `400`) | Prepends a note (capped 4000). |
 | `addTask` | `title` (required → else `400`), `due` (optional ISO) | Appends an open task (title capped 300). |
 | `toggleTask` | `taskId` | Flips `done`; unknown task id → `404`. |
@@ -393,7 +393,11 @@ Bulk action from the leads list. Body:
 | `value` | for `stage`: a valid stage id (else `400 "bad stage"`); for `score`: `hot`/`warm`/`cold` (else `400 "bad score"`); ignored for `delete` |
 
 Each lead is attempted independently — one failure never aborts the batch. Response:
-`200 {"ok":<failed===0>,"count":<done>,"failed":<failed>}`.
+`200 {"ok":<failed===0>,"count":<done>,"failed":<failed>,"refused":[...]}`.
+
+`refused` carries the reason **per lead name**, deduped and capped at 8 — a stage move blocked
+because the lead names no residence, or an archive blocked because the lead holds a unit.
+"3 leads could not be updated" with no explanation is indistinguishable from a broken button.
 
 ### GET /api/crm/agencies
 

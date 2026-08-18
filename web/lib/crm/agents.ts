@@ -1,4 +1,5 @@
 import type { Lead } from './types';
+import { isOpenStage } from './types';
 
 /* The sales team, configured in env so it changes without a code edit:
 
@@ -84,10 +85,9 @@ export function pickOwner(existing: Lead[], language?: string): string | undefin
   const roster = speakers.length ? speakers : all;
   if (roster.length === 1) return roster[0].name;
 
-  const open = new Set(['new', 'contacted', 'qualified', 'reserved']);
   const load = new Map(roster.map((a) => [a.name, 0]));
   for (const l of existing) {
-    if (!l.owner || !open.has(l.stage)) continue;
+    if (!l.owner || !isOpenStage(l.stage)) continue;
     if (load.has(l.owner)) load.set(l.owner, (load.get(l.owner) || 0) + 1);
   }
   let best = roster[0].name;

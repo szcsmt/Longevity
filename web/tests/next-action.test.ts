@@ -125,7 +125,8 @@ describe('the working queue', () => {
   it('leaves won and lost deals out of the day', async () => {
     const won = await fresh();
     const lost = await fresh();
-    await store.updateLead(won.id, { stage: 'won' }, 'Anna');
+    // Won asserts a specific villa, and the store refuses it without one.
+    await store.updateLead(won.id, { villa: 'Residence L', stage: 'won' }, 'Anna');
     await store.updateLead(lost.id, { stage: 'lost', lost_reason: 'price' }, 'Anna');
     const leads = [(await store.getLead(won.id))!, (await store.getLead(lost.id))!];
 
@@ -193,7 +194,7 @@ describe('the same rules, asked one at a time', () => {
 
   it('never matches a closed or archived lead', async () => {
     const won = await fresh();
-    await store.updateLead(won.id, { stage: 'won' }, 'Anna');
+    await store.updateLead(won.id, { villa: 'Residence L', stage: 'won' }, 'Anna');
     const closed = (await store.getLead(won.id))!;
     for (const key of SECTION_META.map((s) => s.key)) {
       assert.equal(matchesFlag(closed, key, today), false, `won lead must not match ${key}`);

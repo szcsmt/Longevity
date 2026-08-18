@@ -1,6 +1,21 @@
 /* CRM domain types — shared by the store, API routes and admin UI. */
 
-export type Stage = 'new' | 'contacted' | 'qualified' | 'reserved' | 'won' | 'lost';
+/* ── The stages the sales actually has ──
+
+   There were six, and three of the things that really happen to a deal — a
+   presentation, a viewing, a negotiation — were not among them. That made the
+   funnel lie by omission: everything between "qualified" and "reserved" looked
+   like one step, so the report could never say where deals actually die.
+
+   Ten, and not one more. The specification lists fourteen; most of the extra
+   ones are either a different concept wearing a stage's clothes (nurture is a
+   date, not a stage; "unqualified" is a lost reason) or a distinction nobody
+   here would maintain. A stage costs a column on the board and a decision every
+   time somebody moves a card, and a board nobody keeps current is worse than a
+   coarse one that is true. */
+export type Stage =
+  | 'new' | 'contacted' | 'qualified' | 'presentation' | 'visit' | 'negotiation'
+  | 'reserved' | 'contract' | 'won' | 'lost';
 export type Score = 'hot' | 'warm' | 'cold';
 export type VillaStatus = 'free' | 'reserved' | 'sold';
 
@@ -80,14 +95,44 @@ export interface VillaHistoryEntry {
   at: string;
 }
 
-export const STAGES: { id: Stage; label: string }[] = [
-  { id: 'new',       label: 'New' },
-  { id: 'contacted', label: 'Contacted' },
-  { id: 'qualified', label: 'Qualified' },
-  { id: 'reserved',  label: 'Reserved' },
-  { id: 'won',       label: 'Won' },
-  { id: 'lost',      label: 'Lost' },
+/* Order is meaning here, not presentation: the funnel counts "reached this
+   stage or beyond" by position, the board draws its columns in this order, and
+   `lost` stays last because every report treats it as the exit rather than a
+   step. `blurb` is what the stage MEANS — shown where somebody is choosing
+   one, because "Presentation" only stops being a guess once it says that a
+   presentation actually happened. */
+export const STAGES: { id: Stage; label: string; blurb: string }[] = [
+  { id: 'new',          label: 'New',          blurb: 'Arrived. Nobody has spoken to them yet.' },
+  { id: 'contacted',    label: 'Contacted',    blurb: 'A real conversation has happened.' },
+  { id: 'qualified',    label: 'Qualified',    blurb: 'We know the budget, the timeframe, what it is for and where the money comes from.' },
+  { id: 'presentation', label: 'Presentation', blurb: 'A presentation or Zoom has actually taken place.' },
+  { id: 'visit',        label: 'Visit',        blurb: 'They have seen it — on site, or a live video walkthrough.' },
+  { id: 'negotiation',  label: 'Negotiation',  blurb: 'Talking about a specific unit, a price and terms.' },
+  { id: 'reserved',     label: 'Reserved',     blurb: 'A unit is held for them.' },
+  { id: 'contract',     label: 'Contract',     blurb: 'The SPA is out, under review, or signed.' },
+  { id: 'won',          label: 'Won',          blurb: 'Sold.' },
+  { id: 'lost',         label: 'Lost',         blurb: 'Not this one. Needs a reason.' },
 ];
+
+/* ── Reading the order, instead of hard-coding lists of stage names ──
+
+   Every "is this deal still open" and "has it got at least this far" test used
+   to be its own literal array in whichever file needed it, which is how six of
+   them quietly disagreed. */
+
+export const stageIndex = (id?: string): number => STAGES.findIndex((s) => s.id === id);
+
+/** Everything except the two ways a deal ends. */
+export const OPEN_STAGES: Stage[] = STAGES
+  .filter((s) => s.id !== 'won' && s.id !== 'lost')
+  .map((s) => s.id);
+
+export const isOpenStage = (id?: string): boolean => OPEN_STAGES.includes(id as Stage);
+
+/** At `target` or past it — and never true for a lost deal, which left the
+    order rather than travelling along it. */
+export const atOrBeyond = (id: string | undefined, target: Stage): boolean =>
+  id !== 'lost' && stageIndex(id) >= stageIndex(target);
 
 export const SCORES: Score[] = ['hot', 'warm', 'cold'];
 

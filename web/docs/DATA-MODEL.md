@@ -549,18 +549,71 @@ All automated intake goes through `upsertLeadFromPayload()`:
 
 ### Stage lifecycle
 
-`new → contacted → qualified → reserved → won`, with `lost` as the exit at any point.
-`stageEnteredAt()` = timestamp of the last `stage` activity, else `created_at`.
+`new → contacted → qualified → presentation → visit → negotiation → reserved → contract → won`,
+with `lost` as the exit at any point. `stageEnteredAt()` = timestamp of the last `stage`
+activity, else `created_at`.
+
+There were six. A presentation, a viewing and a negotiation — three of the things that really
+happen to a deal — were not among them, so everything between Qualified and Reserved looked
+like one step and the funnel could never say where deals actually die. Ten, and not one more:
+the specification lists fourteen, but most of the rest are either a different concept wearing a
+stage's clothes (nurture is a date; "unqualified" is a lost reason) or a distinction nobody here
+would keep current. A stage costs a column on the board and a decision every time somebody moves
+a card.
+
+Each carries a `blurb` — what the stage **means** — shown wherever one is being chosen.
+"Presentation" only stops being a guess once it says a presentation actually happened.
 
 | Stage | `STAGE_MAX_DAYS` | Meaning of the threshold |
 |---|---|---|
 | `new` | 1 | First response within a day |
 | `contacted` | 3 | Matches the reply-wait rhythm |
 | `qualified` | 7 | A serious buyer gets weekly movement at minimum |
-| `reserved`, `won`, `lost` | — | No stall threshold |
+| `presentation` | 7 | A presentation with no follow-up inside a week has gone cold |
+| `visit` | 10 | Somebody who has stood on the plot is deciding, not forgetting |
+| `negotiation` | 14 | A fortnight of silence mid-negotiation is a deal in trouble |
+| `reserved`, `contract` | — | Past a reservation the payment schedule is the clock; a second one competing with it would only produce flags nobody acts on |
+| `won`, `lost` | — | Closed |
 
-`isStalled()` — the lead sat in its stage longer than the threshold. A `new` lead older than
-1 day with no notes and no tasks counts as **untouched** in the attention counts.
+`isStalled()` — the lead sat in its stage longer than the threshold. A `new` lead nobody has
+had a conversation with counts as **uncontacted** in the attention counts.
+
+#### Reading the order, instead of listing stage names
+
+Every "is this still open" and "has it got at least this far" test used to be its own literal
+array in whichever file needed it, which is how six of them quietly disagreed.
+
+- `stageIndex(id)` — position in `STAGES`.
+- `OPEN_STAGES` / `isOpenStage(id)` — everything except `won` and `lost`.
+- `atOrBeyond(id, target)` — at that stage or past it, and **never true for `lost`**, which left
+  the order rather than travelling along it. `lost` sits last in the array, so a naive index
+  comparison would report a lost deal as having reached every stage there is.
+
+`ACTIVE_STAGES` is now `OPEN_STAGES`. It used to stop at Qualified, so a reservation with
+nothing planned raised no flag at all — precisely where a deal is most expensive to lose.
+
+### Stage entry rules
+
+Two kinds, deliberately different.
+
+**Refused — `reserved`, `contract`, `won` require a residence on the lead.** All three assert
+that a specific villa is involved; without one the masterplan cannot show who is holding the
+plot, the sales value has nothing behind it, and nobody notices until somebody tries to sell the
+same villa twice. `updateLead` throws a `StageConflict` (a `CrmConflict`) naming the stage and
+the reason, nothing is written, and the API answers `409` with the sentence. `bulkUpdate`
+collects the refusals **by lead name** — "3 leads could not be moved" with no explanation is
+indistinguishable from a broken button. The rule fires only when the stage is *changing to* one
+of the three, so a lead that reached a late stage before this existed keeps editing normally.
+
+**Recorded, not blocked — everything else.** Moving to `qualified` or beyond without the four
+answers is allowed, and the gap is written onto the stage entry itself:
+
+    New → Presentation — still unknown: budget, timeframe, purpose
+
+on the same line as the claim, so the timeline shows the assertion and its evidence together.
+The lead page asks for a confirmation first, naming the same gaps. A CRM that argues with a
+salesperson about what a conversation established is a CRM they stop updating, and then it knows
+nothing at all.
 
 ### No active lead without a next step
 

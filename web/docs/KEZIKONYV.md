@@ -331,7 +331,51 @@ Az **Export CSV** is viszi: `agency`, `agency_agent`, `registered` oszlopok.
 
 ## 5. Pipeline — a tábla
 
-`/admin/pipeline` — hat oszlop: **New → Contacted → Qualified → Reserved → Won → Lost**.
+`/admin/pipeline` — **tíz oszlop**:
+
+**New → Contacted → Qualified → Presentation → Visit → Negotiation → Reserved → Contract → Won**,
+és a **Lost** mint kijárat bármelyik pontról.
+
+Korábban hat fázis volt, és a három dolog közül, ami *valóban* történik egy üzlettel — a
+prezentáció, a megtekintés, az alkudozás — egyik sem szerepelt köztük. Így a Qualified és a
+Reserved közötti teljes szakasz egyetlen lépésnek látszott, és a tölcsér soha nem tudta
+megmondani, **hol halnak meg** az üzletek.
+
+Tíz, és egyetlenegy se több. Minden fázis egy oszlop a táblán és egy döntés minden
+kártyamozgatásnál — egy tábla, amit senki nem tart naprakészen, rosszabb, mint egy durvább, ami
+viszont igaz.
+
+| Fázis | Mit jelent |
+|---|---|
+| **New** | Beérkezett. Még senki nem beszélt vele. |
+| **Contacted** | Volt egy valódi beszélgetés. |
+| **Qualified** | Tudjuk a keretet, az időtávot, hogy mire kell és honnan a pénz. |
+| **Presentation** | Tényleg megvolt a prezentáció vagy a Zoom. |
+| **Visit** | Látta — helyszínen vagy élő videós körbevezetésen. |
+| **Negotiation** | Konkrét villáról, árról és feltételekről beszélünk. |
+| **Reserved** | Egy villa tartva van neki. |
+| **Contract** | Az adásvételi kiment, véleményezés alatt van, vagy aláírták. |
+| **Won** | Eladva. |
+| **Lost** | Nem ez lett. Indoklás kötelező. |
+
+A lead oldalán a fázisválasztó alatt mindig ott áll, hogy az adott fázis **mit jelent**. Egy
+fázis, amit mindenki másképp ért, olyan tölcsér, ami semmit nem mér.
+
+### Két szabály, kétféle szigorral
+
+**Elutasítás — a Reserved, a Contract és a Won villát követel.** Mindhárom azt állítja, hogy egy
+konkrét villáról van szó. Ha nincs villa a leaden, a rendszer **nem engedi** a mozgatást, és
+megmondja, miért: enélkül a masterplanon nem látszik, ki tartja a telket, az üzletérték mögött
+nincs semmi, és senki nem veszi észre, amíg valaki el nem akarja adni ugyanazt a villát
+másodszor is. Tömeges mozgatásnál **név szerint** kiírja, melyik leadet nem engedte és miért.
+
+**Rögzítés, nem tiltás — minden más.** Qualified-be (vagy azon túlra) hiányzó válaszokkal is
+mozgathatsz. A rendszer előbb rákérdez, aztán **ráírja a hiányt magára a fázisváltásra**:
+
+> *New → Presentation — still unknown: budget, timeframe, purpose*
+
+Ugyanabban a sorban az állítás és a bizonyíték. Egy CRM, ami vitatkozik az értékesítővel arról,
+mit derített ki egy beszélgetésen, olyan CRM, amit abbahagynak vezetni — és akkor semmit nem tud.
 
 - Kártyát **húzd át** egyik oszlopból a másikba, vagy használd a kártya alján a **‹ ›** gombokat.
 - Kártyára kattintva a lead oldala nyílik.
@@ -527,7 +571,12 @@ Szólj, ha kell egy, és beállítom.
 | New | 1 nap | „érintetlen" / „elakadt" jelzés |
 | Contacted | 3 nap | „elakadt" jelzés |
 | Qualified | 7 nap | „elakadt" jelzés |
+| Presentation | 7 nap | „elakadt" jelzés |
+| Visit | 10 nap | „elakadt" jelzés |
+| Negotiation | 14 nap | „elakadt" jelzés |
 
-Reserved és Won fázisban nincs időkorlát — ott már a fizetési ütem a mérce, a Masterplanon.
+Reserved, Contract és Won fázisban nincs időkorlát — ott már a fizetési ütem a mérce, a
+Masterplanon. **Következő lépés viszont ott is kell**: egy foglalás, amin senki nem tervezett
+semmit, pontosan az a pont, ahol az üzlet elvesztése a legdrágább.
 
 **A lényeg**: a rendszer mindent számon tart helyetted — de csak akkor, ha a két kattintást (válaszra vár / teendő) minden kontakt után megnyomod. Ami be van jelölve, azt a CRM soha nem felejti el; ami nincs, azt senki.

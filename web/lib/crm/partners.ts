@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Agency, Broker, Lead } from './types';
-import { AGENCY_STATUS, COMMISSION_MODELS } from './types';
+import { AGENCY_STATUS, COMMISSION_MODELS, atOrBeyond, isOpenStage } from './types';
 import { getBackend } from './backend';
 import { cleanText } from './store';
 import { creditedClaim } from './rules';
@@ -226,15 +226,13 @@ export interface AgencyPerformance {
   commission?: number;
 }
 
-const REACHED_QUALIFIED = new Set(['qualified', 'reserved', 'won']);
-
 export function performanceFor(agency: Agency, leads: Lead[]): AgencyPerformance {
   const mine = leads.filter((l) => !l.archived_at && creditedClaim(l)?.agencyId === agency.id);
   const count = (fn: (l: Lead) => boolean) => mine.filter(fn).length;
 
   const won = count((l) => l.stage === 'won');
   const wonValue = mine.filter((l) => l.stage === 'won').reduce((n, l) => n + (l.value || 0), 0);
-  const open = mine.filter((l) => l.stage !== 'won' && l.stage !== 'lost');
+  const open = mine.filter((l) => isOpenStage(l.stage));
 
   let commission: number | undefined;
   if (agency.commission_model === 'percent' && agency.commission_pct)
@@ -246,9 +244,9 @@ export function performanceFor(agency: Agency, leads: Lead[]): AgencyPerformance
     agency,
     registered: mine.length,
     live: open.length,
-    qualified: count((l) => REACHED_QUALIFIED.has(l.stage)),
+    qualified: count((l) => atOrBeyond(l.stage, 'qualified')),
     visits: count((l) => (l.history || []).some((h) => h.kind === 'visit')),
-    reserved: count((l) => l.stage === 'reserved'),
+    reserved: count((l) => atOrBeyond(l.stage, 'reserved')),
     won,
     lost: count((l) => l.stage === 'lost'),
     wonValue,

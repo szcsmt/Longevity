@@ -54,7 +54,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   let lead = null;
   switch (body.op) {
     case 'update':
-      lead = await updateLead(id, sanitizePatch(body.patch), actor);
+      try {
+        lead = await updateLead(id, sanitizePatch(body.patch), actor);
+      } catch (err) {
+        /* A stage that asserts a unit, on a lead that names none. 409 with the
+           sentence rather than a blank failure: the operator can act on it. */
+        if (err instanceof CrmConflict) {
+          return Response.json({ ok: false, error: err.message }, { status: 409 });
+        }
+        throw err;
+      }
       break;
     case 'addNote':
       if (!String(body.body || '').trim()) return Response.json({ ok: false, error: 'empty note' }, { status: 400 });

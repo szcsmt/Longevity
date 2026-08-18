@@ -6,7 +6,7 @@
 import villaGeo from '@/lib/villas.json';
 import { listLeads, getVillaData, listEvents, unitListPrice, unitSize } from './store';
 import { SIZES, priceForSize } from './villas';
-import { STAGES, type Stage, type VillaStatus } from './types';
+import { STAGES, atOrBeyond, type Stage, type VillaStatus } from './types';
 
 /* Prices come from villas.ts, which is the only place they are written down.
    A second copy lived here, keyed by size tier, and the two could have drifted
@@ -140,7 +140,8 @@ export async function analytics(rangeInput?: string): Promise<AnalyticsData> {
   const leadsTrendPct = rangeDays && prevLeads > 0 ? Math.round(((leadsInRange - prevLeads) / prevLeads) * 100) : null;
   const hotLeads = leads.filter((l) => l.score === 'hot').length;
   const wonN = leads.filter((l) => l.stage === 'won').length;
-  const reservedN = leads.filter((l) => l.stage === 'reserved' || l.stage === 'won').length;
+  // Reached a reservation at any point, not "is sitting in Reserved right now".
+  const reservedN = leads.filter((l) => atOrBeyond(l.stage, 'reserved')).length;
   const closeRatePct = leads.length ? Math.round((wonN / leads.length) * 100) : 0;
   const reservationRatePct = leads.length ? Math.round((reservedN / leads.length) * 100) : 0;
 

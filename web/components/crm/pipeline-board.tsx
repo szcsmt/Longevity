@@ -58,7 +58,13 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ op: 'update', patch: extra ? { stage, lost_reason: extra.lost_reason } : { stage } }),
       });
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) {
+        /* A refusal is not a network failure and must not be reported as one:
+           the server says exactly what is missing, and the operator can fix it
+           on the lead in ten seconds. */
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || `The move could not be saved (${res.status}).`);
+      }
       if (extra?.note) {
         await fetch(`/api/crm/leads/${lead.id}`, {
           method: 'PATCH',
@@ -66,10 +72,10 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
           body: JSON.stringify({ op: 'addNote', body: extra.note }),
         }).catch(() => {});
       }
-    } catch {
-      // The server never saw the move — put the card back where it was.
+    } catch (err) {
+      // The card goes back where it was, either way — nothing was saved.
       setLeads((ls) => ls.map((l) => (l.id === lead.id ? { ...l, stage: prev } : l)));
-      alert('Could not save the move — check your connection and try again.');
+      alert(err instanceof Error ? err.message : 'Could not save the move — check your connection and try again.');
     } finally {
       setBusy(null);
     }

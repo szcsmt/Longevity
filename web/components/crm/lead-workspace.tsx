@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { Lead, Score, Stage } from '@/lib/crm/types';
 import {
   CURRENCIES, DECISION, FINANCING, LOST_REASONS, MOTIVATIONS, NURTURE_REASONS, OBJECTIONS,
-  PURPOSES, SCORES, STAGES, TIMEFRAMES, TOUCHES, VISITS,
+  PURPOSES, SCORES, STAGES, TIMEFRAMES, TOUCHES, VISITS, atOrBeyond,
 } from '@/lib/crm/types';
 import { REPLY_FLAG_DAYS, creditedClaim, isNurtured, missingQualification } from '@/lib/crm/rules';
 import { fmtTHB } from '@/lib/crm/villas';
@@ -180,6 +180,17 @@ export function LeadWorkspace({
     if (stage === 'lost') {
       setLosing(true);
       return;
+    }
+    /* Moving past Qualified on answers nobody has is allowed — it is judgement,
+       and a CRM that argues with a salesperson about what a conversation
+       established is one they stop updating. But it is not allowed SILENTLY:
+       the gaps are named here, and they are written onto the timeline entry. */
+    if (atOrBeyond(stage, 'qualified') && missing.length) {
+      const ok = confirm(
+        `Move to ${STAGES.find((s) => s.id === stage)?.label} with ${missing.join(', ').toLowerCase()} still unknown?\n\n` +
+        'The move is recorded with that gap on it.',
+      );
+      if (!ok) return;
     }
     await patch({ op: 'update', patch: { stage } });
   }
@@ -702,10 +713,15 @@ export function LeadWorkspace({
             value={lead.stage}
             disabled={busy}
             onChange={(e) => setStage(e.target.value as Stage)}
-            style={{ marginBottom: 16 }}
           >
             {STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
+          {/* What the stage MEANS. "Presentation" only stops being a guess
+              once it says that a presentation actually happened, and a stage
+              everybody reads differently is a funnel that measures nothing. */}
+          <div className="crm-meta" style={{ margin: '6px 0 16px' }}>
+            {STAGES.find((s) => s.id === lead.stage)?.blurb}
+          </div>
           <label className="crm-label">Score</label>
           <select
             className="crm-select"

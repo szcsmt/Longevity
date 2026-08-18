@@ -40,14 +40,13 @@ the work is filling gaps and closing blind spots.
 | Automated sequence | Six letters, minute 0 → day 60, stopping the moment a human owns the conversation |
 | Roles | admin / agent / viewer, with the irreversible and the exportable reserved to the owner |
 | Speed to lead | `first_response_at` — the first moment a *person* acted |
+| Pipeline | Ten ordered stages with what each one means, positional helpers (`atOrBeyond`, `OPEN_STAGES`), a refusal on the stages that assert a unit, and the qualification gap written onto the stage entry |
 | Introducing agencies | `Agency` + nested `Broker` records, append-only registrations on the lead, an auditable protection window that refuses a competing claim, and per-agency production figures counted against whoever introduced the buyer first |
 
 ### PARTIAL — works, but not all the way
 
 | | What is missing |
 |---|---|
-| Pipeline stages | Six stages. Presentation, site visit and negotiation happen but are not stages, so the funnel cannot show where deals actually die |
-| Stage entry rules | `missingQualification()` computes the gaps and nothing enforces them — "Qualified" is still a stage anybody can click |
 | Lost reporting | `reports().lostReasons` reads the `"Lost: …"` **note text** while `lead.lost_reason` holds the structured value. Two sources, one of them fragile |
 | Scoring | One hot/warm/cold, from the form type plus AI triage. The specification asks for fit and engagement kept apart |
 | Attribution | Source, campaign and UTM are all stored, and `reports().bySource` computes source → won → revenue — **but no page renders it** |
@@ -97,9 +96,9 @@ the work is filling gaps and closing blind spots.
 - [x] **P1.7** Agencies and the registrations that decide who gets paid — `Agency` + `Broker`,
       an append-only claim on the lead, an auditable protection window, and production figures
       per agency
-- [ ] **P1.8 The stages the sales actually has.** Add presentation, site visit and negotiation;
-      make the funnel positional rather than assumed. Entry rules where they are objective
-      (Qualified needs the four answers; Reserved needs a unit), warnings where they are not.
+- [x] **P1.8** The stages the sales actually has — presentation, visit, negotiation and contract,
+      ordered helpers instead of six disagreeing literal arrays, a refusal where the rule is
+      objective (a unit) and a recorded gap where it is judgement
 - [ ] **P1.9 The head-of-sales screen.** Stage-to-stage conversion, cycle length, pipeline and
       won value by person / source / agency, lost reasons — assembled from `reports()`, which
       already computes most of it and is rendered nowhere.

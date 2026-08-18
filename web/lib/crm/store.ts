@@ -5,14 +5,14 @@ import type {
 } from './types';
 import {
   CARD_COLORS, CURRENCIES, DECISION, FINANCING, MOTIVATIONS, NURTURE_REASONS, OBJECTIONS,
-  PHASES, PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, touchByKey,
+  PHASES, PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, atOrBeyond, isOpenStage, touchByKey,
 } from './types';
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel } from './language';
 import {
-  ACTIVE_STAGES, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, activeClaim, matchesFlag, workQueue,
-  type QueueKey,
+  ACTIVE_STAGES, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, activeClaim, matchesFlag, missingQualification,
+  workQueue, type QueueKey,
 } from './rules';
 import { fmtTHB, phaseAmount, priceForSize, villaByName } from './villas';
 import unitCatalog from '../villas.json';
@@ -421,10 +421,55 @@ async function mutate(id: string, fn: (lead: Lead) => void): Promise<Lead | null
   throw new Error(`lead ${id}: too many concurrent updates`);
 }
 
+/* ── The one stage rule worth refusing over ──
+
+   Reserved, Contract and Won all assert that a specific villa is involved.
+   A lead in one of them with no unit named is not a deal, it is a hole in the
+   inventory: the masterplan cannot show who is holding the plot, the sales
+   value has nothing behind it, and nobody notices until somebody tries to sell
+   the same villa twice.
+
+   Everything else about a stage is judgement, and judgement is not something to
+   refuse. Moving to Qualified without knowing the budget is recorded, loudly,
+   on the timeline — see below — but it is never blocked. A CRM that argues with
+   a salesperson about what a conversation established is a CRM they stop
+   updating, and then it knows nothing at all. */
+export class StageConflict extends CrmConflict {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StageConflict';
+  }
+}
+
+const NEEDS_A_UNIT: Stage[] = ['reserved', 'contract', 'won'];
+
 export async function updateLead(id: string, patch: LeadPatch, actor?: string): Promise<Lead | null> {
-  return mutate(id, (lead) => {
-    if (patch.stage && patch.stage !== lead.stage)
-      logActivity(lead, 'stage', `${stageLabel(lead.stage)} → ${stageLabel(patch.stage)}`, actor);
+  let refusal: string | null = null;
+  const result = await mutate(id, (lead) => {
+    refusal = null;
+    if (patch.stage && patch.stage !== lead.stage && NEEDS_A_UNIT.includes(patch.stage)) {
+      const villa = (('villa' in patch ? patch.villa : lead.villa) || '').trim();
+      if (!villa) {
+        refusal =
+          `${stageLabel(patch.stage)} needs a residence on the lead — ` +
+          'without one the masterplan cannot show who is holding the plot.';
+        return;
+      }
+    }
+    if (patch.stage && patch.stage !== lead.stage) {
+      /* Moving past Qualified on answers nobody has is allowed, and it is
+         written down. The gap is on the stage entry itself rather than in a
+         separate note, so anyone reading the timeline later sees the claim and
+         its evidence in the same line. */
+      const gaps = atOrBeyond(patch.stage, 'qualified') ? missingQualification({ ...lead, ...patch }) : [];
+      logActivity(
+        lead,
+        'stage',
+        `${stageLabel(lead.stage)} → ${stageLabel(patch.stage)}` +
+          (gaps.length ? ` — still unknown: ${gaps.join(', ').toLowerCase()}` : ''),
+        actor,
+      );
+    }
     if (patch.score && patch.score !== lead.score)
       logActivity(lead, 'score', `Score ${cap(lead.score)} → ${cap(patch.score)}`, actor);
     const contactKeys = ['name', 'email', 'phone', 'whatsapp', 'villa'] as const;
@@ -447,6 +492,8 @@ export async function updateLead(id: string, patch: LeadPatch, actor?: string): 
     // A revived deal is no longer lost — drop the stale reason.
     if (patch.stage && patch.stage !== 'lost') lead.lost_reason = undefined;
   });
+  if (refusal) throw new StageConflict(refusal);
+  return result;
 }
 
 /* Fold a duplicate into the primary lead: fill blank contact/attribution
@@ -601,16 +648,29 @@ export async function dedupeMerge(): Promise<{ groups: number; merged: number }>
 /* Bulk operations for the list view. One failing lead must not abort the rest
    of the batch — each item is attempted independently and the counts report
    what actually happened. */
-export async function bulkUpdate(ids: string[], patch: LeadPatch, actor?: string): Promise<{ done: number; failed: number }> {
+export async function bulkUpdate(
+  ids: string[],
+  patch: LeadPatch,
+  actor?: string,
+): Promise<{ done: number; failed: number; refused: string[] }> {
   let done = 0, failed = 0;
+  /* A refusal carries a reason, and the operator needs it: "3 leads could not
+     be moved" with no explanation is indistinguishable from a broken button.
+     Deduped, because forty leads refused for the same reason is one sentence. */
+  const refused = new Set<string>();
   for (const id of ids) {
     try {
       if (await updateLead(id, patch, actor)) done++;
-    } catch {
+      else failed++;
+    } catch (err) {
       failed++;
+      if (err instanceof CrmConflict) {
+        const lead = await getLead(id);
+        refused.add(`${lead?.name || 'A lead'}: ${err.message}`);
+      }
     }
   }
-  return { done, failed };
+  return { done, failed, refused: [...refused].slice(0, 8) };
 }
 
 
@@ -1912,8 +1972,12 @@ export async function stats(): Promise<Stats> {
   });
   const won = byStage.won || 0;
   const wonRate = won + lost ? Math.round((won / (won + lost)) * 100) : 0;
+  /* Everything still open that has been qualified. It used to be the two
+     stages `qualified` and `reserved` by name, which meant that adding the
+     stages in between would silently have dropped presentations, visits,
+     negotiations and contracts out of the pipeline figure. */
   const pipelineValue = leads
-    .filter((l) => l.stage === 'qualified' || l.stage === 'reserved')
+    .filter((l) => isOpenStage(l.stage) && atOrBeyond(l.stage, 'qualified'))
     .reduce((n, l) => n + (l.value || 0), 0);
   const wonValue = leads.filter((l) => l.stage === 'won').reduce((n, l) => n + (l.value || 0), 0);
 
@@ -2029,7 +2093,7 @@ export async function reports(): Promise<Reports> {
     const row = villaMap.get(villa) || { villa, total: 0, hot: 0, reserved: 0, won: 0 };
     row.total++;
     if (l.score === 'hot') row.hot++;
-    if (l.stage === 'reserved') row.reserved++;
+    if (atOrBeyond(l.stage, 'reserved')) row.reserved++;
     if (l.stage === 'won') row.won++;
     villaMap.set(villa, row);
   }

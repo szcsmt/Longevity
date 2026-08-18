@@ -196,7 +196,7 @@ const dubai = (await partners.createAgency({
 {
   const sold = await fresh();
   await register(sold.id, dubai);
-  await store.updateLead(sold.id, { value: 20_000_000 }, 'Anna');
+  await store.updateLead(sold.id, { villa: 'Residence L', value: 20_000_000 }, 'Anna');
   await store.updateLead(sold.id, { stage: 'won' }, 'Anna');
 
   const lostOne = await fresh();
@@ -230,7 +230,7 @@ describe('what each agency has produced', () => {
     const contested = await fresh();
     await register(contested.id, dubai);
     await register(contested.id, berlin, { override: true });
-    await store.updateLead(contested.id, { stage: 'won', value: 9_000_000 }, 'Anna');
+    await store.updateLead(contested.id, { villa: 'Residence M', stage: 'won', value: 9_000_000 }, 'Anna');
     const leads = await store.listLeads();
 
     assert.equal(partners.performanceFor(dubai, leads).wonValue, 29_000_000, 'they made the introduction');

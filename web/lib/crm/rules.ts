@@ -1,16 +1,28 @@
 import type { AgencyClaim, Lead, Stage, Task } from './types';
+import { OPEN_STAGES } from './types';
 
 /* Pure lead-management rules — importable from client components (no Node
    APIs). The structural contract: every active lead has a next step, and no
    lead sits in a stage past its threshold. */
 
+/* How long a deal may sit in a stage before it is asking to be looked at.
+   Reserved and Contract have no threshold on purpose: past a reservation the
+   payment schedule on the masterplan is the clock, and a second one competing
+   with it would only produce flags nobody acts on. */
 export const STAGE_MAX_DAYS: Partial<Record<Stage, number>> = {
-  new: 1,        // first response within a day
-  contacted: 3,  // matches the reply-wait rhythm
-  qualified: 7,  // a serious buyer gets weekly movement at minimum
+  new: 1,           // first response within a day
+  contacted: 3,     // matches the reply-wait rhythm
+  qualified: 7,     // a serious buyer gets weekly movement at minimum
+  presentation: 7,  // a presentation with no follow-up inside a week has gone cold
+  visit: 10,        // somebody who has stood on the plot is deciding, not forgetting
+  negotiation: 14,  // a fortnight of silence mid-negotiation is a deal in trouble
 };
 
-export const ACTIVE_STAGES: Stage[] = ['new', 'contacted', 'qualified'];
+/* Every stage where the CRM still expects somebody to be doing something —
+   which is every open one. It used to stop at Qualified, so a reservation with
+   nothing planned raised no flag at all: precisely the point where a deal is
+   most expensive to lose. */
+export const ACTIVE_STAGES: Stage[] = OPEN_STAGES;
 
 /** When the lead entered its current stage (last stage change, else creation). */
 export function stageEnteredAt(lead: Lead): string {
