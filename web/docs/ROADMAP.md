@@ -134,6 +134,20 @@ the work is filling gaps and closing blind spots.
 
 ---
 
+## The six journeys
+
+`web/tests/flows.test.ts` walks them end to end, and they are the acceptance test for the whole
+rebuild rather than for any one part of it:
+
+| | |
+|---|---|
+| 1 | A Facebook ad becomes a signed contract — intake, assignment, first contact, qualification, the middle of the funnel, a reservation, the SPA, the payment schedule, and the campaign report that says which ad did it |
+| 2 | An agency introduces a buyer and still gets the credit — through a second enquiry, a refused rival registration, a duplicate merge, and the commission ledger |
+| 3 | A customer comes back through another channel — recognised on the phone number alone, with the **first** source kept as the attribution |
+| 4 | A salesperson leaves — the lead moves, everything they wrote stays, and it stays attributed to them |
+| 5 | Two salespeople reach for the same villa — the second is refused, by name |
+| 6 | The head of sales opens the CRM — and every figure opens a list of exactly that many |
+
 ## Working rules for whoever picks this up
 
 1. **Read this file and the audit before changing anything.** They are the reason the last five
