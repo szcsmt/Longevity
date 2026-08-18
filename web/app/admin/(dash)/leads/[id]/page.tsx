@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { canEdit, isAdmin } from '@/lib/crm/auth';
+import { can, canEdit } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import { getLead, relatedLeads } from '@/lib/crm/store';
 import { listAgencies } from '@/lib/crm/partners';
@@ -21,7 +21,10 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     name: a.name,
     contacts: a.contacts.filter((c) => !c.inactive).map((c) => ({ id: c.id, name: c.name })),
   }));
-  const [editor, owner] = await Promise.all([canEdit(), isAdmin()]);
+  /* `admin` on the workspace means "may make the commercial decisions" —
+     withdrawing a registration, recording one over a live claim — rather than
+     the account literally being the owner. */
+  const [editor, owner, reassign] = await Promise.all([canEdit(), can('partners.write'), can('leads.reassign')]);
 
   return (
     <>
@@ -47,6 +50,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         today={new Date().toISOString().slice(0, 10)}
         rates={fxRates()}
         admin={owner}
+        canReassign={reassign}
         readOnly={!editor}
       />
     </>

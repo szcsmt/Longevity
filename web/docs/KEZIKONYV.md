@@ -734,18 +734,51 @@ A veszteség-okok a **strukturált mezőből** jönnek, nem a jegyzet szövegéb
 
 ## 12. Ki mit lát és mit tehet
 
-Három fiók-típus van. A tulajdonos (`admin`) mindent. Az **értékesítő** (`agent`) egész nap
-dolgozik a leadeken, de nem törölhet és nem lát pénzügyet. A **néző** (`viewer`) csak olvas.
+**Hat fiók-típus** van:
 
-| Mit | Tulajdonos | Értékesítő | Néző |
-|---|:--:|:--:|:--:|
-| Minden lead, pipeline, masterplan, analytics olvasása | ✓ | ✓ | ✓ |
-| Lead felvétele, jegyzet, teendő, fázis, hőfok, gazda | ✓ | ✓ | — |
-| Ajánlat készítése | ✓ | ✓ | — |
-| Lead törlése, összevonása | ✓ | — | — |
-| Masterplan pénzügyi adatai | ✓ | — | — |
-| Payments nézet | ✓ | — | — |
-| CSV export | ✓ | — | — |
+| Szerep | Mi ez |
+|---|---|
+| **Tulajdonos** (`admin`) | Minden, a visszafordíthatatlant is beleértve. |
+| **Sales vezető** (`head`) | Úgy dolgozik a leadeken, mint az értékesítő, **és**: átoszthat, összevonhat, archiválhat, exportálhat, és látja a pénzt. A jutalék-megállapodásokat nem. |
+| **Értékesítő** (`agent`) | Egész nap dolgozik a leadeken. Nem törölhet, nem veheti el más leadjét, nem nyúlhat a főkönyvhöz, nem exportálhat. |
+| **Pénzügy** (`finance`) | A főkönyv és semmi más: fizetések, foglalások, szerződések, ütemek. Leadeken nem dolgozik. |
+| **Marketing** (`marketing`) | Attribúció és kampányok — **szándékosan pénzügyi adatok nélkül**. |
+| **Néző** (`viewer`) | Mindent olvas, semmit nem változtat: vendég, befektető, könyvvizsgáló. |
+
+Minden lead, a pipeline, a masterplan és az analitika **olvasásához** semmilyen külön jog nem
+kell — aki be van jelentkezve, látja.
+
+| Jogosultság | admin | head | agent | finance | marketing | viewer |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| Jegyzet, teendő, fázis, qualification, kontakt-napló, ügynök-regisztráció | ✓ | ✓ | ✓ | — | — | — |
+| Lead átosztása másvalakitől | ✓ | ✓ | — | — | — | — |
+| Összevonás, duplikátum-takarítás | ✓ | ✓ | — | — | — | — |
+| Archiválás | ✓ | ✓ | — | — | — | — |
+| Végleges törlés | ✓ | — | — | — | — | — |
+| CSV export | ✓ | ✓ | — | — | — | — |
+| Pénzügyi adatok **olvasása** | ✓ | ✓ | — | ✓ | — | ✓ |
+| Masterplan főkönyv **írása** | ✓ | — | — | ✓ | — | — |
+| Ügynökségek, jutalék-feltételek, igény felülírása | ✓ | — | — | — | — | — |
+
+**Három megkülönböztetés, ami nem véletlen:**
+
+- **Az archiválás nem törlés.** Félretenni egy leadet visszafordítható, és arra tartozik, aki a
+  csapatot viszi. Az előzményét megsemmisíteni nem visszafordítható, és a tulajdonosnál marad.
+- **Felvenni egy leadet nem ugyanaz, mint elvenni.** Gazdátlan leadet az értékesítő is
+  magához vehet — az beugrás, és tiltani annyit tenne, hogy a lead ott marad senkinél. Amelyik
+  már **valakié**, azt csak a sales vezető mozgathatja: a gazda-választó ilyenkor **le van
+  tiltva**, nem mentéskor utasít el. Senki ne úgy tudja meg a szabályt, hogy visszadobják.
+- **A néző látja a pénzt, a marketing nem.** A nézőt befektetőnek és könyvvizsgálónak adjuk, és
+  eddig is olvasta a masterplan főkönyvét. A marketing az egyetlen szerep, ami elől a számok el
+  vannak rejtve: *hány vevőt hozott egy kampány*, az az ő dolguk; *mennyit érnek ezek a vevők*,
+  az nem.
+
+A bal alsó sarokban mindig ott a **szerep-címke** — a tulajdonosnál nincs, mert nála minden ott
+van, nincs mit megmagyarázni. Marketing fióknál a **Payments** menüpont meg sem jelenik: egy
+menüpont, ami mindig azt mondja, hogy „ez nem neked való", elromlott CRM-nek látszik.
+
+**A gomb elrejtése nem védelem** — mindegyik fenti sort maga az API is elutasítja, nem csak a
+képernyő hagyja le.
 
 **Minden változtatás mellett ott a neve annak, aki csinálta**, a lead idővonalán. Aminél
 nincs név, azt a rendszer csinálta magától.
@@ -754,8 +787,9 @@ Az értékesítő a saját leadjeit látja először: a Leads oldalon a **My lea
 szűkíthető, egy kattintással vissza mindenkire. Ez alapbeállítás, nem fal — egymás
 helyettesítése normális.
 
-Új fiókot a `CRM_USERS` környezeti változóban lehet felvenni, `név:jelszó:agent` alakban.
-Szólj, ha kell egy, és beállítom.
+Új fiókot a `CRM_USERS` környezeti változóban lehet felvenni, `név:jelszó:szerep` alakban.
+Ha a szerep hiányzik **vagy elgépelted**, a fiók tulajdonosi jogot kap — egy elgépelés soha
+ne zárjon ki valakit a saját CRM-jéből. Szólj, ha kell egy, és beállítom.
 
 ---
 

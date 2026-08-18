@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { isAdmin, isAuthed } from '@/lib/crm/auth';
+import { can, isAuthed } from '@/lib/crm/auth';
 import { listLeads } from '@/lib/crm/store';
 import { agencyPerformance, houseProtectionDays, listAgencies, performanceFor } from '@/lib/crm/partners';
 import { fmtTHB } from '@/lib/crm/villas';
@@ -24,7 +24,7 @@ export default async function AgenciesPage({
   if (!(await isAuthed())) return null;
   const sp = await searchParams;
   const showArchived = str(sp.archived) === 'only';
-  const admin = await isAdmin();
+  const [admin, money] = await Promise.all([can('partners.write'), can('money.read')]);
 
   const leads = await listLeads({ archived: 'include' });
   const rows = showArchived
@@ -44,7 +44,7 @@ export default async function AgenciesPage({
           <p className="crm-sub">
             {rows.length} {rows.length === 1 ? 'agency' : 'agencies'}
             {!showArchived && rows.length > 0 && (
-              <> · {totals.registered} buyers introduced · {totals.won} sold · {fmtTHB(totals.wonValue)}</>
+              <> · {totals.registered} buyers introduced · {totals.won} sold{money ? ` · ${fmtTHB(totals.wonValue)}` : ''}</>
             )}
             {' · '}a registration protects a claim for {houseProtectionDays()} days unless the agreement says otherwise.
           </p>
@@ -77,9 +77,11 @@ export default async function AgenciesPage({
                 <th style={{ textAlign: 'right' }}>Live</th>
                 <th style={{ textAlign: 'right' }}>Sold</th>
                 <th style={{ textAlign: 'right' }}>Conversion</th>
-                <th style={{ textAlign: 'right' }}>Sales value</th>
-                <th style={{ textAlign: 'right' }}>Commission</th>
-                <th style={{ textAlign: 'right' }}>Owed</th>
+                {/* What a partner produced in buyers is marketing's business;
+                    what those buyers are worth is not. */}
+                {money && <th style={{ textAlign: 'right' }}>Sales value</th>}
+                {money && <th style={{ textAlign: 'right' }}>Commission</th>}
+                {money && <th style={{ textAlign: 'right' }}>Owed</th>}
                 <th></th>
               </tr>
             </thead>
@@ -100,16 +102,18 @@ export default async function AgenciesPage({
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.live}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.registered ? `${r.conversion}%` : '—'}</td>
-                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHB(r.wonValue) : '—'}</td>
+                  {money && <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHB(r.wonValue) : '—'}</td>}
                   {/* Blank, not zero, when nothing is agreed: a zero reads as
                       "they earn nothing", which is a different statement. */}
-                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.commission !== undefined ? fmtTHB(r.commission) : '—'}</td>
+                  {money && <td className="tabnum" style={{ textAlign: 'right' }}>{r.commission !== undefined ? fmtTHB(r.commission) : '—'}</td>}
                   {/* Generated minus paid. A dash when there is no agreement to
                       compute the first half from — an unknown minus a known is
                       not zero. */}
-                  <td className="tabnum" style={{ textAlign: 'right', color: (r.commissionOutstanding || 0) > 0 ? 'var(--c-gold-bright)' : undefined }}>
-                    {r.commissionOutstanding === undefined ? '—' : fmtTHB(r.commissionOutstanding)}
-                  </td>
+                  {money && (
+                    <td className="tabnum" style={{ textAlign: 'right', color: (r.commissionOutstanding || 0) > 0 ? 'var(--c-gold-bright)' : undefined }}>
+                      {r.commissionOutstanding === undefined ? '—' : fmtTHB(r.commissionOutstanding)}
+                    </td>
+                  )}
                   <td style={{ textAlign: 'right' }}>
                     <Link href={`/admin/agencies/${r.agency.id}`} className="crm-btn ghost sm">Open</Link>
                   </td>

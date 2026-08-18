@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { isAdmin } from '@/lib/crm/auth';
+import { can } from '@/lib/crm/auth';
 import { getVillaData, integrityIssues, reservationWatch, type HeldUnit } from '@/lib/crm/store';
 import { financeReport, type DueState, type Instalment } from '@/lib/crm/finance';
 import { houseSchedule, houseScheduleProblem, scheduleSummary } from '@/lib/crm/schedule';
@@ -98,13 +98,13 @@ function Group({ state, items }: { state: DueState; items: Instalment[] }) {
 }
 
 export default async function FinancePage() {
-  /* The sales ledger is the owner's business. Agents work leads; they do not
-     need to see what every buyer still owes. */
-  if (!(await isAdmin())) {
+  /* The sales ledger. Agents work leads and do not need to see what every
+     buyer still owes; marketing has no business here at all. */
+  if (!(await can('money.read'))) {
     return (
       <div className="crm-card">
         <h3>Payments</h3>
-        <div className="empty">This view is limited to the account owner.</div>
+        <div className="empty">This view is limited to the owner, the head of sales and finance.</div>
       </div>
     );
   }

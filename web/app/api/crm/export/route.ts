@@ -1,4 +1,4 @@
-import { isAdmin, isAuthed } from '@/lib/crm/auth';
+import { can, isAuthed } from '@/lib/crm/auth';
 import { isQueueKey, listLeads } from '@/lib/crm/store';
 import { creditedClaim } from '@/lib/crm/rules';
 import { leadSource, sourceLabel } from '@/lib/crm/sources';
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
   /* Every contact detail we hold, in one file, on someone's laptop. Hiding the
      button is not a control; refusing the request is. */
-  if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
+  if (!(await can('leads.export'))) return Response.json({ ok: false, error: 'not permitted' }, { status: 403 });
   const url = new URL(req.url);
   const p = (k: string) => url.searchParams.get(k) || undefined;
   /* Every filter the Leads page can apply, so the file really is the view

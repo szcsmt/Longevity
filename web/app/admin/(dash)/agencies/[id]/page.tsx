@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { isAdmin, isAuthed } from '@/lib/crm/auth';
+import { can, isAuthed } from '@/lib/crm/auth';
 import { listLeads } from '@/lib/crm/store';
 import { creditedClaim } from '@/lib/crm/rules';
 import { getAgency, houseProtectionDays, performanceFor, protectionDays } from '@/lib/crm/partners';
@@ -19,7 +19,7 @@ export default async function AgencyPage({ params }: { params: Promise<{ id: str
   const agency = await getAgency(id);
   if (!agency) notFound();
 
-  const admin = await isAdmin();
+  const [admin, money] = await Promise.all([can('partners.write'), can('money.read')]);
   const leads = await listLeads();
   const perf = performanceFor(agency, leads);
   /* The buyers this agency is CREDITED with — first registration, never
@@ -58,8 +58,8 @@ export default async function AgencyPage({ params }: { params: Promise<{ id: str
         {stat('Introduced', String(perf.registered))}
         {stat('Still live', String(perf.live))}
         {stat('Sold', String(perf.won))}
-        {stat('Sales value', perf.wonValue ? fmtTHB(perf.wonValue) : '—')}
-        {admin && stat('Commission owed', perf.commissionOutstanding === undefined ? '—' : fmtTHB(perf.commissionOutstanding))}
+        {money && stat('Sales value', perf.wonValue ? fmtTHB(perf.wonValue) : '—')}
+        {money && stat('Commission owed', perf.commissionOutstanding === undefined ? '—' : fmtTHB(perf.commissionOutstanding))}
       </div>
 
       {admin ? (
@@ -93,7 +93,7 @@ export default async function AgencyPage({ params }: { params: Promise<{ id: str
                 <th>Registered</th>
                 <th>Their agent</th>
                 <th>Stage</th>
-                <th style={{ textAlign: 'right' }}>Value</th>
+                {money && <th style={{ textAlign: 'right' }}>Value</th>}
                 <th></th>
               </tr>
             </thead>
@@ -111,7 +111,7 @@ export default async function AgencyPage({ params }: { params: Promise<{ id: str
                     <td className="crm-meta tabnum">{fmtDay(c.at)}</td>
                     <td className="crm-meta">{c.brokerName || '—'}</td>
                     <td><span className="badge stage">{STAGES.find((s) => s.id === l.stage)?.label}</span></td>
-                    <td className="tabnum" style={{ textAlign: 'right' }}>{l.value ? fmtTHB(l.value) : '—'}</td>
+                    {money && <td className="tabnum" style={{ textAlign: 'right' }}>{l.value ? fmtTHB(l.value) : '—'}</td>}
                     <td style={{ textAlign: 'right' }}>
                       <Link href={`/admin/leads/${l.id}`} className="crm-btn ghost sm">Open</Link>
                     </td>

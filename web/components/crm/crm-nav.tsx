@@ -68,7 +68,16 @@ const items = [
 
 /* Red badge counts: leads = untouched new + awaiting-reply, followups =
    overdue tasks. Zero renders nothing — a clean nav means nothing is burning. */
-export function CrmNav({ alerts }: { alerts?: { today?: number; leads?: number; followups?: number } }) {
+/* `hidden` carries the hrefs this account has no business on — the Payments
+   ledger for marketing, chiefly. Hiding rather than refusing on arrival: a
+   menu item that always says "not for you" is a menu item that reads as a
+   broken CRM. */
+export function CrmNav({
+  alerts, hidden = [],
+}: {
+  alerts?: { today?: number; leads?: number; followups?: number };
+  hidden?: string[];
+}) {
   const path = usePathname() || '';
   const badgeFor = (href: string) =>
     href === '/admin/today' ? alerts?.today
@@ -81,7 +90,7 @@ export function CrmNav({ alerts }: { alerts?: { today?: number; leads?: number; 
       <form action="/admin/leads" method="get" className="nav-search">
         <input className="crm-input" name="q" placeholder="Search leads…" aria-label="Search leads" />
       </form>
-      {items.map((it) => {
+      {items.filter((it) => !hidden.includes(it.href)).map((it) => {
         const active = it.href === '/admin' ? path === '/admin' : path.startsWith(it.href);
         const badge = badgeFor(it.href);
         return (

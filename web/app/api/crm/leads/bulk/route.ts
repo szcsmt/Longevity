@@ -1,4 +1,4 @@
-import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
+import { can, canEdit, currentUser, isAuthed } from '@/lib/crm/auth';
 import { bulkArchive, bulkUpdate } from '@/lib/crm/store';
 import { SCORES, STAGES } from '@/lib/crm/types';
 import type { Score, Stage } from '@/lib/crm/types';
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
          There is deliberately no bulk PERMANENT delete. Destroying a customer's
          history is a one-at-a-time decision, and the only route to it is
          DELETE /api/crm/leads/[id]?purge=1 on a lead already archived. */
-      if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
+      if (!(await can('leads.archive'))) return Response.json({ ok: false, error: 'not permitted' }, { status: 403 });
       result = await bulkArchive(ids, undefined, actor);
       break;
     default:

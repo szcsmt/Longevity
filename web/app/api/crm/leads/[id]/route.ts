@@ -1,4 +1,4 @@
-import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
+import { can, canEdit, currentUser, isAuthed } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import { COUNTRIES } from '@/lib/crm/language';
 import { findContact, getAgency, protectionDays } from '@/lib/crm/partners';
@@ -63,7 +63,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   switch (body.op) {
     case 'update':
       try {
-        lead = await updateLead(id, sanitizePatch(body.patch), actor);
+        const patch = sanitizePatch(body.patch);
+        /* ── Taking a lead off a colleague ──
+
+           An agent may pick up a lead nobody owns — that is somebody stepping
+           in, and refusing it would leave the lead sitting there. Moving one
+           that already belongs to another salesperson is a different act, and
+           it is the head of sales' to make. */
+        if ('owner' in patch) {
+          const current = await getLead(id);
+          const taken = Boolean(current?.owner && current.owner !== patch.owner);
+          if (taken && !(await can('leads.reassign'))) {
+            return Response.json(
+              { ok: false, error: `This lead belongs to ${current!.owner}. Only the head of sales can move it.` },
+              { status: 403 },
+            );
+          }
+        }
+        lead = await updateLead(id, patch, actor);
       } catch (err) {
         /* A stage that asserts a unit, on a lead that names none. 409 with the
            sentence rather than a blank failure: the operator can act on it. */
@@ -141,7 +158,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         return Response.json({ ok: false, error: 'Pick an agency we work with.' }, { status: 400 });
       }
       const override = body.override === true;
-      if (override && !(await isAdmin())) {
+      if (override && !(await can('partners.write'))) {
         return Response.json(
           { ok: false, error: 'Recording over another agency’s claim is the owner’s decision.' },
           { status: 403 },
@@ -174,7 +191,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     case 'releaseClaim': {
       // Withdrawing a registration decides who does not get paid.
-      if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
+      if (!(await can('partners.write'))) return Response.json({ ok: false, error: 'the owner\u2019s decision' }, { status: 403 });
       lead = await releaseClaim(id, String(body.claimId || ''), String(body.reason || ''), actor);
       if (!lead) {
         return Response.json(
@@ -185,8 +202,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       break;
     }
     case 'merge':
-      // Merging destroys one of the two records — an owner's decision.
-      if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
+      // Merging folds one record into another and archives the husk.
+      if (!(await can('leads.merge'))) return Response.json({ ok: false, error: 'not permitted' }, { status: 403 });
       lead = await mergeLeads(id, String(body.otherId || ''), actor);
       break;
     case 'awaiting':
@@ -196,7 +213,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       /* Restoring is the reversal of an owner-level decision, so it stays with
          the owner. Everything about the lead is intact; this only puts it back
          into the working views. */
-      if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
+      if (!(await can('leads.archive'))) return Response.json({ ok: false, error: 'not permitted' }, { status: 403 });
       lead = await unarchiveLead(id, actor);
       break;
     default:
@@ -218,9 +235,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
    everything else about a lead. */
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
-  if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
   const { id } = await params;
   const q = new URL(req.url).searchParams;
+  /* Two different decisions behind one verb. Setting a lead aside is
+     reversible and belongs to whoever runs the team; destroying its history is
+     not, and stays with the owner of the business. */
+  const needed = q.get('purge') === '1' ? 'leads.purge' : 'leads.archive';
+  if (!(await can(needed))) return Response.json({ ok: false, error: 'not permitted' }, { status: 403 });
 
   // ?block=1: also blocklist the contact so their next WhatsApp message never
   // recreates the lead (for private/non-lead contacts).

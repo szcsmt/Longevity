@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { isAuthed } from '@/lib/crm/auth';
+import { can, isAuthed } from '@/lib/crm/auth';
 import { listLeads } from '@/lib/crm/store';
 import { performance } from '@/lib/crm/performance';
 import { agencyPerformance } from '@/lib/crm/partners';
@@ -33,6 +33,10 @@ const hours = (n: number | null) =>
 
 export default async function PerformancePage() {
   if (!(await isAuthed())) return null;
+  /* Marketing reads this screen for the funnel and the attribution and must
+     not read it for the money. Hiding the columns rather than the page: what a
+     campaign produced in buyers is exactly their business. */
+  const money = await can('money.read');
   const leads = await listLeads();
   const p = performance(leads);
   const agencies = await agencyPerformance(leads);
@@ -66,8 +70,8 @@ export default async function PerformancePage() {
       <div className="crm-card" style={{ marginBottom: 16 }}>
         <h3>The shape of the business</h3>
         <div className="fin-grid">
-          <Tile k="Sold" v={fmtTHBshort(p.wonValue)} s={`${p.won} ${p.won === 1 ? 'deal' : 'deals'}`} />
-          <Tile k="In the pipeline" v={fmtTHBshort(p.pipelineValue)} s="qualified and still open" />
+          <Tile k="Sold" v={money ? fmtTHBshort(p.wonValue) : String(p.won)} s={`${p.won} ${p.won === 1 ? 'deal' : 'deals'}`} />
+          {money && <Tile k="In the pipeline" v={fmtTHBshort(p.pipelineValue)} s="qualified and still open" />}
           <Tile k="Sales cycle" v={days(p.cycleDays)} s="median, arriving to sold" />
           <Tile k="Time to first contact" v={hours(p.firstContactHours)} s="median, arriving to a real conversation" />
         </div>
@@ -124,9 +128,9 @@ export default async function PerformancePage() {
               <th>Who</th>
               <th style={{ textAlign: 'right' }}>Leads</th>
               <th style={{ textAlign: 'right' }}>Open</th>
-              <th style={{ textAlign: 'right' }}>Pipeline</th>
+              {money && <th style={{ textAlign: 'right' }}>Pipeline</th>}
               <th style={{ textAlign: 'right' }}>Sold</th>
-              <th style={{ textAlign: 'right' }}>Sales value</th>
+              {money && <th style={{ textAlign: 'right' }}>Sales value</th>}
               <th style={{ textAlign: 'right' }}>Needs attention</th>
             </tr>
           </thead>
@@ -136,9 +140,9 @@ export default async function PerformancePage() {
                 <td className="crm-name">{r.name}</td>
                 <td className="tabnum" style={{ textAlign: 'right' }}>{r.leads}</td>
                 <td className="tabnum" style={{ textAlign: 'right' }}>{r.live}</td>
-                <td className="tabnum" style={{ textAlign: 'right' }}>{r.pipelineValue ? fmtTHBshort(r.pipelineValue) : '—'}</td>
+                {money && <td className="tabnum" style={{ textAlign: 'right' }}>{r.pipelineValue ? fmtTHBshort(r.pipelineValue) : '—'}</td>}
                 <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
-                <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>
+                {money && <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>}
                 <td className="tabnum" style={{ textAlign: 'right', color: r.needsAttention ? 'var(--c-hot)' : undefined }}>
                   {r.needsAttention || '—'}
                 </td>
@@ -159,7 +163,7 @@ export default async function PerformancePage() {
                 <th style={{ textAlign: 'right' }}>Leads</th>
                 <th style={{ textAlign: 'right' }}>Qualified</th>
                 <th style={{ textAlign: 'right' }}>Sold</th>
-                <th style={{ textAlign: 'right' }}>Value</th>
+                {money && <th style={{ textAlign: 'right' }}>Value</th>}
               </tr>
             </thead>
             <tbody>
@@ -175,7 +179,7 @@ export default async function PerformancePage() {
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.leads}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.qualified}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
-                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>
+                  {money && <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>}
                 </tr>
               ))}
             </tbody>
@@ -208,7 +212,7 @@ export default async function PerformancePage() {
                 <th style={{ textAlign: 'right' }}>Leads</th>
                 <th style={{ textAlign: 'right' }}>Qualified</th>
                 <th style={{ textAlign: 'right' }}>Sold</th>
-                <th style={{ textAlign: 'right' }}>Value</th>
+                {money && <th style={{ textAlign: 'right' }}>Value</th>}
               </tr>
             </thead>
             <tbody>
@@ -218,7 +222,7 @@ export default async function PerformancePage() {
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.leads}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.qualified}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
-                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>
+                  {money && <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>}
                 </tr>
               ))}
             </tbody>
@@ -248,7 +252,7 @@ export default async function PerformancePage() {
                 <th style={{ textAlign: 'right' }}>Qualified</th>
                 <th style={{ textAlign: 'right' }}>Reserved</th>
                 <th style={{ textAlign: 'right' }}>Sold</th>
-                <th style={{ textAlign: 'right' }}>Value</th>
+                {money && <th style={{ textAlign: 'right' }}>Value</th>}
               </tr>
             </thead>
             <tbody>
@@ -262,7 +266,7 @@ export default async function PerformancePage() {
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.qualified}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.reserved}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
-                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>
+                  {money && <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>}
                 </tr>
               ))}
             </tbody>
@@ -284,7 +288,7 @@ export default async function PerformancePage() {
                 <th style={{ textAlign: 'right' }}>Leads</th>
                 <th style={{ textAlign: 'right' }}>Qualified</th>
                 <th style={{ textAlign: 'right' }}>Sold</th>
-                <th style={{ textAlign: 'right' }}>Value</th>
+                {money && <th style={{ textAlign: 'right' }}>Value</th>}
               </tr>
             </thead>
             <tbody>
@@ -297,7 +301,7 @@ export default async function PerformancePage() {
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.leads}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.qualified}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
-                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>
+                  {money && <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>}
                 </tr>
               ))}
             </tbody>
@@ -317,7 +321,7 @@ export default async function PerformancePage() {
                 <th style={{ textAlign: 'right' }}>Open</th>
                 <th style={{ textAlign: 'right' }}>Sold</th>
                 <th style={{ textAlign: 'right' }}>Conversion</th>
-                <th style={{ textAlign: 'right' }}>Sales value</th>
+                {money && <th style={{ textAlign: 'right' }}>Sales value</th>}
               </tr>
             </thead>
             <tbody>
@@ -332,7 +336,7 @@ export default async function PerformancePage() {
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.live}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.conversion}%</td>
-                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>
+                  {money && <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>}
                 </tr>
               ))}
             </tbody>

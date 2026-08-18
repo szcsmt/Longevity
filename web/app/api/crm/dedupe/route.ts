@@ -1,4 +1,4 @@
-import { isAdmin, isAuthed } from '@/lib/crm/auth';
+import { can, isAuthed } from '@/lib/crm/auth';
 import { dedupeMerge, dedupeReport } from '@/lib/crm/store';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,7 @@ export async function GET() {
 
 export async function POST() {
   if (!(await isAuthed())) return Response.json({ ok: false }, { status: 401 });
-  if (!(await isAdmin())) return Response.json({ ok: false, error: 'read-only account' }, { status: 403 });
+  if (!(await can('leads.merge'))) return Response.json({ ok: false, error: 'not permitted' }, { status: 403 });
   const result = await dedupeMerge();
   return Response.json({ ok: true, ...result });
 }

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { canEdit, currentUser, isAdmin } from '@/lib/crm/auth';
+import { can, canEdit, currentUser } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import { listLeads } from '@/lib/crm/store';
 import { SECTION_META, isQueueKey } from '@/lib/crm/rules';
@@ -60,7 +60,9 @@ export default async function LeadsPage({
   // otherwise pass the check and hand Array.sort a non-function comparator.
   const sort = Object.hasOwn(SORTS, str(sp.sort)) ? str(sp.sort) : 'received';
   const leads = (await listLeads(filter as never)).sort(SORTS[sort]);
-  const [admin, editor, me] = await Promise.all([isAdmin(), canEdit(), currentUser()]);
+  const [archiver, exporter, merger, editor, me] = await Promise.all([
+    can('leads.archive'), can('leads.export'), can('leads.merge'), canEdit(), currentUser(),
+  ]);
   /* Read off the unfiltered table rather than the filtered view, or choosing a
      source would empty the list of every other source to switch back to. */
   const everything = await listLeads({ archived: filter.archived });
@@ -107,17 +109,18 @@ export default async function LeadsPage({
         </div>
         <div className="act-row">
           {editor && <Link className="crm-btn gold" href="/admin/leads/new">+ Add lead</Link>}
-          {admin && <DedupeButton />}
+          {merger && <DedupeButton />}
           {/* The export walks out of the building with every contact on it,
-              so it stays with the owner. */}
-          {admin && <a className="crm-btn" href={`/api/crm/export${qs({ sort: '' })}`}>Export CSV</a>}
+              so it needs its own permission rather than riding along with
+              being able to read the list. */}
+          {exporter && <a className="crm-btn" href={`/api/crm/export${qs({ sort: '' })}`}>Export CSV</a>}
           {mine && (
             <Link className="crm-btn" href={filter.owner === mine ? '/admin/leads' : `/admin/leads${qs({ owner: mine })}`}>
               {filter.owner === mine ? 'Everyone' : 'My leads'}
             </Link>
           )}
           <Link className="crm-btn" href="/admin/pipeline">Pipeline view →</Link>
-          {admin && (
+          {archiver && (
             <Link className="crm-btn ghost" href={showArchived ? '/admin/leads' : '/admin/leads?archived=only'}>
               {showArchived ? '← Back to leads' : 'Archive'}
             </Link>
@@ -210,7 +213,7 @@ export default async function LeadsPage({
         <Link className="crm-btn ghost" href="/admin/leads">Reset</Link>
       </form>
 
-      <LeadsTable leads={leads} sortHrefs={sortHrefs} sort={sort} readOnly={!editor} canDelete={admin} />
+      <LeadsTable leads={leads} sortHrefs={sortHrefs} sort={sort} readOnly={!editor} canDelete={archiver} />
     </>
   );
 }

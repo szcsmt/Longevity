@@ -1,4 +1,4 @@
-import { currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
+import { can, currentUser, isAuthed } from '@/lib/crm/auth';
 import {
   addContact, addPayment, archiveAgency, getAgency, setContactActive, unarchiveAgency, updateAgency,
 } from '@/lib/crm/partners';
@@ -17,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   /* Everything here edits the commercial relationship — terms, contacts, or
      whether we deal with them at all. That stays with the owner of the
      business, the same as the sales ledger and the export. */
-  if (!(await isAdmin())) return Response.json({ ok: false, error: 'admins only' }, { status: 403 });
+  if (!(await can('partners.write'))) return Response.json({ ok: false, error: 'not permitted' }, { status: 403 });
   const { id } = await params;
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
 

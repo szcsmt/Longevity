@@ -588,25 +588,67 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 | `CRM_DATA_DIR` | Directory of the local dev JSON store (default `~/.longevity-crm`, file `db.json`). |
 | `NODE_ENV` | `production` toggles the `Secure` cookie flag and disables the dev login fallback. |
 
-## Roles
+## Roles and capabilities
 
-| Can | admin | agent | viewer |
-|---|:--:|:--:|:--:|
-| Read every lead, pipeline, masterplan, analytics | ✓ | ✓ | ✓ |
-| Add leads, notes, tasks; change stage, score, owner | ✓ | ✓ | — |
-| Generate an offer | ✓ | ✓ | — |
-| Delete a lead (single or bulk), merge, dedupe | ✓ | — | — |
-| Edit the masterplan sales ledger | ✓ | — | — |
-| See the Payments view | ✓ | — | — |
-| Export the CSV | ✓ | — | — |
-| Run backup / cron by hand | ✓ | — | — |
+Six roles, set in `CRM_USERS` as `name:password:role`. An entry with no role — or with a role
+name the CRM does not recognise — is an **admin**, which keeps every account working exactly as
+it did before roles existed and means a typo never silently locks somebody out of their own CRM.
+
+| Role | What it is |
+|---|---|
+| `admin` | The owner of the business. Everything. |
+| `head` | Head of sales. Works leads like an agent, and additionally reassigns, merges, archives, exports and sees the money. Not the commission agreements. |
+| `agent` | A salesperson. Works leads all day; cannot delete one, take one off a colleague, touch the ledger or export the list. |
+| `finance` | The ledger and nothing else — payments, reservations, contracts, schedules. Does not work leads. |
+| `marketing` | Attribution and campaigns, deliberately **without** the money. |
+| `viewer` | Reads everything, changes nothing — guests, investors, auditors. |
+
+Routes ask for a **capability**, not a role. Adding a role is editing one table rather than
+auditing every route, and a route reads as the decision it is guarding.
+
+| Capability | admin | head | agent | finance | marketing | viewer |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| `leads.write` — notes, tasks, stages, qualification, logged contact, registrations | ✓ | ✓ | ✓ | — | — | — |
+| `leads.reassign` — move a lead that already belongs to somebody else | ✓ | ✓ | — | — | — | — |
+| `leads.merge` — fold two records together, and the duplicate sweep | ✓ | ✓ | — | — | — | — |
+| `leads.archive` — out of every view, reversibly | ✓ | ✓ | — | — | — | — |
+| `leads.purge` — the real erasure | ✓ | — | — | — | — | — |
+| `leads.export` — every contact we hold, in one file | ✓ | ✓ | — | — | — | — |
+| `money.read` — contract values, payments, commission | ✓ | ✓ | — | ✓ | — | ✓ |
+| `money.write` — the masterplan ledger | ✓ | — | — | ✓ | — | — |
+| `partners.write` — agency records, commission terms, overriding a claim | ✓ | — | — | — | — | — |
+
+Reading every lead, the pipeline, the masterplan and the analytics needs no capability at all —
+any signed-in session may.
+
+Three distinctions worth spelling out:
+
+- **Archiving is not purging.** Setting a lead aside is reversible and belongs to whoever runs
+  the team; destroying its history does not and stays with the owner. `DELETE` asks for whichever
+  one the request is actually making.
+- **Picking up a lead is not taking one.** An agent may claim a lead nobody owns — that is
+  somebody stepping in, and refusing it would leave the lead sitting there. Moving one that
+  already belongs to another salesperson needs `leads.reassign`, and the owner control on the
+  lead page is **disabled** rather than refused on save, so nobody discovers the rule by having
+  a change rejected.
+- **A viewer sees the money; marketing does not.** Viewers are investors and auditors, and they
+  already read the masterplan ledger. Marketing is the one role the figures are hidden from —
+  what a campaign produced in buyers is their business, what those buyers are worth is not.
+
+`roleCan()` fails **closed** on a role it does not recognise rather than throwing: an exception
+in a permission function becomes a 500 on a route that should simply have said no.
+
+Legal appears in the specification and not here, because there is nothing yet for it to do that
+`viewer` does not already cover. A role with no powers of its own is a label pretending to be a
+permission.
 
 Every change made by a signed-in person is stamped with their name (`by` on notes, tasks and
 history entries) and shown on the timeline. Entries with nobody named were the CRM's own
 doing — the sequence, an inbound reply, a tracked click.
 
-Hiding a button is not a control: each of the admin-only rows above is refused by the API
-itself, not merely absent from the screen.
+Hiding a button is not a control: every capability above is refused by the API itself, not
+merely absent from the screen. The screen hides what it can so nobody meets a refusal they
+could not have predicted — the Payments page is out of marketing's menu entirely.
 
 ## Persistence note
 

@@ -1,5 +1,5 @@
 import villaData from '@/lib/villas.json';
-import { isAdmin } from '@/lib/crm/auth';
+import { can } from '@/lib/crm/auth';
 import { getVillaData, listLeads } from '@/lib/crm/store';
 import { Masterplan, type LeadOption } from '@/components/crm/masterplan';
 
@@ -17,7 +17,7 @@ export default async function MasterplanPage() {
      option, shows an empty box, and reads as though the buyer had been
      unlinked — a silent inconsistency on the one screen where the money is. */
   const [{ villas: records, history }, leads, admin] = await Promise.all([
-    getVillaData(), listLeads({ archived: 'include' }), isAdmin(),
+    getVillaData(), listLeads({ archived: 'include' }), can('money.write'),
   ]);
   const villas = villaData.villas as Villa[];
 

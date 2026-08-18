@@ -47,7 +47,8 @@ const CONTACT_FIELDS = [
 ] as const;
 
 export function LeadWorkspace({
-  lead: initial, related = [], roster = [], agencies = [], today, rates = {}, admin = false, readOnly = false,
+  lead: initial, related = [], roster = [], agencies = [], today, rates = {},
+  admin = false, canReassign = false, readOnly = false,
 }: {
   lead: Lead;
   related?: Lead[];
@@ -65,6 +66,11 @@ export function LeadWorkspace({
   /** Withdrawing a registration and recording over another agency's live claim
       both decide who gets paid. Hidden rather than shown-and-refused. */
   admin?: boolean;
+  /** May move a lead that already belongs to somebody else. An agent may pick
+      up an unassigned one; only the head of sales may take one off a
+      colleague. Disabled rather than refused on save, so nobody discovers the
+      rule by having their change rejected. */
+  canReassign?: boolean;
   readOnly?: boolean;
 }) {
   const router = useRouter();
@@ -93,6 +99,7 @@ export function LeadWorkspace({
      phone number" option with the answer that will actually be used. */
   const derivedCountry = guessLanguage(lead).country;
   const parked = isNurtured(lead, today);
+  const lockedOwner = Boolean(lead.owner) && !canReassign && !readOnly;
   const fit = fitScore(lead, rates);
   const engagement = engagementScore(lead);
   const verdict = scoreVerdict(fit, engagement);
@@ -830,11 +837,17 @@ export function LeadWorkspace({
           {(roster.length > 0 || lead.owner) && (
             <>
               <label className="crm-label" style={{ marginTop: 16 }}>Owner</label>
+              {lockedOwner && (
+                <div className="crm-meta" style={{ marginTop: 6 }}>
+                  This lead belongs to {lead.owner}. Picking up an unassigned lead is stepping in;
+                  taking one off a colleague is the head of sales&rsquo; call.
+                </div>
+              )}
               {roster.length > 1 || (lead.owner && !roster.includes(lead.owner)) ? (
                 <select
                   className="crm-select"
                   value={lead.owner || ''}
-                  disabled={busy}
+                  disabled={busy || lockedOwner}
                   onChange={(e) => patch({ op: 'update', patch: { owner: e.target.value } })}
                 >
                   <option value="">Unassigned</option>
