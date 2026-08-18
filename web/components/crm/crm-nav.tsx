@@ -10,6 +10,11 @@ const items = [
     icon: <path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z" />,
   },
   {
+    href: '/admin/today',
+    label: 'Today',
+    icon: <path d="M12 7v5l3 2m-3 7a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z" />,
+  },
+  {
     href: '/admin/leads',
     label: 'Leads',
     icon: <path d="M16 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm0 2c-2.7 0-8 1.3-8 4v3h9m7-7c-2.7 0-8 1.3-8 4v3h16v-3c0-2.7-5.3-4-8-4Z" />,
@@ -53,10 +58,13 @@ const items = [
 
 /* Red badge counts: leads = untouched new + awaiting-reply, followups =
    overdue tasks. Zero renders nothing — a clean nav means nothing is burning. */
-export function CrmNav({ alerts }: { alerts?: { leads?: number; followups?: number } }) {
+export function CrmNav({ alerts }: { alerts?: { today?: number; leads?: number; followups?: number } }) {
   const path = usePathname() || '';
   const badgeFor = (href: string) =>
-    href === '/admin/leads' ? alerts?.leads : href === '/admin/tasks' ? alerts?.followups : undefined;
+    href === '/admin/today' ? alerts?.today
+    : href === '/admin/leads' ? alerts?.leads
+    : href === '/admin/tasks' ? alerts?.followups
+    : undefined;
   return (
     <nav className="crm-nav">
       {/* Quick search — lands on the Leads list filtered to the query */}

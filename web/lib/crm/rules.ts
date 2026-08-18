@@ -1,4 +1,4 @@
-import type { Lead, Stage } from './types';
+import type { Lead, Stage, Task } from './types';
 
 /* Pure lead-management rules — importable from client components (no Node
    APIs). The structural contract: every active lead has a next step, and no
@@ -64,4 +64,113 @@ export function hasNoNextStep(lead: Lead): boolean {
   if (!ACTIVE_STAGES.includes(lead.stage)) return false;
   if (lead.awaiting_reply_since) return false;
   return !lead.tasks.some((t) => !t.done);
+}
+
+/* ── The reply timer ──
+
+   Lives here rather than in the store because it is a rule, not a persistence
+   detail, and both the masterplan (a client component) and the digest need it.
+   Three quiet days after an e-mail went out, the lead — and its plot — start
+   asking to be chased. */
+export const REPLY_FLAG_DAYS = 3;
+
+/* ══════════════════ The next step ══════════════════
+
+   A lead's next step is its earliest-due open task. Not a separate field: a
+   second place to write the same sentence is a second place for it to go
+   stale, and the tasks list is already where a salesperson types it. What was
+   missing is the reading — the CRM could count open tasks but could not say
+   "this one is late", which is the only thing anybody actually wants to know.
+
+   Undated tasks sort last. A task with no date is a note-to-self, and it must
+   never push a dated commitment down the list. */
+
+export function nextAction(lead: Lead): Task | undefined {
+  const open = lead.tasks.filter((t) => !t.done);
+  if (!open.length) return undefined;
+  return open.sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'))[0];
+}
+
+export type NextActionState = 'overdue' | 'today' | 'upcoming' | 'undated' | 'none';
+
+/** Compares CALENDAR DATES. A due date is stored as midnight UTC, so an
+    instant comparison would call today's follow-up overdue from the moment the
+    UTC day turns over — in Samui, before breakfast. */
+export function nextActionState(lead: Lead, today = new Date().toISOString().slice(0, 10)): NextActionState {
+  const task = nextAction(lead);
+  if (!task) return 'none';
+  if (!task.due) return 'undated';
+  const day = task.due.slice(0, 10);
+  return day < today ? 'overdue' : day === today ? 'today' : 'upcoming';
+}
+
+/* ── Has anybody actually talked to them ──
+
+   A conversation, from either end: a salesperson got hold of them and logged
+   it, or the customer wrote back. Automated e-mails leaving the building are
+   not contact, and neither is a call that rang out — the whole point of the
+   distinction is to tell "we have tried" from "we have spoken". */
+export function hasConversed(lead: Lead): boolean {
+  return (lead.history || []).some(
+    (h) => h.reached === true || h.kind === 'message' || (h.kind === 'email' && h.detail.startsWith('Reply received')),
+  );
+}
+
+/* ══════════════════ The working queue ══════════════════
+
+   "Who should I contact today?" — answered as one ordered list rather than six
+   counters an operator has to reconcile in their head.
+
+   Every lead appears in exactly ONE section, the most urgent one that applies.
+   A lead that is uncontacted, stalled AND has no next step is one phone call,
+   not three, and a day-list that says the same name three times is a day-list
+   nobody trusts. */
+
+export type QueueKey = 'uncontacted' | 'overdue' | 'today' | 'silent' | 'nonext' | 'stalled';
+
+export interface QueueSection {
+  key: QueueKey;
+  title: string;
+  blurb: string;   // what this section means, in one line
+  leads: Lead[];
+}
+
+const SECTION_META: { key: QueueKey; title: string; blurb: string }[] = [
+  { key: 'uncontacted', title: 'Nobody has spoken to them yet', blurb: 'New leads with no conversation on record. These first, always.' },
+  { key: 'overdue',     title: 'Late',                          blurb: 'A follow-up you promised yourself, past its date.' },
+  { key: 'today',       title: 'Due today',                     blurb: 'Scheduled for today.' },
+  { key: 'silent',      title: 'Gone quiet',                    blurb: `Waiting on a reply for more than ${REPLY_FLAG_DAYS} days.` },
+  { key: 'nonext',      title: 'No next step',                  blurb: 'Live deals nobody has decided what to do with.' },
+  { key: 'stalled',     title: 'Not moving',                    blurb: 'Sitting in the same stage past its threshold.' },
+];
+
+/** Oldest first inside a section: the lead that has been waiting longest is
+    the one most likely to be lost. */
+const byAge = (a: Lead, b: Lead) => (a.created_at || '').localeCompare(b.created_at || '');
+
+export function workQueue(
+  leads: Lead[],
+  today = new Date().toISOString().slice(0, 10),
+): QueueSection[] {
+  const buckets = new Map<QueueKey, Lead[]>(SECTION_META.map((s) => [s.key, []]));
+  const silentCut = new Date(Date.now() - REPLY_FLAG_DAYS * 86_400_000).toISOString();
+
+  for (const lead of leads) {
+    if (lead.archived_at) continue;
+    if (lead.stage === 'won' || lead.stage === 'lost') continue;
+
+    const state = nextActionState(lead, today);
+    const key: QueueKey | null =
+      lead.stage === 'new' && !hasConversed(lead) ? 'uncontacted'
+      : state === 'overdue' ? 'overdue'
+      : state === 'today' ? 'today'
+      : lead.awaiting_reply_since && lead.awaiting_reply_since < silentCut ? 'silent'
+      : hasNoNextStep(lead) ? 'nonext'
+      : isStalled(lead) ? 'stalled'
+      : null;
+
+    if (key) buckets.get(key)!.push(lead);
+  }
+
+  return SECTION_META.map((meta) => ({ ...meta, leads: buckets.get(meta.key)!.sort(byAge) }));
 }

@@ -5,11 +5,33 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
-import { hasNoNextStep, isStalled, stageAgeDays } from '@/lib/crm/rules';
+import { hasNoNextStep, isStalled, nextAction, nextActionState, stageAgeDays } from '@/lib/crm/rules';
 
 /* Fixed locale + UTC so server prerender and browser hydration agree. */
 const fmtDay = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+/* What is planned next, and whether it is late. */
+function NextStep({ lead }: { lead: Lead }) {
+  const task = nextAction(lead);
+  if (!task) {
+    return hasNoNextStep(lead)
+      ? <span className="flag nonext">Nothing planned</span>
+      : <span className="crm-meta">—</span>;
+  }
+  const state = nextActionState(lead);
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: 13 }}>{task.title}</div>
+      <div className={`crm-meta tabnum${state === 'overdue' ? ' q-late' : ''}`}>
+        {task.due ? `${state === 'overdue' ? 'late · ' : state === 'today' ? 'today · ' : ''}${fmtShort(task.due)}` : 'no date'}
+      </div>
+    </div>
+  );
+}
+
+const fmtShort = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'short', day: 'numeric' });
 
 export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete = false }: {
   leads: Lead[];
@@ -127,6 +149,7 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
                 <th>Source</th>
                 <TH id="score" label="Score" />
                 <TH id="stage" label="Stage" />
+                <th>Next step</th>
                 <TH id="received" label="Received" />
                 <th></th>
               </tr>
@@ -158,16 +181,17 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
                   <td className="crm-meta">{l.source || l.utm_source || 'direct'}</td>
                   <td><span className={`badge ${l.score}`}>{l.score}</span></td>
                   <td><span className="badge stage">{STAGES.find((s) => s.id === l.stage)?.label}</span></td>
+                  {/* The one column a sales manager scans for. A lead with
+                      nothing planned says so in words, not by an empty cell
+                      that reads the same as "not loaded yet". */}
+                  <td>
+                    <NextStep lead={l} />
+                  </td>
                   <td className="crm-meta tabnum">
                     {fmtDay(l.submitted_at || l.created_at)}
                     {isStalled(l) && (
                       <span className="flag stalled" title="Sitting in this stage past its threshold">
                         {' '}· stalled {stageAgeDays(l)}d
-                      </span>
-                    )}
-                    {!isStalled(l) && hasNoNextStep(l) && (
-                      <span className="flag nonext" title="Active lead with no open task and no reply timer">
-                        {' '}· no next step
                       </span>
                     )}
                   </td>

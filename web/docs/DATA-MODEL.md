@@ -539,6 +539,42 @@ that has **no open task and no running reply timer** — nobody owns its next mo
 a red badge in the nav (`attentionCounts()`), together with overdue tasks, untouched new leads,
 awaiting-reply leads past 3 days, and stalled leads.
 
+### The next step, and the working queue
+
+A lead's **next step** is its earliest-DATED open task — `nextAction()` in `rules.ts`. Not a
+separate field: a second place to write the same sentence is a second place for it to go stale,
+and the task list is already where a salesperson types it. Undated tasks sort last; a
+note-to-self must never push a dated commitment down the list.
+
+`nextActionState(lead, today)` → `overdue | today | upcoming | undated | none`. Comparison is on
+**calendar dates**, not instants: a due date is stored as midnight UTC, so an instant comparison
+would call today's follow-up late from the moment the UTC day turns over.
+
+`hasConversed(lead)` — has anybody actually talked to them. True when a logged touch has
+`reached: true`, or the customer wrote back (`message`, or an `email` activity starting
+`Reply received`). An automated e-mail leaving the building is not contact, and neither is a
+call that rang out.
+
+`workQueue(leads, today)` builds the **Today** screen (`/admin/today`) and the nav badge. It
+returns six sections in working order, and **every lead appears in exactly one** — the most
+urgent reason that applies:
+
+| # | Section | A lead lands here when |
+|---|---|---|
+| 1 | `uncontacted` | stage `new` and `hasConversed()` is false |
+| 2 | `overdue` | next step dated before today |
+| 3 | `today` | next step dated today |
+| 4 | `silent` | `awaiting_reply_since` older than `REPLY_FLAG_DAYS` (3) |
+| 5 | `nonext` | `hasNoNextStep()` — live deal, nothing planned |
+| 6 | `stalled` | `isStalled()` — past the stage threshold |
+
+Archived leads and the `won` / `lost` stages are excluded. Inside a section the oldest lead
+sorts first: the one that has been waiting longest is the one most likely to be lost.
+
+`attentionCounts().actionable` is the total of this queue, computed by calling `workQueue()` —
+so the badge and the page it points at can never disagree. `REPLY_FLAG_DAYS` lives in `rules.ts`
+(pure, client-importable) rather than the store, because the masterplan needs it too.
+
 ### Score upgrades only on a hotter signal
 
 Initial score from the form context (`scoring.ts`): `form_origin` starting with `villa` → hot;

@@ -5,6 +5,22 @@ import Link from 'next/link';
 import type { Lead, Stage } from '@/lib/crm/types';
 import { LOST_REASONS, STAGES } from '@/lib/crm/types';
 import { LostReasonDialog } from '@/components/crm/lost-reason-dialog';
+import { nextAction, nextActionState } from '@/lib/crm/rules';
+
+function NextStepLine({ lead }: { lead: Lead }) {
+  const task = nextAction(lead);
+  const state = nextActionState(lead);
+  if (!task) {
+    // Won and lost cards need no plan; everything else does.
+    if (lead.stage === 'won' || lead.stage === 'lost') return null;
+    return <div className="mt flag nonext">Nothing planned</div>;
+  }
+  return (
+    <div className={`mt${state === 'overdue' ? ' q-late' : ''}`}>
+      {state === 'overdue' ? '⚠ ' : state === 'today' ? '● ' : ''}{task.title}
+    </div>
+  );
+}
 
 export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
   const [leads, setLeads] = useState<Lead[]>(initial);
@@ -130,6 +146,10 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
                       {l.villa || l.form_type || 'enquiry'}
                       {l.source ? ` · ${l.source}` : ''}
                     </div>
+                    {/* What happens next to this card. A board of names tells
+                        you where everyone stands and nothing about whether
+                        anybody is doing anything about it. */}
+                    <NextStepLine lead={l} />
                   </Link>
                   <div className="kb-card-foot">
                     <span className={`badge ${l.score}`}>{l.score}</span>

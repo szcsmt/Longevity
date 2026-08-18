@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { Construction, VillaRecord, VillaHistoryEntry, VillaStatus } from '@/lib/crm/types';
 import { CONSTRUCTION, PHASES } from '@/lib/crm/types';
 import { EXTRA_PRESETS, VILLAS, fmtTHB, nextPhase, paidTotal, phaseAmount } from '@/lib/crm/villas';
+import { REPLY_FLAG_DAYS } from '@/lib/crm/rules';
 
 type Status = VillaStatus;
 interface Villa {
@@ -16,7 +17,7 @@ export interface LeadOption { id: string; name: string; awaitingSince: string | 
 const ORDER: Status[] = ['free', 'reserved', 'sold'];
 const COLORS: Record<Status, string> = { free: '#2FA968', reserved: '#E0A63A', sold: '#D8483B' };
 const LABELS: Record<Status, string> = { free: 'Szabad', reserved: 'Foglalt', sold: 'Eladott' };
-const REPLY_FLAG_DAYS = 3;
+
 const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' }) : '—');
 const fmtDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-GB', { timeZone: 'UTC', dateStyle: 'medium' }) : '—');
 const daysSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);

@@ -23,17 +23,49 @@ A `/admin` nyitóoldal: logó, üdvözlés a bejelentkezett névvel, HU/EN nyelv
 
 A lényeg az üdvözlés alatti **figyelmeztető kapszulák**. Csak akkor jelennek meg, ha tényleg van teendő — ha üres a sor, minden rendben:
 
-| Kapszula | Jelentése | Hová visz |
-|---|---|---|
-| ⚠ lejárt teendő | nyitott teendő, aminek a határideje elmúlt | Follow-ups |
-| érintetlen új lead | „New" fázisú lead, ami 1 napnál régebbi, és még se jegyzet, se teendő nincs rajta | Leads |
-| elakadt lead | a fázisában a megengedettnél régebb óta ül (lásd 11. fejezet) | Leads |
-| következő lépés nélkül | aktív lead, amin nincs nyitott teendő és nem fut válasz-időzítő sem | Leads |
-| válaszra vár | 3+ napja nem jött válasz a kiküldött e-mailre | Leads |
+| Kapszula | Jelentése |
+|---|---|
+| ⚠ lejárt teendő | nyitott teendő, aminek a határideje elmúlt |
+| érintetlen új lead | „New" fázisú lead, ami 1 napnál régebbi, és még se jegyzet, se teendő nincs rajta |
+| elakadt lead | a fázisában a megengedettnél régebb óta ül (lásd 11. fejezet) |
+| következő lépés nélkül | aktív lead, amin nincs nyitott teendő és nem fut válasz-időzítő sem |
+| válaszra vár | 3+ napja nem jött válasz a kiküldött e-mailre |
 
-**Ez a reggeli munkalistád.** A bal oldali menüben ugyanez piros jelvényként is látszik minden oldalon: a Leads mellett az érintett leadek száma, a Follow-ups mellett a lejárt teendők száma.
+A kapszulák a **Mai teendők** oldalra visznek, ahol a nevek is ott vannak, nem csak a számok.
 
 A menü tetején gyorskereső van — beírod a nevet/e-mailt/telefont, és a Leads listára visz szűrve.
+
+---
+
+## 2b. Mai teendők — „kit hívjak most?"
+
+`/admin/today` — **ezzel kezdődik a nap.** Nem műszerfal: egy sorrendbe rakott munkalista, amin
+minden élő lead pontosan **egyszer** szerepel, annál az oknál, ami a legsürgősebb rajta. Aki
+egyszerre érintetlen, elakadt és nincs rajta következő lépés, az egy telefon — nem három sor.
+
+A szakaszok sorrendje kötött, mert ez a munka sorrendje is:
+
+| # | Szakasz | Ki kerül ide |
+|---|---|---|
+| 1 | **Nobody has spoken to them yet** | új lead, akivel még senki nem beszélt (a kiment automata e-mail nem beszélgetés, a nem felvett hívás sem) |
+| 2 | **Late** | volt rá teendő határidővel, és lejárt |
+| 3 | **Due today** | mára időzített teendő |
+| 4 | **Gone quiet** | 3+ napja nincs válasz a kiküldött e-mailre |
+| 5 | **No next step** | élő üzlet, amin semmi nincs betervezve |
+| 6 | **Not moving** | a fázisában a megengedettnél régebb óta ül |
+
+Szakaszon belül a **legrégebbi elöl** — aki a legrégebben vár, azt lehet a leghamarabb elveszíteni.
+
+Alapból **a saját leadjeidet** mutatja (ha a névsorban szerepelsz). A „Whole team" gombbal a
+teljes csapat látszik, a legördülővel pedig egy konkrét kolléga napja — ez a sales vezető nézete.
+
+**A „Follow up…" legördülő** csak azoknál a soroknál jelenik meg, ahol semmi nincs betervezve.
+Kiválasztod, hogy *ma / holnap / 3 nap / egy hét / két hét*, és a teendő azonnal felkerül a
+leadre. Nem kell megnyitni, nem kell gépelni. Ez a leggyakoribb hiba javítása egy kattintással:
+a lead, amin nincs következő lépés, csendben vész el.
+
+A bal oldali menüben a **Today** melletti piros szám pontosan ennek a listának a hossza — ugyanaz
+a szabály számolja, tehát a jelvény és az oldal soha nem mondhat mást.
 
 ---
 
@@ -342,8 +374,8 @@ Szólj, ha kell egy, és beállítom.
 ## 13. A napi rutin
 
 **Reggel:**
-1. Nyisd meg a Dashboardot. **A piros kapszulák és a menü jelvényei = a mai munkalista.** Ha nincs kapszula, minden kézben van.
-2. Sorrend: **lejárt teendők** → **érintetlen új leadek** → **3+ napja válaszra várók** (hívás vagy WhatsApp, ne harmadik e-mail) → **elakadtak** → **következő lépés nélküliek**.
+1. Nyisd meg a **Mai teendők** oldalt (`/admin/today`). Ez a munkalista, sorrendbe rakva. Ha üres, minden kézben van.
+2. Fentről lefelé dolgozol. A sorrendet nem neked kell fejben tartani — az oldal már abban a sorrendben adja: **akivel még senki nem beszélt** → **lejárt** → **mára időzített** → **elhallgatott** (hívás vagy WhatsApp, ne harmadik e-mail) → **nincs betervezve semmi** → **nem mozdul**.
 
 **Napközben, minden kontakt után egy kattintás:**
 - Kiment egy e-mail/ajánlat? → **„Email sent — awaiting reply"**. Kész — a rendszer számolja a napokat és időzíti a követést.

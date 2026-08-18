@@ -23,7 +23,9 @@ export default async function DashLayout({ children }: { children: React.ReactNo
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/LOGO.svg" alt="Longevity Resort" />
           </div>
-          <CrmNav alerts={{ leads: att.actionable, followups: att.overdue }} />
+          {/* The badge sits on the screen that RESOLVES it: Today is the
+              queue, so that is where "something needs a human" points. */}
+          <CrmNav alerts={{ today: att.actionable, followups: att.overdue }} />
           <div className="crm-side-foot">
             {/* Knowing which account you are signed in as matters the moment
                 more than one person uses the CRM — an agent who does not know

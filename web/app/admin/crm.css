@@ -608,3 +608,26 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
 .qual-grid .crm-label { margin-bottom: 4px; }
 .qual-grid .crm-select, .qual-grid .crm-input { width: 100%; }
 @media (max-width: 720px) { .qual-grid { grid-template-columns: 1fr; } }
+
+/* ── Today: the working queue ──
+   One row per lead: who, why they are on the list, where they stand, and the
+   two things you can do about it. Collapses to a stacked block on a phone,
+   because this is the screen most likely to be read in a car. */
+.q-row {
+  display: grid; grid-template-columns: 1.4fr 1.6fr auto auto;
+  align-items: center; gap: 14px;
+  padding: 12px 0; border-bottom: 1px solid var(--c-line-2);
+}
+.q-row:last-child { border-bottom: 0; }
+.q-who { min-width: 0; }
+.q-what { min-width: 0; font-size: 13.5px; }
+.q-late { color: var(--c-hot); font-weight: 600; }
+.q-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.q-act { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+.q-act .crm-select { width: auto; }
+@media (max-width: 860px) {
+  .q-row { grid-template-columns: 1fr auto; row-gap: 8px; }
+  .q-what { grid-column: 1 / -1; }
+  .q-tags { justify-content: flex-start; }
+  .q-act { grid-column: 1 / -1; justify-content: flex-start; }
+}

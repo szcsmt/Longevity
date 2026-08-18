@@ -10,10 +10,13 @@ import {
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel } from './language';
-import { ACTIVE_STAGES, STAGE_MAX_DAYS, hasNoNextStep, isStalled } from './rules';
+import { ACTIVE_STAGES, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, hasNoNextStep, isStalled, workQueue } from './rules';
 import { fmtTHB, phaseAmount, priceForSize, villaByName } from './villas';
 import unitCatalog from '../villas.json';
-export { STAGE_MAX_DAYS, stageAgeDays, stageEnteredAt, isStalled, hasNoNextStep } from './rules';
+export {
+  STAGE_MAX_DAYS, REPLY_FLAG_DAYS, stageAgeDays, stageEnteredAt, isStalled, hasNoNextStep,
+  nextAction, nextActionState, hasConversed, workQueue,
+} from './rules';
 import { hasDatabase, type Backend } from './backend';
 import { fileBackend } from './backend-file';
 export type { VillaHistoryEntry, VillaRecord, VillaStatus } from './types';
@@ -1063,11 +1066,11 @@ export async function unsubscribeLead(id: string): Promise<Lead | null> {
 }
 
 /* ── Awaiting-reply tracking ──
-   The operator marks "email sent" on a lead; after 3 quiet days the lead (and
-   its plot, if linked) shows a red flag. Marking it also drops a follow-up
-   task three days out so the chase never relies on memory. */
+   The operator marks "email sent" on a lead; after REPLY_FLAG_DAYS quiet days
+   (the threshold lives in rules.ts, where the masterplan can read it too) the
+   lead and its plot show a red flag. Marking it also drops a follow-up task
+   the same distance out, so the chase never relies on memory. */
 
-export const REPLY_FLAG_DAYS = 3;
 const REPLY_TASK_TITLE = 'Follow up — no reply yet';
 
 export async function setAwaitingReply(id: string, on: boolean): Promise<Lead | null> {
@@ -1102,7 +1105,10 @@ export interface AttentionCounts {
   awaiting: number;   // leads silent past the reply threshold
   stalled: number;    // sitting in a stage past its max days
   noNext: number;     // active leads with no next step at all
-  actionable: number; // DISTINCT leads flagged for any of the above (nav badge)
+  /* DISTINCT leads the working queue would put in front of somebody — the same
+     number the Today screen shows, because it is computed from the same rule.
+     A badge that disagrees with the page it points at is worse than no badge. */
+  actionable: number;
 }
 
 export async function attentionCounts(): Promise<AttentionCounts> {
@@ -1110,7 +1116,7 @@ export async function attentionCounts(): Promise<AttentionCounts> {
   const today = now().slice(0, 10);
   const newCut = daysAgo(STAGE_MAX_DAYS.new ?? 1);
   const replyCut = daysAgo(REPLY_FLAG_DAYS);
-  let overdue = 0, untouched = 0, awaiting = 0, stalled = 0, noNext = 0, actionable = 0;
+  let overdue = 0, untouched = 0, awaiting = 0, stalled = 0, noNext = 0;
   for (const l of leads) {
     overdue += l.tasks.filter((t) => !t.done && t.due && t.due.slice(0, 10) < today).length;
     const isUntouched =
@@ -1123,8 +1129,8 @@ export async function attentionCounts(): Promise<AttentionCounts> {
     if (isAwaiting) awaiting++;
     if (stall) stalled++;
     if (none) noNext++;
-    if (isUntouched || isAwaiting || stall || none) actionable++;
   }
+  const actionable = workQueue(leads).reduce((n, sec) => n + sec.leads.length, 0);
   return { overdue, untouched, awaiting, stalled, noNext, actionable };
 }
 

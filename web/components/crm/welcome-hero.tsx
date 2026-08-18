@@ -12,16 +12,16 @@ import { KineticField } from './kinetic-field';
 type Lang = 'hu' | 'en';
 
 const T: Record<Lang, {
-  hello: string; leads: string; analytics: string; masterplan: string;
+  hello: string; today: string; leads: string; analytics: string; masterplan: string;
   overdue: string; untouched: string; awaiting: string; stalled: string; noNext: string;
 }> = {
   hu: {
-    hello: 'Isten hozta', leads: 'Leadek', analytics: 'Analitika', masterplan: 'Masterplan',
+    hello: 'Isten hozta', today: 'Mai teendők', leads: 'Leadek', analytics: 'Analitika', masterplan: 'Masterplan',
     overdue: 'lejárt teendő', untouched: 'érintetlen új lead', awaiting: 'válaszra vár',
     stalled: 'elakadt lead', noNext: 'következő lépés nélkül',
   },
   en: {
-    hello: 'Welcome', leads: 'Leads', analytics: 'Analytics', masterplan: 'Masterplan',
+    hello: 'Welcome', today: 'Today', leads: 'Leads', analytics: 'Analytics', masterplan: 'Masterplan',
     overdue: 'overdue tasks', untouched: 'untouched new leads', awaiting: 'awaiting reply',
     stalled: 'stalled leads', noNext: 'without a next step',
   },
@@ -61,6 +61,8 @@ export function WelcomeHero({ user, alerts }: { user: string; alerts?: HeroAlert
         <img className="welcome-logo" src="/LOGO.svg" alt="Longevity Resort" />
         <h1 className="welcome-greet">{t.hello}{name ? `, ${name}` : ''}</h1>
         <nav className="welcome-links">
+          <Link href="/admin/today">{t.today}</Link>
+          <span>·</span>
           <Link href="/admin/leads">{t.leads}</Link>
           <span>·</span>
           <Link href="/admin/analytics">{t.analytics}</Link>
@@ -71,11 +73,11 @@ export function WelcomeHero({ user, alerts }: { user: string; alerts?: HeroAlert
         {/* What needs doing — quiet when everything is handled. */}
         {alerts && (alerts.overdue + alerts.untouched + alerts.awaiting + alerts.stalled + alerts.noNext > 0) && (
           <div className="welcome-alerts">
-            {alerts.overdue > 0 && <Link href="/admin/tasks">⚠ {alerts.overdue} {t.overdue}</Link>}
-            {alerts.untouched > 0 && <Link href="/admin/leads">{alerts.untouched} {t.untouched}</Link>}
-            {alerts.stalled > 0 && <Link href="/admin/leads">{alerts.stalled} {t.stalled}</Link>}
-            {alerts.noNext > 0 && <Link href="/admin/leads">{alerts.noNext} {t.noNext}</Link>}
-            {alerts.awaiting > 0 && <Link href="/admin/leads">{alerts.awaiting} {t.awaiting}</Link>}
+            {alerts.overdue > 0 && <Link href="/admin/today?owner=all">⚠ {alerts.overdue} {t.overdue}</Link>}
+            {alerts.untouched > 0 && <Link href="/admin/today?owner=all">{alerts.untouched} {t.untouched}</Link>}
+            {alerts.stalled > 0 && <Link href="/admin/today?owner=all">{alerts.stalled} {t.stalled}</Link>}
+            {alerts.noNext > 0 && <Link href="/admin/today?owner=all">{alerts.noNext} {t.noNext}</Link>}
+            {alerts.awaiting > 0 && <Link href="/admin/today?owner=all">{alerts.awaiting} {t.awaiting}</Link>}
           </div>
         )}
       </div>
