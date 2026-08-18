@@ -1,6 +1,7 @@
 import type { Lead, Stage } from './types';
 import { LOST_REASONS, STAGES, atOrBeyond, isOpenStage, stageIndex } from './types';
 import { firstConversationAt, matchesFlag, stageEnteredAt } from './rules';
+import { OTHER, leadSource, rawSource, sourceLabel } from './sources';
 
 /* ══════════════════ What the head of sales needs to know ══════════════════
 
@@ -73,17 +74,72 @@ export interface PersonRow {
   needsAttention: number;
 }
 
-export interface SourceRow {
-  source: string;
+/* ── The chain the marketing spend is judged on ──
+   leads → qualified → reserved → sold → money. Volume alone says nothing: a
+   source that produces forty cheap leads and no buyers costs more than one that
+   produces four. Computed identically for a channel, a campaign and an ad,
+   because the question is the same one asked at three depths. */
+export interface Chain {
   leads: number;
   qualified: number;
   reserved: number;
   won: number;
   wonValue: number;
-  /** Of decided deals — won and lost. A source with nothing decided yet has
-      no win rate, and showing 0% for it would libel a campaign that is simply
-      young. */
+  /** Of decided deals — won and lost. Nothing decided yet means **no** win
+      rate: showing 0% would libel a campaign that is simply young. */
   winRate: number | null;
+}
+
+function chainFor(mine: Lead[]): Chain {
+  const w = mine.filter((l) => l.stage === 'won');
+  const decided = w.length + mine.filter((l) => l.stage === 'lost').length;
+  return {
+    leads: mine.length,
+    /* Reached qualification at some point — including the deals that got there
+       and were then lost, which is exactly what a source should be credited
+       with producing. */
+    qualified: mine.filter(
+      (l) => atOrBeyond(l.stage, 'qualified') || (l.lost_from ? atOrBeyond(l.lost_from, 'qualified') : false),
+    ).length,
+    reserved: mine.filter(
+      (l) => atOrBeyond(l.stage, 'reserved') || (l.lost_from ? atOrBeyond(l.lost_from, 'reserved') : false),
+    ).length,
+    won: w.length,
+    wonValue: w.reduce((n, l) => n + (l.value || 0), 0),
+    winRate: decided ? pct(w.length, decided) : null,
+  };
+}
+
+export interface SourceRow extends Chain {
+  /** The canonical channel — `facebook`, `google`, `portal`… */
+  source: string;
+  label: string;
+  /** The raw values folded into this row, when they differ from the label.
+      An "Other: 14" row that will not say what it contains is how a real
+      channel stays invisible. */
+  raw: string[];
+}
+
+/* ── One level down ──
+
+   A channel tells you Facebook is working. A campaign tells you WHICH Facebook
+   is working, and an ad tells you which creative. All three are already stored
+   on every lead — `utm_campaign`, `utm_content` — and until now nothing ever
+   grouped on them, so the money question stopped at "Facebook: 62 leads".
+
+   Leads with no campaign are left out entirely rather than piled into an
+   "(unknown)" row: they are not a campaign that performed badly, they are
+   traffic that was never tagged, and mixing the two is how a report starts
+   lying. */
+export interface CampaignRow extends Chain {
+  campaign: string;
+  /** Which channel(s) it ran on, for reading "facebook · spring-launch". */
+  channels: string[];
+}
+
+export interface AdRow extends Chain {
+  ad: string;       // utm_content
+  campaign: string; // the campaign it belongs to, when there is one
 }
 
 export interface LostRow {
@@ -111,6 +167,10 @@ export interface Performance {
   lostStageKnown: number;
   bySalesperson: PersonRow[];
   bySource: SourceRow[];
+  /** Only leads that carry one. Untagged traffic is not a campaign that
+      performed badly, and an "(unknown)" row mixing the two would lie. */
+  byCampaign: CampaignRow[];
+  byAd: AdRow[];
   lostReasons: LostRow[];
   attention: { uncontacted: number; overdue: number; noNext: number; stalled: number };
 }
@@ -198,27 +258,39 @@ export function performance(leads: Lead[], today = new Date().toISOString().slic
      The chain the marketing spend is judged on: leads → qualified → reserved →
      sold → money. Volume alone says nothing; a source that produces forty
      cheap leads and no buyers costs more than one that produces four. */
-  const sources = groupBy(live, (l) => l.source || l.utm_source || 'direct');
-  const bySource: SourceRow[] = [...sources.entries()]
-    .map(([source, mine]) => {
-      const w = mine.filter((l) => l.stage === 'won');
-      const decided = w.length + mine.filter((l) => l.stage === 'lost').length;
-      return {
-        source,
-        leads: mine.length,
-        /* Reached qualification at some point — including the deals that got
-           there and were then lost, which is exactly what a source should be
-           credited with producing. */
-        qualified: mine.filter(
-          (l) => atOrBeyond(l.stage, 'qualified') || (l.lost_from ? atOrBeyond(l.lost_from, 'qualified') : false),
-        ).length,
-        reserved: mine.filter((l) => atOrBeyond(l.stage, 'reserved')).length,
-        won: w.length,
-        wonValue: w.reduce((n, l) => n + (l.value || 0), 0),
-        winRate: decided ? pct(w.length, decided) : null,
-      };
-    })
-    .sort((a, b) => b.wonValue - a.wonValue || b.leads - a.leads);
+  const byMoneyThenVolume = (a: Chain, b: Chain) => b.wonValue - a.wonValue || b.leads - a.leads;
+
+  const bySource: SourceRow[] = [...groupBy(live, leadSource).entries()]
+    .map(([source, mine]) => ({
+      source,
+      label: sourceLabel(source),
+      /* What was actually written in the link, listed for anything that does
+         not simply read as its own label — every spelling for `other`, and the
+         `fb` / `FB_Ads` variants folded into Facebook. */
+      raw: [...new Set(mine.map(rawSource))]
+        .filter((r) => source === OTHER || r.toLowerCase() !== source)
+        .sort(),
+      ...chainFor(mine),
+    }))
+    .sort(byMoneyThenVolume);
+
+  const tagged = live.filter((l) => (l.utm_campaign || '').trim());
+  const byCampaign: CampaignRow[] = [...groupBy(tagged, (l) => l.utm_campaign!.trim()).entries()]
+    .map(([campaign, mine]) => ({
+      campaign,
+      channels: [...new Set(mine.map((l) => sourceLabel(leadSource(l))))].sort(),
+      ...chainFor(mine),
+    }))
+    .sort(byMoneyThenVolume);
+
+  const withAd = live.filter((l) => (l.utm_content || '').trim());
+  const byAd: AdRow[] = [...groupBy(withAd, (l) => l.utm_content!.trim()).entries()]
+    .map(([ad, mine]) => ({
+      ad,
+      campaign: [...new Set(mine.map((l) => (l.utm_campaign || '').trim()).filter(Boolean))].join(', '),
+      ...chainFor(mine),
+    }))
+    .sort(byMoneyThenVolume);
 
   /* ── Why we lose ──
      Read from the structured `lost_reason`, not from the "Lost: …" note text
@@ -253,6 +325,8 @@ export function performance(leads: Lead[], today = new Date().toISOString().slic
     lostStageKnown: lost.filter((l) => l.lost_from).length,
     bySalesperson,
     bySource,
+    byCampaign,
+    byAd,
     lostReasons,
     attention: {
       uncontacted: live.filter((l) => matchesFlag(l, 'uncontacted', today)).length,

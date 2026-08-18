@@ -511,12 +511,31 @@ Lead-szám, nyitott, pipeline-érték, eladás, eladási érték, konverzió, é
 kíván most figyelmet**. A gazdátlan leadek **külön sorban** szerepelnek (`— unassigned —`) —
 az a legfontosabb sor a képernyőn, nem kerekítési hiba.
 
-### By source · Why we lose · By agency
+### By source · By campaign · By ad
 
-Forrásonként: lead → qualified → eladva → érték. **A lead-szám önmagában semmit nem jelent**:
-az a forrás, amelyik negyven olcsó leadet hoz és egy vevőt sem, drágább, mint amelyik négyet hoz.
-Ahol még semmi nem dőlt el, ott `—` áll nyerési arány helyett, nem `0%` — az utóbbi rágalom
-lenne egy fiatal kampánnyal szemben.
+Csatornánként: lead → qualified → foglalás → eladva → érték. **A lead-szám önmagában semmit nem
+jelent**: az a forrás, amelyik negyven olcsó leadet hoz és egy vevőt sem, drágább, mint amelyik
+négyet hoz. Ahol még semmi nem dőlt el, ott `—` áll nyerési arány helyett, nem `0%` — az utóbbi
+rágalom lenne egy fiatal kampánnyal szemben.
+
+**A csatorna nem az írásmód.** Eddig az `fb`, a `Facebook`, az `FB_ads` és az `l.facebook.com`
+négy külön sor volt egy nyolcsoros listában — vagyis a szétszórt írásmód nem csak csúnya volt,
+hanem **elrejtette** annak a csatornának a teljesítményét, amelyik a legtöbbet hozta. Most
+egyetlen **Facebook** sor. A nyers értékek nem vesznek el: a sor alatt ott van, mi volt tényleg
+a linkben, és az „Other" sor is kiírja, mi van benne — egy „Other: 14", ami nem árulja el, mit
+tartalmaz, pontosan így tüntet el egy valódi csatornát.
+
+A leadek szűrésénél is ez fut: a **Facebook** kiválasztása minden írásmódot elkap.
+
+**By campaign / By ad**: a csatorna azt mondja meg, hogy a Facebook működik; a kampány azt, hogy
+**melyik** Facebook; a hirdetés azt, hogy melyik kreatív. Mindkét adat eddig is ott volt minden
+leaden (`utm_campaign`, `utm_content`), csak soha semmi nem csoportosított rá.
+
+Ezek a táblázatok **csak akkor jelennek meg, ha a linkek tényleg hordozzák a címkéket**. A
+címkézetlen forgalom **kimarad** belőlük — nem egy rosszul teljesítő kampány, hanem meg nem
+jelölt forgalom, és a kettő összekeverése az, amitől egy riport hazudni kezd.
+
+### Why we lose · By agency
 
 A veszteség-okok a **strukturált mezőből** jönnek, nem a jegyzet szövegéből.
 

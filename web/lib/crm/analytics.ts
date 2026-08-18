@@ -7,6 +7,7 @@ import villaGeo from '@/lib/villas.json';
 import { listLeads, getVillaData, listEvents, unitListPrice, unitSize } from './store';
 import { SIZES, priceForSize } from './villas';
 import { STAGES, atOrBeyond, type Stage, type VillaStatus } from './types';
+import { leadSource, sourceKey, sourceLabel } from './sources';
 
 /* Prices come from villas.ts, which is the only place they are written down.
    A second copy lived here, keyed by size tier, and the two could have drifted
@@ -218,7 +219,10 @@ export async function analytics(rangeInput?: string): Promise<AnalyticsData> {
   const stageMap: Record<string, number> = {};
   const scoreMap: Record<string, number> = { hot: 0, warm: 0, cold: 0 };
   for (const l of rangedLeads) {
-    const src = l.source || l.utm_source || 'direct';
+    /* Grouped by channel, not by spelling: `fb`, `Facebook` and `FB_ads` used
+       to be three separate rows in a list that only shows eight, which hid the
+       channel producing the most rather than surfacing it. */
+    const src = sourceLabel(leadSource(l));
     srcMap[src] = (srcMap[src] || 0) + 1;
     if (l.form_type) formMap[l.form_type] = (formMap[l.form_type] || 0) + 1;
     stageMap[l.stage] = (stageMap[l.stage] || 0) + 1;
@@ -229,7 +233,12 @@ export async function analytics(rangeInput?: string): Promise<AnalyticsData> {
   const evtTypeMap: Record<string, number> = {};
   for (const e of rangedClicks) evtTypeMap[e.type] = (evtTypeMap[e.type] || 0) + 1;
   const vSrcMap: Record<string, number> = {};
-  for (const v of rangedVisits) { const s = v.source || v.label || 'direct'; vSrcMap[s] = (vSrcMap[s] || 0) + 1; }
+  for (const v of rangedVisits) {
+    // A visit's fallback is the referrer host in `label`, which normalises the
+    // same way — `l.facebook.com` and a `?source=fb` link are one channel.
+    const s = sourceLabel(sourceKey(v.source || v.label || 'direct'));
+    vSrcMap[s] = (vSrcMap[s] || 0) + 1;
+  }
 
   // ── Funnel: lead-pipeline progression (always monotonic — each step is a
   //    subset of the one above, so conversion never exceeds 100%). A true

@@ -622,6 +622,37 @@ that has **no open task and no running reply timer** — nobody owns its next mo
 a red badge in the nav (`attentionCounts()`), together with overdue tasks, untouched new leads,
 awaiting-reply leads past 3 days, and stalled leads.
 
+## Sources — `lib/crm/sources.ts`
+
+`source` is whatever arrived in `?source=` or `utm_source`, unconstrained, from a link somebody
+built months ago. In practice `fb`, `Facebook`, `FB_ads` and `l.facebook.com` were four rows in
+a report with room for eight — so the scattered spelling did not merely look untidy, it **hid**
+the performance of whichever channel produced the most.
+
+`sourceKey(raw)` folds a raw value onto a canonical channel: `direct`, `google`, `facebook`,
+`instagram`, `meta`, `tiktok`, `youtube`, `linkedin`, `portal`, `agency`, `referral`, `event`,
+`email`, `whatsapp`, `phone`, `qr`, `manual`, `other`. `leadSource(lead)` applies it to
+`rawSource(lead)` (`?source=` beats `utm_source`; neither means `direct`).
+
+**Normalised on read, never on write.** The raw value is what we were actually told and is never
+overwritten — attribution is evidence, and the day this mapping turns out wrong the raw values
+are still there to redo it from. It also means every historical report improves the moment a
+spelling is added to the table, with no migration and nothing to run.
+
+Matching is two-pass: `exact` on the punctuation-stripped token first, then `contains` on the
+lowercased original. Short aliases (`ig`, `fb`, `g`) live in `exact` **only** — as substrings
+they would swallow `signup`, `digital-brochure` and `gift-voucher`.
+
+Facebook and Instagram stay apart, because a marketer buys them separately.
+
+Anything unrecognised lands in `other`, and `SourceRow.raw` carries the raw values folded into
+each row. An "Other: 14" row that will not say what it contains is exactly how a real channel
+stays invisible.
+
+Used by `performance()`, the analytics page, `LeadFilter.source` (so filtering on `facebook`
+catches every spelling) and the CSV export, which carries **both** the tidy `channel` and the
+raw `source`.
+
 ## Performance — `lib/crm/performance.ts`
 
 Pure: every figure is derived from a list of leads, nothing is fetched, and the whole module is
@@ -643,7 +674,8 @@ management meeting turns into an argument about the CRM.
 | `cycleDays` | Median days from arriving to sold |
 | `firstContactHours` | Median hours from arriving to a real **conversation** (`firstConversationAt`) — an automatic e-mail and a call that rang out are neither of them contact |
 | `bySalesperson` | Leads, open, pipeline value, sold, sales value, conversion, and how many of their live leads are asking for attention. Unowned leads get their own `UNASSIGNED` row rather than being dropped |
-| `bySource` | leads → qualified → reserved → sold → money. `winRate` is `null` when nothing is decided |
+| `bySource` | leads → qualified → reserved → sold → money, per canonical channel, with the raw spellings folded in |
+| `byCampaign`, `byAd` | The same chain one and two levels down (`utm_campaign`, `utm_content`). **Only leads that carry the tag** — untagged traffic is not a campaign that performed badly, and an "unknown" row mixing the two would lie. The tables do not render at all until the links carry tags |
 | `lostReasons` | From the structured `lost_reason` |
 | `attention` | The four working-queue rules, counted |
 
@@ -661,7 +693,9 @@ absent on anything lost before the field existed, so `lostHere` under-counts by 
 `lost − lostStageKnown`, and the screen **says so** rather than quietly rounding.
 
 **`winRate: null`, not 0%.** A source with nothing decided yet has no win rate, and printing
-zero would libel a campaign that is simply young.
+zero would libel a campaign that is simply young. The whole chain — leads, qualified, reserved,
+won, value, win rate — is one function, `chainFor`, computed identically for a channel, a
+campaign and an ad, because it is the same question asked at three depths.
 
 ## Agencies, and the registrations that decide who gets paid
 

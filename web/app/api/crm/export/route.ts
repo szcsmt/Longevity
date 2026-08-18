@@ -1,6 +1,7 @@
 import { isAdmin, isAuthed } from '@/lib/crm/auth';
 import { isQueueKey, listLeads } from '@/lib/crm/store';
 import { creditedClaim } from '@/lib/crm/rules';
+import { leadSource, sourceLabel } from '@/lib/crm/sources';
 import type { Lead, Stage } from '@/lib/crm/types';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,9 @@ const COLS: [string, (l: Lead) => string | number | undefined][] = [
   ['villa', (l) => l.villa],
   ['stage', (l) => l.stage],
   ['score', (l) => l.score],
+  /* Both: the channel a report groups on, and the raw string the link
+     actually carried. Exporting only the tidy one throws away the evidence. */
+  ['channel', (l) => sourceLabel(leadSource(l))],
   ['source', (l) => l.source || l.utm_source],
   /* Who introduced the buyer, and when they registered them. The one piece of
      attribution that decides who gets paid, so it travels with the export
@@ -61,6 +65,7 @@ export async function GET(req: Request) {
     stage: p('stage') as Stage | undefined,
     score: p('score'),
     form_type: p('form_type'),
+    source: p('source'),
     owner: p('owner'),
     q: p('q'),
     flag: flag && isQueueKey(flag) ? flag : undefined,

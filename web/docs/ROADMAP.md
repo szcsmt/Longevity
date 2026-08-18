@@ -40,6 +40,7 @@ the work is filling gaps and closing blind spots.
 | Automated sequence | Six letters, minute 0 → day 60, stopping the moment a human owns the conversation |
 | Roles | admin / agent / viewer, with the irreversible and the exportable reserved to the owner |
 | Speed to lead | `first_response_at` — the first moment a *person* acted |
+| Attribution | Channel / campaign / ad, each walking leads → qualified → reserved → sold → money. Sources are normalised on read (`fb`, `Facebook`, `FB_ads` are one row) without ever overwriting the raw value |
 | Management reporting | `/admin/performance`: funnel with stage-to-stage drop, cycle length, time to first conversation, production by salesperson / source / agency, lost reasons from the structured field |
 | Pipeline | Ten ordered stages with what each one means, positional helpers (`atOrBeyond`, `OPEN_STAGES`), a refusal on the stages that assert a unit, and the qualification gap written onto the stage entry |
 | Introducing agencies | `Agency` + nested `Broker` records, append-only registrations on the lead, an auditable protection window that refuses a competing claim, and per-agency production figures counted against whoever introduced the buyer first |
@@ -49,7 +50,6 @@ the work is filling gaps and closing blind spots.
 | | What is missing |
 |---|---|
 | Scoring | One hot/warm/cold, from the form type plus AI triage. The specification asks for fit and engagement kept apart |
-| Source values | Whatever arrives in `?source=` / `utm_source`, unnormalised: `fb`, `Facebook`, `FB_ads` are three rows in a report that only shows eight |
 | Country / nationality | Language is inferred from the phone number; nationality is neither stored nor filterable |
 | Filters | Stage, score, form, owner, free text and now the attention flags. Not budget, timeframe, country or value |
 | Permissions | Three roles. Head of sales, marketing and finance all currently mean "admin" |
@@ -101,10 +101,11 @@ the work is filling gaps and closing blind spots.
 
 ### P2 — management and optimisation
 
-- [ ] Source normalisation at intake, so a report counts campaigns rather than spellings
-- [ ] Attribution by campaign and ad, not just source — `/admin/performance` now walks
-      source → qualified → reserved → sold → money, but `utm_campaign` and the ad id are stored
-      and never grouped on
+- [x] **P2.1** Source normalisation — `sources.ts`, applied on read so nothing is migrated and
+      no raw value is ever overwritten; reports, the lead filter and the export all group by
+      channel instead of by spelling
+- [x] **P2.2** Attribution by campaign and by ad — the same leads → qualified → reserved → sold
+      → money chain one and two levels down, rendered only when the links actually carry tags
 - [ ] Reservation as its own record: date, amount, expiry, agreement, deposit status
 - [ ] Commission actually **paid**: a per-agency ledger with dates, so outstanding is a fact
       rather than a subtraction. `performanceFor` computes only what an agreement *generates*,

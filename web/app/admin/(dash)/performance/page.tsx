@@ -165,7 +165,13 @@ export default async function PerformancePage() {
             <tbody>
               {p.bySource.map((r) => (
                 <tr key={r.source}>
-                  <td className="crm-name">{r.source}</td>
+                  <td>
+                    <div className="crm-name">{r.label}</div>
+                    {/* What was actually written in the links. An "Other: 14"
+                        row that will not say what it contains is how a real
+                        channel stays invisible. */}
+                    {r.raw.length > 0 && <div className="crm-meta">{r.raw.slice(0, 4).join(', ')}{r.raw.length > 4 ? ` +${r.raw.length - 4}` : ''}</div>}
+                  </td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.leads}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.qualified}</td>
                   <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
@@ -191,6 +197,80 @@ export default async function PerformancePage() {
           )}
         </div>
       </div>
+
+      {/* ── One level down ──
+
+          A channel says Facebook is working. A campaign says WHICH Facebook is
+          working. Both were already on every lead and nothing ever grouped on
+          them, so the money question stopped at "Facebook: 62 leads". These
+          tables simply do not appear until the links carry the tags. */}
+      {p.byCampaign.length > 0 && (
+        <div className="crm-card table-scroll" style={{ marginBottom: 16 }}>
+          <h3 style={{ padding: '0 14px' }}>By campaign</h3>
+          <table className="crm-table">
+            <thead>
+              <tr>
+                <th>Campaign</th>
+                <th style={{ textAlign: 'right' }}>Leads</th>
+                <th style={{ textAlign: 'right' }}>Qualified</th>
+                <th style={{ textAlign: 'right' }}>Reserved</th>
+                <th style={{ textAlign: 'right' }}>Sold</th>
+                <th style={{ textAlign: 'right' }}>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {p.byCampaign.map((r) => (
+                <tr key={r.campaign}>
+                  <td>
+                    <div className="crm-name">{r.campaign}</div>
+                    <div className="crm-meta">{r.channels.join(', ')}</div>
+                  </td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.leads}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.qualified}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.reserved}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="crm-meta" style={{ padding: '10px 14px 0' }}>
+            Only leads whose link carried a <code>utm_campaign</code>. Untagged traffic is left out
+            rather than piled into an “unknown” row — it is not a campaign that did badly.
+          </div>
+        </div>
+      )}
+
+      {p.byAd.length > 0 && (
+        <div className="crm-card table-scroll" style={{ marginBottom: 16 }}>
+          <h3 style={{ padding: '0 14px' }}>By ad <span className="h3-note">· utm_content</span></h3>
+          <table className="crm-table">
+            <thead>
+              <tr>
+                <th>Ad</th>
+                <th style={{ textAlign: 'right' }}>Leads</th>
+                <th style={{ textAlign: 'right' }}>Qualified</th>
+                <th style={{ textAlign: 'right' }}>Sold</th>
+                <th style={{ textAlign: 'right' }}>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {p.byAd.map((r) => (
+                <tr key={r.ad}>
+                  <td>
+                    <div className="crm-name">{r.ad}</div>
+                    {r.campaign && <div className="crm-meta">{r.campaign}</div>}
+                  </td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.leads}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.qualified}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* ── Partners ── */}
       {producing.length > 0 && (

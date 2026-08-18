@@ -3,6 +3,7 @@ import { canEdit, currentUser, isAdmin } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
 import { listLeads } from '@/lib/crm/store';
 import { SECTION_META, isQueueKey } from '@/lib/crm/rules';
+import { SOURCES, leadSource } from '@/lib/crm/sources';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
 import { LeadsTable } from '@/components/crm/leads-table';
@@ -41,6 +42,7 @@ export default async function LeadsPage({
     stage: str(sp.stage),
     score: str(sp.score),
     form_type: str(sp.form_type),
+    source: str(sp.source),
     owner: str(sp.owner),
     q: str(sp.q),
     flag,
@@ -52,6 +54,10 @@ export default async function LeadsPage({
   const sort = Object.hasOwn(SORTS, str(sp.sort)) ? str(sp.sort) : 'received';
   const leads = (await listLeads(filter as never)).sort(SORTS[sort]);
   const [admin, editor, me] = await Promise.all([isAdmin(), canEdit(), currentUser()]);
+  /* Read off the unfiltered table rather than the filtered view, or choosing a
+     source would empty the list of every other source to switch back to. */
+  const seen = new Set((await listLeads({ archived: filter.archived })).map(leadSource));
+  const presentSources = SOURCES.filter((sc) => seen.has(sc.id));
   const roster = agents().map((a) => a.name);
   /* A salesperson's own leads are the ones they are paid to work, so that is
      the view they land on. It is a default, not a wall: "Everyone" is one
@@ -130,6 +136,18 @@ export default async function LeadsPage({
             <select className="crm-select" name="owner" defaultValue={filter.owner} aria-label="Filter by owner">
               <option value="">Everyone</option>
               {roster.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+        )}
+        {/* Channel, not spelling: picking Facebook catches `fb`, `FB_ads` and
+            `l.facebook.com`, which used to be three different filters. Only
+            the channels that actually appear in the data are offered — a
+            dropdown of sixteen where two exist is a dropdown nobody reads. */}
+        {presentSources.length > 1 && (
+          <div className="fld">
+            <select className="crm-select" name="source" defaultValue={filter.source} aria-label="Filter by source">
+              <option value="">All sources</option>
+              {presentSources.map((sc) => <option key={sc.id} value={sc.id}>{sc.label}</option>)}
             </select>
           </div>
         )}

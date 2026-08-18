@@ -161,13 +161,35 @@ describe('which marketing produces buyers', () => {
   });
 
   it('has no win rate for a source with nothing decided, rather than 0%', () => {
-    const p = performance([lead({ source: 'newcampaign', stage: 'qualified' })], today);
-    assert.equal(p.bySource.find((r) => r.source === 'newcampaign')!.winRate, null);
+    const p = performance([lead({ source: 'tiktok', stage: 'qualified' })], today);
+    assert.equal(p.bySource.find((r) => r.source === 'tiktok')!.winRate, null);
   });
 
   it('files a lead with no source under direct', () => {
     const p = performance([lead()], today);
     assert.equal(p.bySource[0].source, 'direct');
+  });
+
+  it('folds the spellings of one channel into one row', () => {
+    /* Four rows in a report with room for eight is how the channel producing
+       the most stays invisible. */
+    const p = performance([
+      lead({ source: 'fb' }),
+      lead({ source: 'Facebook' }),
+      lead({ utm_source: 'FB_Ads' }),
+      lead({ source: 'l.facebook.com' }),
+    ], today);
+
+    assert.equal(p.bySource.length, 1);
+    assert.equal(p.bySource[0].source, 'facebook');
+    assert.equal(p.bySource[0].label, 'Facebook');
+    assert.equal(p.bySource[0].leads, 4);
+  });
+
+  it('says which raw values it folded in, so nothing hides inside Other', () => {
+    const p = performance([lead({ source: 'samui-times' }), lead({ source: 'villa-collective' })], today);
+    const other = p.bySource.find((r) => r.source === 'other')!;
+    assert.deepEqual(other.raw, ['samui-times', 'villa-collective']);
   });
 });
 
@@ -202,5 +224,56 @@ describe('the archive', () => {
 
     assert.equal(p.total, 1);
     assert.equal(p.wonValue, 100);
+  });
+});
+
+describe('one level down — campaigns and ads', () => {
+  it('groups by campaign and says which channels it ran on', () => {
+    const p = performance([
+      lead({ source: 'fb', utm_campaign: 'spring-launch', stage: 'won', value: 12, villa: 'L' }),
+      lead({ source: 'instagram', utm_campaign: 'spring-launch', stage: 'qualified' }),
+      lead({ source: 'google', utm_campaign: 'search-brand' }),
+    ], today);
+
+    const spring = p.byCampaign.find((c) => c.campaign === 'spring-launch')!;
+    assert.equal(spring.leads, 2);
+    assert.equal(spring.won, 1);
+    assert.equal(spring.wonValue, 12);
+    assert.deepEqual(spring.channels, ['Facebook', 'Instagram']);
+  });
+
+  it('leaves untagged traffic out instead of inventing an "unknown" campaign', () => {
+    /* A lead with no utm_campaign is not a campaign that performed badly, it is
+       traffic nobody tagged. Mixing the two is how a report starts lying. */
+    const p = performance([lead({ source: 'fb' }), lead({ source: 'fb', utm_campaign: 'x' })], today);
+    assert.equal(p.byCampaign.length, 1);
+    assert.equal(p.byCampaign[0].campaign, 'x');
+  });
+
+  it('has no campaign or ad tables at all until the links carry the tags', () => {
+    const p = performance([lead(), lead()], today);
+    assert.deepEqual(p.byCampaign, []);
+    assert.deepEqual(p.byAd, []);
+  });
+
+  it('groups ads by utm_content and names the campaign behind them', () => {
+    const p = performance([
+      lead({ utm_campaign: 'spring-launch', utm_content: 'pool-video' }),
+      lead({ utm_campaign: 'spring-launch', utm_content: 'pool-video', stage: 'won', value: 30, villa: 'L' }),
+      lead({ utm_campaign: 'spring-launch', utm_content: 'sunset-still' }),
+    ], today);
+
+    assert.equal(p.byAd.length, 2);
+    const best = p.byAd[0];
+    assert.equal(best.ad, 'pool-video', 'the one that sold sorts first');
+    assert.equal(best.campaign, 'spring-launch');
+    assert.equal(best.wonValue, 30);
+  });
+
+  it('credits a source with a reservation that was later lost', () => {
+    const p = performance([lead({ source: 'portal', stage: 'lost', lost_from: 'reserved' })], today);
+    const row = p.bySource.find((r) => r.source === 'portal')!;
+    assert.equal(row.reserved, 1, 'it did produce a reservation, whatever happened afterwards');
+    assert.equal(row.winRate, 0, 'and it was decided, so the win rate is a real zero');
   });
 });

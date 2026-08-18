@@ -23,6 +23,7 @@ export {
 } from './rules';
 export type { QueueKey, QueueSection } from './rules';
 import { getBackend } from './backend';
+import { leadSource } from './sources';
 export type { VillaHistoryEntry, VillaRecord, VillaStatus } from './types';
 
 /* Domain layer of the CRM store. Persistence is pluggable: with a DATABASE_URL
@@ -70,6 +71,8 @@ export interface LeadFilter {
   stage?: Stage;
   score?: string;
   form_type?: string;
+  /** A canonical channel id from `sources.ts`, not a raw value — so filtering
+      on `facebook` catches `fb`, `FB_ads` and `l.facebook.com` too. */
   source?: string;
   q?: string;
   /** Restrict to one salesperson's leads. With several people selling, "all
@@ -113,7 +116,7 @@ export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
       if (filter.stage && l.stage !== filter.stage) return false;
       if (filter.score && l.score !== filter.score) return false;
       if (filter.form_type && l.form_type !== filter.form_type) return false;
-      if (filter.source && (l.source || l.utm_source || '') !== filter.source) return false;
+      if (filter.source && leadSource(l) !== filter.source) return false;
       if (filter.owner && (l.owner || '') !== filter.owner) return false;
       if (filter.flag && !matchesFlag(l, filter.flag)) return false;
       if (q) {
