@@ -2,6 +2,7 @@ import type { Lead, Stage } from './types';
 import { LOST_REASONS, STAGES, atOrBeyond, isOpenStage, stageIndex } from './types';
 import { firstConversationAt, matchesFlag, stageEnteredAt } from './rules';
 import { OTHER, leadSource, rawSource, sourceLabel } from './sources';
+import { countryName, leadCountry } from './language';
 
 /* ══════════════════ What the head of sales needs to know ══════════════════
 
@@ -142,6 +143,16 @@ export interface AdRow extends Chain {
   campaign: string; // the campaign it belongs to, when there is one
 }
 
+/* Where the buyers are from. One of the strongest segmentation variables in an
+   international development — it changes the payment habits, the legal
+   structure, the season they come out, and which of them ever get on a plane —
+   and until `country` existed it was derived on every lead page and thrown
+   away. */
+export interface CountryRow extends Chain {
+  code: string;
+  name: string;
+}
+
 export interface LostRow {
   reason: string;
   label: string;
@@ -167,6 +178,10 @@ export interface Performance {
   lostStageKnown: number;
   bySalesperson: PersonRow[];
   bySource: SourceRow[];
+  /** Only leads we can place. A lead with no phone number and no recorded
+      country is not "unknown country", it is a lead we know nothing about, and
+      a row of those tells nobody anything. */
+  byCountry: CountryRow[];
   /** Only leads that carry one. Untagged traffic is not a campaign that
       performed badly, and an "(unknown)" row mixing the two would lie. */
   byCampaign: CampaignRow[];
@@ -274,6 +289,11 @@ export function performance(leads: Lead[], today = new Date().toISOString().slic
     }))
     .sort(byMoneyThenVolume);
 
+  const placed = live.filter((l) => leadCountry(l));
+  const byCountry: CountryRow[] = [...groupBy(placed, (l) => leadCountry(l)!).entries()]
+    .map(([code, mine]) => ({ code, name: countryName(code), ...chainFor(mine) }))
+    .sort(byMoneyThenVolume);
+
   const tagged = live.filter((l) => (l.utm_campaign || '').trim());
   const byCampaign: CampaignRow[] = [...groupBy(tagged, (l) => l.utm_campaign!.trim()).entries()]
     .map(([campaign, mine]) => ({
@@ -325,6 +345,7 @@ export function performance(leads: Lead[], today = new Date().toISOString().slic
     lostStageKnown: lost.filter((l) => l.lost_from).length,
     bySalesperson,
     bySource,
+    byCountry,
     byCampaign,
     byAd,
     lostReasons,

@@ -83,7 +83,10 @@ a szabály számolja, tehát a jelvény és az oldal soha nem mondhat mást.
   nem mozdul. Ugyanaz a szabály fut, mint a Mai teendők oldalon — csak ez a nézet rendezhető,
   tömegesen kezelhető és exportálható. A Mai teendők a munkára való, ez a vezetésre.
   A Mai teendők minden szakaszfejlécéből egy „in the list →" link ide hoz át,
-- fázis (New / Contacted / Qualified / Reserved / Won / Lost),
+- **ország** — az irányítószámból olvasva, vagy amit valaki kézzel felülírt,
+- **vásárlási időtáv** — amit a qualification során rögzítettetek,
+- **budget-tól** + deviza,
+- fázis (New / Contacted / Qualified / Presentation / Visit / Negotiation / Reserved / Contract / Won / Lost),
 - hőfok (Hot / Warm / Cold),
 - űrlaptípus (enquiry / reserve / brochure request / manual).
 
@@ -118,7 +121,12 @@ A listából egy sorra kattintva nyílik. Két oszlop:
 
 ### Bal oldal
 
-**Contact** — név, e-mail, telefon, WhatsApp, megkeresés típusa, beérkezés ideje, GDPR-hozzájárulás. Az **Edit** gombbal mind az öt kontaktmező (név, e-mail, telefon, WhatsApp, villa) szerkeszthető; minden módosítás bekerül az előzményekbe.
+**Contact** — név, e-mail, telefon, WhatsApp, **ország**, megkeresés típusa, beérkezés ideje, GDPR-hozzájárulás.
+
+Az **ország** alapból a telefonszám országhívójából jön — azt senki nem hamisítja. Ha téves
+(tipikusan: brit vevő dubai számról), a szerkesztésben átállítható; **legördülőből**, nem
+szabad szövegként, mert az „UK", a „United Kingdom" és az „England" három külön sor lenne a
+riportban. Üresre állítva visszatér a telefonszám szerinti olvasatra. Az **Edit** gombbal mind az öt kontaktmező (név, e-mail, telefon, WhatsApp, villa) szerkeszthető; minden módosítás bekerül az előzményekbe.
 
 Alatta gyorsgombok: **✉ Email** (levelezőt nyit), **WhatsApp** (wa.me link), **Call** (tárcsázás).
 
@@ -579,6 +587,26 @@ Nem tippel, hanem kimondja.
 Lead-szám, nyitott, pipeline-érték, eladás, eladási érték, konverzió, és **hány élő leadje
 kíván most figyelmet**. A gazdátlan leadek **külön sorban** szerepelnek (`— unassigned —`) —
 az a legfontosabb sor a képernyőn, nem kerekítési hiba.
+
+### By country
+
+Honnan jönnek a vevők. Nemzetközi fejlesztésnél ez az egyik legerősebb szegmentáció: mást jelent
+a fizetési szokás, a jogi struktúra, hogy melyik szezonban jönnek ki, és hogy egyáltalán
+felülnek-e repülőre. Eddig ez **kiszámolódott minden lead lapján, és eldobódott**.
+
+Akit nem tudunk elhelyezni (nincs telefonszám, nincs rögzített ország), az **kimarad** a
+táblázatból — nem „ismeretlen ország" sorba kerül. Egy sor olyan leadekből, akikről semmit nem
+tudunk, senkinek nem mond semmit.
+
+### Budget szerinti szűrés — és miért nem hazudik
+
+A budget abban a devizában van tárolva, **amit a vevő mondott**. Ez helyes a nyilvántartásnak és
+kényelmetlen az összehasonlításnak.
+
+Ha nincs beállítva árfolyam (`CRM_FX`), a szűrő **csak a kiválasztott devizában rögzített**
+budgeteket hasonlítja össze, és az oldal ezt ki is írja. Nem talál ki árfolyamot: egy kitalált
+árfolyam olyan szűrőt csinálna, ami teljesnek látszik, miközben csendben elrejt vevőket. Ha van
+beállítva árfolyam, átvált, és azt írja ki, hogy **közelítő**.
 
 ### By source · By campaign · By ad
 

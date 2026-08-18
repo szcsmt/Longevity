@@ -685,6 +685,40 @@ that has **no open task and no running reply timer** — nobody owns its next mo
 a red badge in the nav (`attentionCounts()`), together with overdue tasks, untouched new leads,
 awaiting-reply leads past 3 days, and stalled leads.
 
+## Country, and comparing budgets
+
+### `country` — an override, not the source of truth
+
+Nationality is one of the strongest segmentation variables in an international development: it
+changes the payment habits, the legal structure, the season they come out, and which of them
+ever get on a plane. It was being **derived and thrown away** — `guessLanguage` has read the
+country off the dialling code all along, and nothing stored it, so it could not be filtered on,
+counted, or corrected when the guess was wrong.
+
+`leadCountry(lead)` = the recorded `country`, else what the phone number says, else
+**undefined**. Undefined is deliberate: a lead we cannot place is not "unknown country", and a
+report row of those tells nobody anything, so `performance().byCountry` leaves them out.
+
+The stored field is an override for the cases the dialling code gets wrong — a British buyer
+calling from a Dubai number is a real one. It is a **picker**, not a text box: "UK", "United
+Kingdom" and "England" typed into three leads is three rows in a report. Only countries the CRM
+can name are accepted; an empty value clears it back to the phone reading.
+
+### Budgets — `lib/crm/money.ts`
+
+A budget is stored in the money the buyer actually said, because converting it at the moment
+they said it would lose what they told us. That is right for the record and awkward for "show me
+everyone with 10M THB or more", where four currencies have to be lined up.
+
+Rates are **configuration with no defaults**: `CRM_FX="EUR:38,USD:35,GBP:44"` means one euro is
+worth 38 baht. `toBase(amount, currency)` returns **undefined** when no rate is configured for
+that currency, and the filter excludes those leads rather than comparing their number as if it
+were baht. The leads page says which of the two is happening. An invented rate would make a
+filter look complete while quietly hiding buyers — worse than a filter that admits its limits.
+
+`LeadFilter` gains `country`, `timeframe`, `minBudget` + `budgetCurrency`, all carried into the
+CSV export, which also gains `country`.
+
 ## Sources — `lib/crm/sources.ts`
 
 `source` is whatever arrived in `?source=` or `utm_source`, unconstrained, from a link somebody

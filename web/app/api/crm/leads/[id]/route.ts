@@ -1,5 +1,6 @@
 import { canEdit, currentUser, isAdmin, isAuthed } from '@/lib/crm/auth';
 import { agents } from '@/lib/crm/agents';
+import { COUNTRIES } from '@/lib/crm/language';
 import { findContact, getAgency, protectionDays } from '@/lib/crm/partners';
 import {
   ClaimConflict, CrmConflict, addNote, addTask, archiveLead, blockContactOf, endNurture, getLead,
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic';
 
 /* Only these keys may be patched — anything else in the payload is dropped so
    a crafted request can't overwrite attribution, history or timestamps. */
-const PATCHABLE = ['name', 'email', 'phone', 'whatsapp', 'villa', 'stage', 'score', 'value', 'lost_reason', 'owner'] as const;
+const PATCHABLE = ['name', 'email', 'phone', 'whatsapp', 'villa', 'country', 'stage', 'score', 'value', 'lost_reason', 'owner'] as const;
 
 function sanitizePatch(raw: unknown): LeadPatch {
   const src = (raw || {}) as Record<string, unknown>;
@@ -36,6 +37,13 @@ function sanitizePatch(raw: unknown): LeadPatch {
       // unassigns. Anything else is dropped rather than stored as free text.
       if (v === null || v === '') patch[k] = undefined;
       else if (typeof v === 'string' && agents().some((a) => a.name === v)) patch[k] = v;
+    } else if (k === 'country') {
+      /* Only a country the CRM can name — anything else would produce a
+         report row nobody can read. Empty clears it, which puts the lead back
+         on the dialling-code reading. */
+      const code = String(v || '').trim().toUpperCase();
+      if (!code) patch[k] = undefined;
+      else if (COUNTRIES.some((c) => c.code === code)) patch[k] = code;
     } else if (typeof v === 'string') {
       patch[k] = v.slice(0, 300);
     }

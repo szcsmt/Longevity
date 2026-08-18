@@ -203,6 +203,42 @@ const NAMES: Record<string, string> = {
 
 export const languageName = (code: string) => NAMES[code] || code.toUpperCase();
 
+/* ── Where the buyer is from ──
+
+   Nationality is one of the strongest segmentation variables in an
+   international development: it changes the payment habits, the legal
+   structure, the season they come out, and which of them will ever get on a
+   plane. It was being derived and thrown away — `guessLanguage` has worked out
+   the country from the dialling code all along, and nothing stored it, so it
+   could not be filtered on, counted, or corrected when the guess was wrong.
+
+   The derivation stays the default. `country` on the lead is an override, set
+   only when a person actually knows better: a British buyer calling from a
+   Dubai number is exactly the case a dialling code gets wrong. */
+
+const COUNTRY_NAMES: Record<string, string> = Object.fromEntries(
+  Object.values(DIAL).map((d) => [d.c, d.name]),
+);
+
+/** Every country the CRM can name, for a picker. Alphabetical. */
+export const COUNTRIES: { code: string; name: string }[] = Object.entries(COUNTRY_NAMES)
+  .map(([code, name]) => ({ code, name }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+export const countryName = (code?: string): string =>
+  (code && COUNTRY_NAMES[code.toUpperCase()]) || code?.toUpperCase() || '';
+
+/** The country to file this lead under: what somebody recorded, else what the
+    phone number says. Undefined when we genuinely do not know — better than a
+    guess dressed as a fact. */
+export function leadCountry(lead: {
+  country?: string; phone?: string; whatsapp?: string; locale?: string; email?: string;
+}): string | undefined {
+  const set = (lead.country || '').trim().toUpperCase();
+  if (set) return set;
+  return guessLanguage(lead).country;
+}
+
 /** "Spanish · Spain" — the one-line form for the CRM. */
 export function languageLabel(g: LanguageGuess): string {
   const lang = languageName(g.language);

@@ -198,6 +198,39 @@ export default async function PerformancePage() {
         </div>
       </div>
 
+      {p.byCountry.length > 0 && (
+        <div className="crm-card table-scroll" style={{ marginBottom: 16 }}>
+          <h3 style={{ padding: '0 14px' }}>By country <span className="h3-note">· from the dialling code unless somebody corrected it</span></h3>
+          <table className="crm-table">
+            <thead>
+              <tr>
+                <th>Country</th>
+                <th style={{ textAlign: 'right' }}>Leads</th>
+                <th style={{ textAlign: 'right' }}>Qualified</th>
+                <th style={{ textAlign: 'right' }}>Sold</th>
+                <th style={{ textAlign: 'right' }}>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {p.byCountry.slice(0, 15).map((r) => (
+                <tr key={r.code}>
+                  <td className="crm-name">{r.name}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.leads}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.qualified}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.won}</td>
+                  <td className="tabnum" style={{ textAlign: 'right' }}>{r.wonValue ? fmtTHBshort(r.wonValue) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {p.byCountry.length > 15 && (
+            <div className="crm-meta" style={{ padding: '10px 14px 0' }}>
+              {p.byCountry.length - 15} more countries below these, none of them larger.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── One level down ──
 
           A channel says Facebook is working. A campaign says WHICH Facebook is

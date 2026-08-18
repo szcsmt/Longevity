@@ -332,7 +332,7 @@ All writes go through optimistic concurrency (per-lead `rev`; up to 4 retries on
 
 | `op` | Body fields | Behaviour |
 |---|---|---|
-| `update` | `patch` object | Only these keys are accepted, everything else is silently dropped (attribution/history/timestamps can never be overwritten): `name`, `email`, `phone`, `whatsapp`, `villa` (strings, capped 300); `stage` (must be `new`/`contacted`/`qualified`/`presentation`/`visit`/`negotiation`/`reserved`/`contract`/`won`/`lost`); `score` (`hot`/`warm`/`cold`); `value` (`null`/`''` clears; non-negative finite number → rounded); `lost_reason` (`price`/`timing`/`competitor`/`unreachable`/`other`, `null`/`''` clears); `owner` (must be a name on the `CRM_AGENTS` roster — anything else is dropped; `null`/`''` unassigns). Stage/score/contact/value changes are logged to the timeline; moving to any stage other than `lost` clears `lost_reason`. A stage, score or contact edit also stamps `first_response_at` if it is still empty. Moving to `reserved`, `contract` or `won` on a lead with **no `villa`** is refused with **`409`** and a sentence — those three stages assert a specific unit, and without one the masterplan cannot show who holds the plot. Moving to `qualified` or beyond with qualification answers missing is allowed and the gap is written onto the timeline entry (`New → Presentation — still unknown: budget, timeframe`). |
+| `update` | `patch` object | Only these keys are accepted, everything else is silently dropped (attribution/history/timestamps can never be overwritten): `name`, `email`, `phone`, `whatsapp`, `villa` (strings, capped 300); `country` (ISO alpha-2 the CRM can name, empty clears it back to the dialling-code reading); `stage` (must be `new`/`contacted`/`qualified`/`presentation`/`visit`/`negotiation`/`reserved`/`contract`/`won`/`lost`); `score` (`hot`/`warm`/`cold`); `value` (`null`/`''` clears; non-negative finite number → rounded); `lost_reason` (`price`/`timing`/`competitor`/`unreachable`/`other`, `null`/`''` clears); `owner` (must be a name on the `CRM_AGENTS` roster — anything else is dropped; `null`/`''` unassigns). Stage/score/contact/value changes are logged to the timeline; moving to any stage other than `lost` clears `lost_reason`. A stage, score or contact edit also stamps `first_response_at` if it is still empty. Moving to `reserved`, `contract` or `won` on a lead with **no `villa`** is refused with **`409`** and a sentence — those three stages assert a specific unit, and without one the masterplan cannot show who holds the plot. Moving to `qualified` or beyond with qualification answers missing is allowed and the gap is written onto the timeline entry (`New → Presentation — still unknown: budget, timeframe`). |
 | `addNote` | `body` (required, non-empty → else `400`) | Prepends a note (capped 4000). |
 | `addTask` | `title` (required → else `400`), `due` (optional ISO) | Appends an open task (title capped 300). |
 | `toggleTask` | `taskId` | Flips `done`; unknown task id → `404`. |
@@ -473,11 +473,12 @@ are grouped by shared e-mail OR shared phone key, linked transitively (union-fin
 ### GET /api/crm/export
 
 CSV export of the (optionally filtered) lead list. Query params match the Leads page:
-`stage`, `score`, `form_type`, `owner`, `flag` (one of the six working-queue rules), `q`
-(free-text over name/e-mail/phone/villa) and `archived=only`.
+`stage`, `score`, `form_type`, `source` (a canonical channel), `country` (ISO alpha-2),
+`timeframe`, `minBudget` + `budgetCurrency`, `owner`, `flag` (one of the six working-queue
+rules), `q` (free-text over name/e-mail/phone/villa) and `archived=only`.
 
 Columns: `name`, `email`, `phone`, `whatsapp`, `form_type`, `form_origin`, `villa`, `stage`,
-`score`, `source` (falls back to `utm_source`), `agency`, `agency_agent`, `registered`
+`score`, `channel` (the normalised source), `country`, `source` (the raw value), `agency`, `agency_agent`, `registered`
 (the credited registration — who introduced the buyer, their named agent, and when),
 `utm_medium`, `utm_campaign`, `gdpr_consent` (`yes`/`no`), `received` (`submitted_at` or
 `created_at`), `notes` (count), `open_tasks` (count).
@@ -560,6 +561,7 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 | `INBOUND_SECRET` | Fallback query-string secret for `POST /api/inbound` (`?key=`), used only while no signing secret is set. |
 | `CRM_REPLY_TO` | The Resend inbound address customer replies should go to, e.g. `reply@….resend.app`. Set → the CRM sees replies and can stop the sequence. Unset → falls back to `CRM_NOTIFY_TO` and the CRM stays blind. |
 | `CRM_DIGEST_TO` | Morning-digest recipients, comma-separated. Falls back to `CRM_NOTIFY_TO`. |
+| `CRM_FX` | Exchange rates for comparing budgets, as `EUR:38,USD:35,GBP:44` — how many baht one unit is worth. **No defaults**: with nothing configured the budget filter compares within a single currency and the leads page says so, because an invented rate would make a filter look complete while hiding buyers. |
 | `CRM_PAYMENT_SCHEDULE` | The project's payment schedule as JSON: an array of `{key, pct, label, gate, construction}` whose percentages add up to 100. Unset → 7 / 43 / 40 / 10. Read on the **server only**; a unit is stamped with these terms the first time money is agreed on it, so changing this never rewrites a deal already struck. An invalid value is refused rather than half-applied, and the Payments page says so. |
 | `CRM_AGENCY_PROTECTION_DAYS` | How long a partner agency's registration protects its claim on a buyer, in days (default `90`). The house figure; an agency that negotiated something different carries its own `protection_days`. Deliberately configuration rather than a constant in the code. |
 | `WHATSAPP_TOKEN` | Meta Cloud API permanent access token. |

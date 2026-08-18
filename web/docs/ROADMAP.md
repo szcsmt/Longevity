@@ -40,6 +40,7 @@ the work is filling gaps and closing blind spots.
 | Automated sequence | Six letters, minute 0 → day 60, stopping the moment a human owns the conversation |
 | Roles | admin / agent / viewer, with the irreversible and the exportable reserved to the owner |
 | Speed to lead | `first_response_at` — the first moment a *person* acted |
+| Segmentation | Country read off the dialling code and correctable, budget comparison across currencies at configured rates (and an honest refusal to compare without them) |
 | Payment schedules | A step's percentage AND its construction gate are configuration: per project via env, per unit when negotiated, stamped at the moment money is agreed so old deals keep their terms |
 | Reservations and contracts | A reservation record with deposit agreed / received / expiry / agreement, a release that needs a reason, `reservationWatch()` for the holds running out, and a four-step SPA status stamping each date once |
 | Attribution | Channel / campaign / ad, each walking leads → qualified → reserved → sold → money. Sources are normalised on read (`fb`, `Facebook`, `FB_ads` are one row) without ever overwriting the raw value |
@@ -52,8 +53,7 @@ the work is filling gaps and closing blind spots.
 | | What is missing |
 |---|---|
 | Scoring | One hot/warm/cold, from the form type plus AI triage. The specification asks for fit and engagement kept apart |
-| Country / nationality | Language is inferred from the phone number; nationality is neither stored nor filterable |
-| Filters | Stage, score, form, owner, free text and now the attention flags. Not budget, timeframe, country or value |
+| Filters | Stage, score, form, source, country, timeframe, budget, owner, free text and the attention flags. Not deal value |
 | Permissions | Three roles. Head of sales, marketing and finance all currently mean "admin" |
 | Global search | Leads only — not units, not agencies |
 
@@ -114,9 +114,11 @@ the work is filling gaps and closing blind spots.
 - [x] **P2.5** Configurable payment schedules — per project via `CRM_PAYMENT_SCHEDULE`, per unit
       when a buyer negotiates, and stamped onto the unit so changing the house terms never
       rewrites a deal already struck
-- [ ] Country / nationality on the lead, inferred and correctable, filterable
+- [x] **P2.7** Country on the lead — inferred from the dialling code, correctable from a picker,
+      filterable, and its own row on the performance screen
 - [ ] Fit and engagement as two scores
-- [ ] Filters on budget, timeframe, value
+- [x] **P2.9** Filters on country, timeframe and budget — with exchange rates as configuration
+      and no invented defaults, so the budget filter says which comparison it is actually making
 - [ ] Configurable SLA thresholds
 
 ### P3 — later

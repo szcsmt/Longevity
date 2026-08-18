@@ -4,6 +4,9 @@ import { agents } from '@/lib/crm/agents';
 import { listLeads } from '@/lib/crm/store';
 import { SECTION_META, isQueueKey } from '@/lib/crm/rules';
 import { SOURCES, leadSource } from '@/lib/crm/sources';
+import { COUNTRIES, countryName, leadCountry } from '@/lib/crm/language';
+import { fxRates, hasRates } from '@/lib/crm/money';
+import { TIMEFRAMES } from '@/lib/crm/types';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
 import { LeadsTable } from '@/components/crm/leads-table';
@@ -43,6 +46,10 @@ export default async function LeadsPage({
     score: str(sp.score),
     form_type: str(sp.form_type),
     source: str(sp.source),
+    country: str(sp.country).toUpperCase(),
+    timeframe: str(sp.timeframe),
+    minBudget: Number(str(sp.minBudget)) || undefined,
+    budgetCurrency: str(sp.budgetCurrency) || 'THB',
     owner: str(sp.owner),
     q: str(sp.q),
     flag,
@@ -56,8 +63,12 @@ export default async function LeadsPage({
   const [admin, editor, me] = await Promise.all([isAdmin(), canEdit(), currentUser()]);
   /* Read off the unfiltered table rather than the filtered view, or choosing a
      source would empty the list of every other source to switch back to. */
-  const seen = new Set((await listLeads({ archived: filter.archived })).map(leadSource));
+  const everything = await listLeads({ archived: filter.archived });
+  const seen = new Set(everything.map(leadSource));
   const presentSources = SOURCES.filter((sc) => seen.has(sc.id));
+  const seenCountries = new Set(everything.map(leadCountry).filter(Boolean) as string[]);
+  const presentCountries = COUNTRIES.filter((c) => seenCountries.has(c.code));
+  const rates = hasRates(fxRates());
   const roster = agents().map((a) => a.name);
   /* A salesperson's own leads are the ones they are paid to work, so that is
      the view they land on. It is a default, not a wall: "Everyone" is one
@@ -67,7 +78,7 @@ export default async function LeadsPage({
   // Preserve the current view in links (sorting keeps filters, export keeps both).
   const qs = (over: Record<string, string>) => {
     const p = new URLSearchParams();
-    for (const [k, v] of Object.entries({ ...filter, sort, ...over })) if (v) p.set(k, v);
+    for (const [k, v] of Object.entries({ ...filter, sort, ...over })) if (v) p.set(k, String(v));
     const s = p.toString();
     return s ? `?${s}` : '';
   };
@@ -83,6 +94,14 @@ export default async function LeadsPage({
           <p className="crm-sub">
             {leads.length} {leads.length === 1 ? 'lead' : 'leads'} matching your view.
             {flag && ` ${SECTION_META.find((sec) => sec.key === flag)?.blurb}`}
+            {filter.country && ` ${countryName(filter.country)}.`}
+            {/* Said out loud rather than left to be discovered: without rates
+                the budget filter can only compare within one currency, and a
+                filter that looks complete while hiding buyers is worse than one
+                that admits its limits. */}
+            {Boolean(filter.minBudget) && (rates
+              ? ' Budgets converted at the configured rates — approximate.'
+              : ' No exchange rates configured, so only budgets recorded in this currency are compared.')}
             {showArchived && ' Hidden from every count and report, and the automated e-mails have stopped. Open one to restore it.'}
           </p>
         </div>
@@ -151,6 +170,33 @@ export default async function LeadsPage({
             </select>
           </div>
         )}
+        {/* Only the countries that actually appear, for the same reason as the
+            sources: a picker of forty where four exist is a picker nobody
+            reads. Matches `leadCountry`, so a lead with nothing recorded is
+            still filed under what its phone number says. */}
+        {presentCountries.length > 1 && (
+          <div className="fld">
+            <select className="crm-select" name="country" defaultValue={filter.country} aria-label="Filter by country">
+              <option value="">All countries</option>
+              {presentCountries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="fld">
+          <select className="crm-select" name="timeframe" defaultValue={filter.timeframe} aria-label="Filter by purchase timeframe">
+            <option value="">Any timeframe</option>
+            {TIMEFRAMES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+        </div>
+        <div className="fld">
+          <input className="crm-input" name="minBudget" inputMode="numeric" placeholder="Budget from…"
+            defaultValue={filter.minBudget || ''} aria-label="Minimum budget" />
+        </div>
+        <div className="fld" style={{ minWidth: 90 }}>
+          <select className="crm-select" name="budgetCurrency" defaultValue={filter.budgetCurrency} aria-label="Budget currency">
+            {['THB', 'EUR', 'USD', 'GBP'].map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
         {/* The attention rules as a filter. Same definitions the Today queue
             uses, asked one at a time. */}
         <div className="fld">

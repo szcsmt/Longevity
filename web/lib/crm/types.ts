@@ -559,6 +559,13 @@ export interface Lead {
      stronger) is computed on demand in language.ts. */
   locale?: string;
 
+  /* ── Where the buyer is from — ISO 3166-1 alpha-2 ──
+     An OVERRIDE, not the source of truth. The dialling code answers this for
+     most leads and `leadCountry()` uses it; this field exists for the cases it
+     gets wrong, which are real — a British buyer calling from a Dubai number
+     is not an Emirati. Absent means "the phone number is the best we have". */
+  country?: string;
+
   // Deal
   value?: number; // expected deal value in THB — defaults from the villa list price
 
@@ -654,7 +661,7 @@ export interface Lead {
 }
 
 export type LeadPatch = Partial<
-  Pick<Lead, 'name' | 'email' | 'phone' | 'whatsapp' | 'villa' | 'stage' | 'score' | 'value' | 'lost_reason' | 'owner'>
+  Pick<Lead, 'name' | 'email' | 'phone' | 'whatsapp' | 'villa' | 'country' | 'stage' | 'score' | 'value' | 'lost_reason' | 'owner'>
 >;
 
 /* A lightweight interaction event — a real click on the live site (open a form,

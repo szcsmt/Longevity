@@ -13,7 +13,7 @@ import { fmtTHB } from '@/lib/crm/villas';
 import { messageTemplates } from '@/lib/crm/templates';
 import { SEQUENCE_STEPS, sequenceState, stepLabel } from '@/lib/crm/sequence';
 import { DOCUMENTS } from '@/lib/crm/documents';
-import { guessLanguage, languageLabel, languageName } from '@/lib/crm/language';
+import { COUNTRIES, countryName, guessLanguage, languageLabel, languageName, leadCountry } from '@/lib/crm/language';
 import { LostReasonDialog } from '@/components/crm/lost-reason-dialog';
 
 /* What the picker needs about an agency — not the whole record, and not the
@@ -82,6 +82,9 @@ export function LeadWorkspace({
      reads very differently either way, and so does the day list. */
   const [regAgency, setRegAgency] = useState('');
   const [regBroker, setRegBroker] = useState('');
+  /* What the dialling code says, so the picker can label its "leave it to the
+     phone number" option with the answer that will actually be used. */
+  const derivedCountry = guessLanguage(lead).country;
   const parked = isNurtured(lead, today);
   const claims = lead.claims || [];
   const credited = creditedClaim(lead);
@@ -203,7 +206,10 @@ export function LeadWorkspace({
   }
 
   function startEdit() {
-    setDraft(Object.fromEntries(CONTACT_FIELDS.map((f) => [f.key, lead[f.key] || ''])));
+    setDraft({
+      ...Object.fromEntries(CONTACT_FIELDS.map((f) => [f.key, lead[f.key] || ''])),
+      country: lead.country || '',
+    });
     setEditing(true);
   }
 
@@ -212,6 +218,9 @@ export function LeadWorkspace({
     for (const f of CONTACT_FIELDS) {
       if ((draft[f.key] || '') !== (lead[f.key] || '')) changes[f.key] = (draft[f.key] || '').trim();
     }
+    // Country is a picker rather than one of the text fields, but it saves the
+    // same way — and an empty value clears it back to the phone-number reading.
+    if ((draft.country || '') !== (lead.country || '')) changes.country = draft.country || '';
     if (Object.keys(changes).length) await patch({ op: 'update', patch: changes });
     setEditing(false);
   }
@@ -361,6 +370,22 @@ export function LeadWorkspace({
                   />
                 </label>
               ))}
+              {/* A picker, not a text box: "UK", "United Kingdom" and "England"
+                  typed into three leads is three rows in a report. Left empty
+                  the dialling code answers it, which is right far more often
+                  than not — this is for the cases it gets wrong, and a British
+                  buyer calling from a Dubai number is a real one. */}
+              <label>
+                <span className="crm-label">Country</span>
+                <select
+                  className="crm-select"
+                  value={draft.country || ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, country: e.target.value }))}
+                >
+                  <option value="">From the phone number{derivedCountry ? ` · ${countryName(derivedCountry)}` : ''}</option>
+                  {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </select>
+              </label>
               <div className="act-row" style={{ gridColumn: '1 / -1', marginTop: 4 }}>
                 <button className="crm-btn gold sm" disabled={busy} onClick={saveEdit}>Save</button>
                 <button className="crm-btn ghost sm" onClick={() => setEditing(false)}>Cancel</button>
@@ -378,6 +403,11 @@ export function LeadWorkspace({
                   {lead.form_type || '—'}
                   {lead.form_origin ? <span className="muted"> · {lead.form_origin}</span> : null}
                   {lead.villa ? <span className="muted"> · {lead.villa}</span> : null}
+                </dd>
+                <dt>Country</dt>
+                <dd>
+                  {countryName(leadCountry(lead)) || '—'}
+                  {!lead.country && derivedCountry && <span className="muted"> · from the phone number</span>}
                 </dd>
                 <dt>Received</dt><dd>{fmtDate(lead.submitted_at || lead.created_at)}</dd>
                 <dt>Consent</dt><dd>{lead.gdpr_consent ? 'GDPR consent given' : '—'}</dd>

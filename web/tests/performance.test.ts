@@ -277,3 +277,23 @@ describe('one level down — campaigns and ads', () => {
     assert.equal(row.winRate, 0, 'and it was decided, so the win rate is a real zero');
   });
 });
+
+describe('where the buyers are from', () => {
+  it('reads the country off the dialling code when nobody has recorded one', () => {
+    const p = performance([lead({ phone: '+36 30 111 2222' })], today);
+    assert.equal(p.byCountry[0].code, 'HU');
+    assert.equal(p.byCountry[0].name, 'Hungary');
+  });
+
+  it('lets a recorded country beat the phone number', () => {
+    /* A British buyer calling from a Dubai number is not an Emirati, and the
+       dialling code is exactly what gets that wrong. */
+    const p = performance([lead({ phone: '+971 50 111 2222', country: 'GB' })], today);
+    assert.equal(p.byCountry[0].code, 'GB');
+  });
+
+  it('leaves out a lead it cannot place, rather than inventing an "unknown" row', () => {
+    const p = performance([lead({ email: 'someone@gmail.com' }), lead({ phone: '+36 30 111 2222' })], today);
+    assert.equal(p.byCountry.length, 1, 'a row of leads we know nothing about tells nobody anything');
+  });
+});

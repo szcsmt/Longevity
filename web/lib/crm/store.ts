@@ -11,7 +11,7 @@ import {
 import { DEFAULT_SCHEDULE, houseSchedule, scheduleFor, scheduleProblem, toSchedule } from './schedule';
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
-import { guessLanguage, languageLabel } from './language';
+import { guessLanguage, languageLabel, leadCountry } from './language';
 import {
   ACTIVE_STAGES, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, activeClaim, matchesFlag, missingQualification,
   workQueue, type QueueKey,
@@ -26,6 +26,7 @@ export {
 export type { QueueKey, QueueSection } from './rules';
 import { getBackend } from './backend';
 import { leadSource } from './sources';
+import { fxRates, toBase } from './money';
 export type { VillaHistoryEntry, VillaRecord, VillaStatus } from './types';
 
 /* Domain layer of the CRM store. Persistence is pluggable: with a DATABASE_URL
@@ -89,6 +90,16 @@ export interface LeadFilter {
       this existed the CRM could say there were seven leads with no next step
       and could not name one of them. */
   flag?: QueueKey;
+  /** ISO 3166-1 alpha-2. Matches what `leadCountry()` answers, so a lead with
+      no stored country is still filed under what its phone number says. */
+  country?: string;
+  /** A `TIMEFRAMES` id — the qualification answer, not a date. */
+  timeframe?: string;
+  /** Minimum budget, in `budgetCurrency` (default THB). A budget recorded in
+      another currency only matches when an exchange rate is configured; see
+      money.ts for why no rate is ever invented. */
+  minBudget?: number;
+  budgetCurrency?: string;
 }
 
 export const isArchived = (l: Lead): boolean => Boolean(l.archived_at);
@@ -111,6 +122,7 @@ export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
   const leads = await (await backend()).allLeads();
   const q = filter.q?.trim().toLowerCase();
   const archived = filter.archived || 'exclude';
+  const rates = fxRates();
   return leads
     .filter((l) => {
       if (archived === 'exclude' && isArchived(l)) return false;
@@ -121,6 +133,18 @@ export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
       if (filter.source && leadSource(l) !== filter.source) return false;
       if (filter.owner && (l.owner || '') !== filter.owner) return false;
       if (filter.flag && !matchesFlag(l, filter.flag)) return false;
+      if (filter.country && leadCountry(l) !== filter.country) return false;
+      if (filter.timeframe && (l.qualification?.timeframe || '') !== filter.timeframe) return false;
+      if (filter.minBudget) {
+        const q = l.qualification;
+        if (!q?.budget) return false;
+        /* Converted only where a rate exists. A budget in a currency nobody has
+           configured a rate for is excluded rather than compared as if it were
+           baht — see money.ts. */
+        const inBase = toBase(q.budget, q.currency, rates);
+        const wanted = toBase(filter.minBudget, filter.budgetCurrency, rates);
+        if (inBase === undefined || wanted === undefined || inBase < wanted) return false;
+      }
       if (q) {
         const hay = `${l.name || ''} ${l.email || ''} ${l.phone || ''} ${l.villa || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -477,7 +501,7 @@ export async function updateLead(id: string, patch: LeadPatch, actor?: string): 
     }
     if (patch.score && patch.score !== lead.score)
       logActivity(lead, 'score', `Score ${cap(lead.score)} → ${cap(patch.score)}`, actor);
-    const contactKeys = ['name', 'email', 'phone', 'whatsapp', 'villa'] as const;
+    const contactKeys = ['name', 'email', 'phone', 'whatsapp', 'villa', 'country'] as const;
     const edited = contactKeys.filter((k) => k in patch && (patch[k] || '') !== (lead[k] || ''));
     if (edited.length) logActivity(lead, 'contact', `Contact details updated (${edited.join(', ')})`, actor);
     if ('value' in patch && patch.value !== lead.value)

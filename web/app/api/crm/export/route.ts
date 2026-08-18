@@ -2,6 +2,7 @@ import { isAdmin, isAuthed } from '@/lib/crm/auth';
 import { isQueueKey, listLeads } from '@/lib/crm/store';
 import { creditedClaim } from '@/lib/crm/rules';
 import { leadSource, sourceLabel } from '@/lib/crm/sources';
+import { countryName, leadCountry } from '@/lib/crm/language';
 import type { Lead, Stage } from '@/lib/crm/types';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,7 @@ const COLS: [string, (l: Lead) => string | number | undefined][] = [
   /* Both: the channel a report groups on, and the raw string the link
      actually carried. Exporting only the tidy one throws away the evidence. */
   ['channel', (l) => sourceLabel(leadSource(l))],
+  ['country', (l) => countryName(leadCountry(l))],
   ['source', (l) => l.source || l.utm_source],
   /* Who introduced the buyer, and when they registered them. The one piece of
      attribution that decides who gets paid, so it travels with the export
@@ -66,6 +68,10 @@ export async function GET(req: Request) {
     score: p('score'),
     form_type: p('form_type'),
     source: p('source'),
+    country: p('country'),
+    timeframe: p('timeframe'),
+    minBudget: Number(p('minBudget')) || undefined,
+    budgetCurrency: p('budgetCurrency'),
     owner: p('owner'),
     q: p('q'),
     flag: flag && isQueueKey(flag) ? flag : undefined,
