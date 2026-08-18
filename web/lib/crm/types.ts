@@ -32,18 +32,6 @@ export interface VillaPhase {
   due?: string;     // ISO date
 }
 
-export type PhaseKey = 'slot' | 'foundation' | 'build' | 'furnish';
-
-/* The resort's payment schedule: 7% reserves the slot (plot goes to the
-   buyer's name), 43% on foundation, 40% on completed building, 10% on
-   furnishing. */
-export const PHASES: { key: PhaseKey; pct: number; label: string; gate: string }[] = [
-  { key: 'slot',       pct: 7,  label: 'Slot deposit · 7%',  gate: 'Plot transferred to buyer' },
-  { key: 'foundation', pct: 43, label: 'Foundation · 43%',   gate: 'Foundation complete' },
-  { key: 'build',      pct: 40, label: 'Building · 40%',     gate: 'Building complete' },
-  { key: 'furnish',    pct: 10, label: 'Furnishing · 10%',   gate: 'Furnishing complete' },
-];
-
 export type Construction = 'not_started' | 'foundation' | 'structure' | 'furnishing' | 'done';
 
 export const CONSTRUCTION: { id: Construction; label: string }[] = [
@@ -53,6 +41,27 @@ export const CONSTRUCTION: { id: Construction; label: string }[] = [
   { id: 'furnishing',  label: 'Furnishing' },
   { id: 'done',        label: 'Completed' },
 ];
+
+/* A step's id. A plain string rather than a union of the four this project
+   happens to use: the schedule is configuration, and a type that can only ever
+   describe 7/43/40/10 would make it configuration in name only. */
+export type PhaseKey = string;
+
+/* ── One step of a payment schedule ──
+
+   The definition lives here with the other types; the actual schedules, the
+   parsing and the house default live in `schedule.ts`, which imports this file
+   and never the other way round. */
+export interface PhaseDef {
+  key: PhaseKey;
+  pct: number;
+  label: string;
+  /** What has to be true on site for this instalment to fall due, in words. */
+  gate: string;
+  /** Which construction stage releases it. `null` means "due immediately" —
+      the deposit that reserves the plot is not waiting for anything. */
+  construction: Construction | null;
+}
 
 export interface VillaExtra {
   id: string;
@@ -119,6 +128,12 @@ export interface VillaRecord {
   promisedDate?: string;    // ISO date — promised completion
   construction?: Construction;
   phases?: Partial<Record<PhaseKey, VillaPhase>>;
+  /* ── This unit's own payment schedule ──
+     Stamped from the house schedule the first time money is agreed on the
+     unit, so a later change to the house terms never rewrites a deal already
+     struck. Absent on everything that predates this, which reads as the
+     default — exactly the behaviour those units already had. */
+  schedule?: PhaseDef[];
   extras?: VillaExtra[];
 
   /* The reservation and the contract, once either is a real thing rather than

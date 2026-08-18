@@ -488,29 +488,48 @@ months whether the SPA had gone out that morning or was signed and sitting in a 
 time it is reached**. Stepping back to correct a mis-click never rewrites when the contract
 actually went out.
 
-### Payment phases (7 / 43 / 40 / 10)
+### Payment schedules — `lib/crm/schedule.ts`
 
-`PHASES` in `types.ts` — the resort's payment schedule as percentages of `contractValue`:
+7 / 43 / 40 / 10 was a constant in the type file, which made it a fact about the software
+rather than a term of a contract — and terms are the sort of thing that get negotiated.
 
-| Key | % | Label | Gate |
-|---|---|---|---|
-| `slot` | 7 | Slot deposit · 7% | Plot transferred to buyer |
-| `foundation` | 43 | Foundation · 43% | Foundation complete |
-| `build` | 40 | Building · 40% | Building complete |
-| `furnish` | 10 | Furnishing · 10% | Furnishing complete |
+A step is a `PhaseDef`: `key`, `pct`, `label`, `gate` (what has to be true on site, in words)
+and `construction` (which build stage releases it; `null` means due immediately — the deposit
+that reserves the plot is not waiting for anything). The construction gate now travels **with
+the step** instead of living in a lookup table in `finance.ts` that only knew the four keys this
+project happens to use.
 
-`VillaPhase` = `{ paid: boolean, at?: ISO, amount?: number, due?: ISO }` — `amount` is a THB
-override, otherwise `phaseAmount()` computes `pct × contractValue`. `paidTotal()` sums the
-paid phases, `nextPhase()` returns the first unpaid milestone.
+Three levels, in order of precedence:
 
-`due` is optional because most of the schedule is governed by progress on site rather than by
-the calendar: the 43% falls due when the foundation is finished, whenever that is. So
-`finance.ts` treats an instalment as **due** once its construction gate has been passed
-(`not_started` releases `slot`, `foundation` releases `foundation`, `structure` releases
-`build`, `furnishing` releases `furnish`) and still unpaid — no date required. Set `due` when
-a specific date has actually been agreed with a buyer; only then can an instalment be
-**overdue**, with a real day count. This is what the Payments view is computed from; nothing
-about it is stored twice.
+1. **`VillaRecord.schedule`** — the unit's own terms.
+2. **`CRM_PAYMENT_SCHEDULE`** — JSON, read on the server only, when the project as a whole sells
+   on something else.
+3. **`DEFAULT_SCHEDULE`** — 7 / 43 / 40 / 10.
+
+`scheduleFor(rec)` is pure and consults **only** the unit, falling back to `DEFAULT_SCHEDULE`.
+It never reads env, so the masterplan (a client component) and the finance report read exactly
+the same steps.
+
+**Stamping is the point.** `stampSchedule()` freezes the house terms onto a unit the first time
+money is agreed on it — a contract value, a reservation, an instalment. It writes **nothing**
+while the project sells on the default, because `scheduleFor` already answers `DEFAULT_SCHEDULE`
+for an unstamped unit and storing it would only make every record bigger. Once the project sells
+on something else, the stamp is what stops next year's change of terms from retroactively
+rewriting a deal already struck — which is exactly what a payment schedule must never do, and
+what a single global constant could not have prevented.
+
+`{ op: 'schedule', phases }` sets a unit's own split; `phases: null` puts it back on the
+standard terms. Two refusals, both `VillaConflict`:
+
+- **once an instalment has been paid against it** — changing the split under received money
+  silently rewrites what was received;
+- **when the percentages do not add up to 100** (±0.01, which is rounding on a 20M THB villa
+  and not a schedule that fails to balance).
+
+`houseScheduleProblem()` reports a misconfigured `CRM_PAYMENT_SCHEDULE` rather than swallowing
+it. `houseSchedule()` still falls back to the default so the arithmetic stays true, and the
+Payments page says out loud that it is doing so — numbers that look fine and are wrong is the
+worse of the two failures.
 
 ## VillaHistoryEntry
 

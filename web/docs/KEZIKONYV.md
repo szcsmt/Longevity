@@ -407,7 +407,8 @@ Egy pöttyre kattintva jobbról kinyílik a **telek-fiók**:
 - **Ígért átadás** — dátum.
 - **Építkezés állása** — Not started / Foundation / Structure up / Furnishing / Completed. Minden váltás előzménybe kerül.
 
-**Fizetési ütem — 7 / 43 / 40 / 10** a szerződéses értékből:
+**Fizetési ütem** a szerződéses értékből. A cím a villára tényleg érvényes ütemet írja ki, nem
+egy beégetett szöveget:
 
 | Fázis | % | Feltétel |
 |---|---|---|
@@ -416,7 +417,19 @@ Egy pöttyre kattintva jobbról kinyílik a **telek-fiók**:
 | Building | 40% | épület kész |
 | Furnishing | 10% | berendezés kész |
 
-Pipálod a beérkezett fizetést, az összegek maguktól számolódnak (a fizetés dátuma is rögzül). Sáv mutatja a befizetett/hátralévő összeget és a következő mérföldkövet. **A pénz mozgatja a státuszt**: az első fizetés a szabad telket magától Foglaltra teszi, mind a négy fázis kipipálva = Eladott.
+Pipálod a beérkezett fizetést, az összegek maguktól számolódnak (a fizetés dátuma is rögzül). Sáv mutatja a befizetett/hátralévő összeget és a következő mérföldkövet. **A pénz mozgatja a státuszt**: az első fizetés a szabad telket magától Foglaltra teszi, és ha **az adott villa ütemének minden lépése** ki van pipálva, az Eladott.
+
+**Egyedi ütem.** A 7 / 43 / 40 / 10 a ház alapértelmezése, nem természeti törvény. Ha egy vevő
+mást alkudott ki, a százalékok a villa lapján átírhatók (összegük pontosan 100 kell legyen), és
+**az a villa attól kezdve a saját feltételein fut**. A „Vissza az alapértelmezéshez" gombbal
+visszaállítható.
+
+Két dolgot a rendszer **nem enged**:
+- **már befizetett részlet mellett** nem módosítható az ütem — az felülírná, mennyi érkezett be;
+- olyan felosztást nem fogad el, ami nem ad ki 100%-ot.
+
+**Ami a legfontosabb**: a villa azt az ütemet őrzi meg, *amin eladtátok*. Ha a projekt jövőre
+más feltételekkel árul, az **nem írja át** a már megkötött üzleteket.
 
 **Extra kérések** — vevői extrák opcionális árral. Előre beírt lehetőségek: Podcast studio, Office setup, Gym corner, Sauna, Outdoor kitchen, EV charger — de bármi szabadon beírható.
 

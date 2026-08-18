@@ -40,6 +40,7 @@ the work is filling gaps and closing blind spots.
 | Automated sequence | Six letters, minute 0 → day 60, stopping the moment a human owns the conversation |
 | Roles | admin / agent / viewer, with the irreversible and the exportable reserved to the owner |
 | Speed to lead | `first_response_at` — the first moment a *person* acted |
+| Payment schedules | A step's percentage AND its construction gate are configuration: per project via env, per unit when negotiated, stamped at the moment money is agreed so old deals keep their terms |
 | Reservations and contracts | A reservation record with deposit agreed / received / expiry / agreement, a release that needs a reason, `reservationWatch()` for the holds running out, and a four-step SPA status stamping each date once |
 | Attribution | Channel / campaign / ad, each walking leads → qualified → reserved → sold → money. Sources are normalised on read (`fb`, `Facebook`, `FB_ads` are one row) without ever overwriting the raw value |
 | Management reporting | `/admin/performance`: funnel with stage-to-stage drop, cycle length, time to first conversation, production by salesperson / source / agency, lost reasons from the structured field |
@@ -60,7 +61,6 @@ the work is filling gaps and closing blind spots.
 
 | | Why it matters |
 |---|---|
-| **Configurable payment schedules** | 7 / 43 / 40 / 10 is hard-coded in `PHASES`. It is right for this project and wrong as a permanent assumption |
 | Configurable SLAs | `STAGE_MAX_DAYS` and `REPLY_FLAG_DAYS` are constants in code |
 
 ### NEEDS REFACTORING
@@ -111,7 +111,9 @@ the work is filling gaps and closing blind spots.
 - [ ] Commission actually **paid**: a per-agency ledger with dates, so outstanding is a fact
       rather than a subtraction. `performanceFor` computes only what an agreement *generates*,
       and deliberately does not guess at the rest
-- [ ] Configurable payment schedules per project or deal
+- [x] **P2.5** Configurable payment schedules — per project via `CRM_PAYMENT_SCHEDULE`, per unit
+      when a buyer negotiates, and stamped onto the unit so changing the house terms never
+      rewrites a deal already struck
 - [ ] Country / nationality on the lead, inferred and correctable, filterable
 - [ ] Fit and engagement as two scores
 - [ ] Filters on budget, timeframe, value

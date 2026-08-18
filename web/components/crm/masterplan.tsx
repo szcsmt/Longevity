@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { Construction, VillaRecord, VillaHistoryEntry, VillaStatus } from '@/lib/crm/types';
-import { CONSTRUCTION, CONTRACT_STEPS, PHASES } from '@/lib/crm/types';
+import { CONSTRUCTION, CONTRACT_STEPS } from '@/lib/crm/types';
+import { isCustomSchedule, scheduleFor, scheduleSummary } from '@/lib/crm/schedule';
 import { EXTRA_PRESETS, VILLAS, fmtTHB, nextPhase, paidTotal, phaseAmount } from '@/lib/crm/villas';
 import { REPLY_FLAG_DAYS } from '@/lib/crm/rules';
 
@@ -40,6 +41,9 @@ export function Masterplan({
   const [extraPrice, setExtraPrice] = useState('');
   const [resAmount, setResAmount] = useState('');
   const [resExpiry, setResExpiry] = useState('');
+  /* Percentages being typed, keyed by phase. Empty means "as stored" — the
+     draft only holds what somebody has actually touched. */
+  const [split, setSplit] = useState<Record<string, string>>({});
   /* Calendar day, for reading a reservation's expiry. Computed once per render
      rather than per row. */
   const today = new Date().toISOString().slice(0, 10);
@@ -89,7 +93,7 @@ export function Masterplan({
     setContractDraft(r?.contractValue ? String(r.contractValue) : '');
     setEditingValue(false);
     setExtraLabel(''); setExtraPrice('');
-    setResAmount(''); setResExpiry('');
+    setResAmount(''); setResExpiry(''); setSplit({});
     setSel(id);
     setErr(null);
   }
@@ -136,7 +140,11 @@ export function Masterplan({
     villa.size ? `${villa.size} típus` : null,
     villa.area ? `${villa.area} m²` : null,
   ].filter(Boolean).join(' · ') : '';
+  /* The steps this unit is actually sold on — its own, if it negotiated any,
+     otherwise the standard ones. */
+  const phases = scheduleFor(rec);
   const paid = rec ? paidTotal(rec) : 0;
+  const splitTotal = phases.reduce((sum, p) => sum + (Number(split[p.key] ?? p.pct) || 0), 0);
   const next = rec ? nextPhase(rec) : null;
   const waitDays = waiting(rec);
 
@@ -525,13 +533,21 @@ export function Masterplan({
 
               {/* ── Fizetési fázisok ── */}
               <div className="mp-sec">
-                <h3>Fizetési ütem — 7 / 43 / 40 / 10</h3>
+                {/* The heading used to say "7 / 43 / 40 / 10" in hard-coded
+                    text, which stopped being true the moment a unit could
+                    carry its own terms. */}
+                <h3>Fizetési ütem — {scheduleSummary(phases)}</h3>
+                {isCustomSchedule(rec) && (
+                  <div className="crm-meta" style={{ marginBottom: 10, color: 'var(--c-gold-bright)' }}>
+                    Egyedi ütem ezen a villán — nem a ház alapértelmezése.
+                  </div>
+                )}
                 {!rec?.contractValue && (
                   <div className="crm-meta" style={{ marginBottom: 10 }}>
                     Add meg a szerződéses értéket, és az összegek maguktól számolódnak.
                   </div>
                 )}
-                {PHASES.map((p) => {
+                {phases.map((p) => {
                   const ph = rec?.phases?.[p.key];
                   const amt = rec ? phaseAmount(rec, p.key) : 0;
                   return (
@@ -563,6 +579,52 @@ export function Masterplan({
                     )}
                   </>
                 ) : null}
+
+                {/* ── Egyedi ütem ──
+
+                    A 7/43/40/10 a ház alapértelmezése, nem természeti törvény.
+                    Aki mást alkudott ki, annak a saját feltételei maradnak
+                    érvényben akkor is, ha a ház jövőre mást árul. Csak a
+                    százalékok írhatók át itt; a lépések számát és a hozzájuk
+                    tartozó építési mérföldköveket a projekt beállítása adja. */}
+                {!readOnly && (
+                  <div style={{ marginTop: 14, borderTop: '1px solid var(--c-line-2)', paddingTop: 12 }}>
+                    <label className="crm-label">Egyedi fizetési ütem (%)</label>
+                    <div className="act-row" style={{ alignItems: 'flex-end' }}>
+                      {phases.map((p) => (
+                        <div key={p.key} style={{ width: 78 }}>
+                          <span className="crm-meta" style={{ fontSize: 11 }}>{p.key}</span>
+                          <input
+                            className="crm-input"
+                            inputMode="decimal"
+                            value={split[p.key] ?? String(p.pct)}
+                            disabled={saving}
+                            onChange={(e) => setSplit((d) => ({ ...d, [p.key]: e.target.value }))}
+                          />
+                        </div>
+                      ))}
+                      <button className="crm-btn sm" disabled={saving || splitTotal !== 100}
+                        onClick={async () => {
+                          if (!sel) return;
+                          const next = phases.map((p) => ({ ...p, pct: Number(split[p.key] ?? p.pct) }));
+                          const ok = await api({ id: sel, op: 'schedule', phases: next });
+                          if (ok) setSplit({});
+                        }}>
+                        Mentés
+                      </button>
+                      {isCustomSchedule(rec) && (
+                        <button className="crm-btn ghost sm" disabled={saving}
+                          onClick={async () => { if (sel && await api({ id: sel, op: 'schedule', phases: null })) setSplit({}); }}>
+                          Vissza az alapértelmezéshez
+                        </button>
+                      )}
+                    </div>
+                    <div className="crm-meta" style={{ marginTop: 6, color: splitTotal === 100 ? undefined : 'var(--c-hot)' }}>
+                      Összesen {Math.round(splitTotal * 100) / 100}% — pontosan 100 kell.
+                      {' '}Már befizetett részlet mellett nem módosítható.
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* ── Érdeklődők ── */}
@@ -612,7 +674,7 @@ export function Masterplan({
                         const raw = extraPrice.replace(/[^\d]/g, '');
                         if (await api({ id: sel, op: 'extraAdd', label: extraLabel, price: raw ? parseInt(raw, 10) : undefined })) {
                           setExtraLabel(''); setExtraPrice('');
-    setResAmount(''); setResExpiry('');
+    setResAmount(''); setResExpiry(''); setSplit({});
                         }
                       }}>
                       + Hozzáadás

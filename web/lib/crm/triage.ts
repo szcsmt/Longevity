@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Lead, Score } from './types';
-import { PHASES } from './types';
+import { houseSchedule } from './schedule';
 import { VILLAS, fmtTHB } from './villas';
 
 /* ── Reading what a customer actually said ──
@@ -86,7 +86,7 @@ residence community at Plai Laem on Koh Samui, Thailand, and you brief the sales
 
 Facts you may rely on:
 ${VILLAS.map((v) => `  · ${v.name}: ${v.built} built on a ${v.plot} plot, ${fmtTHB(v.price)}`).join('\n')}
-  · Reservation is a four-step payment schedule: ${PHASES.map((p) => `${p.pct}% ${p.gate.toLowerCase()}`).join(', ')}.
+  · Reservation is a ${houseSchedule().length}-step payment schedule: ${houseSchedule().map((p) => `${p.pct}% ${p.gate.toLowerCase()}`).join(', ')}.
   · Owners may let the resort manage and rent the residence for them.
 
 How to judge:

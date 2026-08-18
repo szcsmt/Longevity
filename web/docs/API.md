@@ -371,7 +371,7 @@ leads, and it composes with either archiving or purging.
 ### GET /api/crm/leads/[id]/offer?value=&lt;THB&gt;
 
 The reservation offer for one lead, as a printable HTML page: their name, their residence,
-the price, and the 7/43/40/10 schedule worked out from it. Auth: session cookie, admin or
+the price, and the house payment schedule worked out from it. Auth: session cookie, admin or
 agent (`403` for viewers).
 
 HTML rather than a generated PDF on purpose — the browser's own print dialogue makes a
@@ -449,7 +449,12 @@ unknown phase key or an empty extra label, → `400 "invalid op"`):
 | `op` | Fields | Behaviour |
 |---|---|---|
 | `sale` | `patch: { buyerLeadId?, buyerName?, contractValue?, promisedDate?, construction? }` | `buyerLeadId` string: links the CRM lead, denormalises the buyer name, and defaults the contract value from the lead's deal value → villa list price → unit list price; `null` unlinks. `buyerName` capped 120. `contractValue`: `null` clears, positive number rounded, invalid ignored. `promisedDate`: `YYYY-MM-DD` (truncated to 10 chars) or `null`. `construction`: one of `not_started`/`foundation`/`structure`/`furnishing`/`done`. Changes are logged to villa history. |
-| `phase` | `key: "slot"|"foundation"|"build"|"furnish"`, `paid: bool`, `amount?` | Marks a payment milestone (schedule 7/43/40/10 % of contract value; `amount` overrides the computed figure). Marking paid with no contract value defaults it from the list price. **Money changes availability**: first paid phase on a `free` plot → `reserved`; all four paid → `sold`; a payment-driven status change is logged and synced to the sheet. Unknown key → `400`. |
+| `phase` | `key` (a step of **this unit's** schedule), `paid: bool`, `amount?` | Marks a payment milestone (`pct` × contract value; `amount` overrides the computed figure). Marking paid with no contract value defaults it from the list price. **Money changes availability**: first paid phase on a `free` plot → `reserved`; **every** step of the unit's schedule paid → `sold`; a payment-driven status change is logged and synced to the sheet. Unknown key → `400`. |
+| `reserve` | `amount?`, `expiresAt?`, `agreement?`, `note?` | Takes the villa off the market **and** records the reservation behind it. `by` is stamped from the session, never read from the body. **Refused (`409`) without a buyer on the record.** |
+| `reservationPatch` | `patch: { amount?, paidAt?, expiresAt?, agreement?, note? }` | Fills in what was not known at the time. A `paidAt` arriving writes its own line on the villa history. `null` clears a field; a value that is not a `YYYY-MM-DD` date is dropped. |
+| `releaseReservation` | `reason` (required) | The hold lapsing or being cancelled: villa back to `free`, reservation record gone, the whole thing kept on the villa history with the reason. |
+| `contract` | `status: "none"|"sent"|"review"|"signed"`, `note?` | The SPA. Each step stamps its own date the **first** time it is reached, so stepping back to correct a mis-click never rewrites when the contract went out. |
+| `schedule` | `phases: PhaseDef[] | null` | This unit's own payment terms; `null` restores the standard ones. **Refused (`409`)** once an instalment has been paid against the schedule, and when the percentages do not add up to 100 (±0.01). |
 | `extraAdd` | `label` (required, capped 120), `price?` | Adds a buyer extra (e.g. "Podcast studio"). Empty label → `400`. |
 | `extraRemove` | `extraId` | Removes the extra; logged when it existed. |
 
@@ -554,6 +559,7 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 | `INBOUND_SECRET` | Fallback query-string secret for `POST /api/inbound` (`?key=`), used only while no signing secret is set. |
 | `CRM_REPLY_TO` | The Resend inbound address customer replies should go to, e.g. `reply@….resend.app`. Set → the CRM sees replies and can stop the sequence. Unset → falls back to `CRM_NOTIFY_TO` and the CRM stays blind. |
 | `CRM_DIGEST_TO` | Morning-digest recipients, comma-separated. Falls back to `CRM_NOTIFY_TO`. |
+| `CRM_PAYMENT_SCHEDULE` | The project's payment schedule as JSON: an array of `{key, pct, label, gate, construction}` whose percentages add up to 100. Unset → 7 / 43 / 40 / 10. Read on the **server only**; a unit is stamped with these terms the first time money is agreed on it, so changing this never rewrites a deal already struck. An invalid value is refused rather than half-applied, and the Payments page says so. |
 | `CRM_AGENCY_PROTECTION_DAYS` | How long a partner agency's registration protects its claim on a buyer, in days (default `90`). The house figure; an agency that negotiated something different carries its own `protection_days`. Deliberately configuration rather than a constant in the code. |
 | `WHATSAPP_TOKEN` | Meta Cloud API permanent access token. |
 | `WHATSAPP_PHONE_ID` | Meta phone **number id** (not the number itself). |

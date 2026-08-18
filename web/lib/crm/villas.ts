@@ -47,27 +47,32 @@ export const fmtTHBShort = (n: number) =>
   : n >= 1_000 ? `฿${Math.round(n / 1_000)}k`
   : `฿${n}`;
 
-/* ── Payment-schedule helpers (7/43/40/10 of the contract value) ── */
+/* ── Payment-schedule helpers ──
 
-import type { PhaseKey, VillaRecord } from './types';
-import { PHASES } from './types';
+   Every one of these reads the schedule the UNIT is sold on (`scheduleFor`),
+   not a global constant. A buyer who negotiated different terms keeps them, and
+   changing the house schedule next year cannot rewrite what anybody already
+   agreed. */
+
+import type { PhaseDef, PhaseKey, VillaRecord } from './types';
+import { scheduleFor } from './schedule';
 
 /** THB due for one phase — explicit override wins, else pct × contract value. */
 export function phaseAmount(rec: VillaRecord, key: PhaseKey): number {
   const override = rec.phases?.[key]?.amount;
   if (override) return override;
-  const def = PHASES.find((p) => p.key === key);
+  const def = scheduleFor(rec).find((p) => p.key === key);
   return def && rec.contractValue ? Math.round((def.pct / 100) * rec.contractValue) : 0;
 }
 
 /** Total THB received so far across paid phases. */
 export function paidTotal(rec: VillaRecord): number {
-  return PHASES.reduce((sum, p) => sum + (rec.phases?.[p.key]?.paid ? phaseAmount(rec, p.key) : 0), 0);
+  return scheduleFor(rec).reduce((sum, p) => sum + (rec.phases?.[p.key]?.paid ? phaseAmount(rec, p.key) : 0), 0);
 }
 
 /** The next unpaid milestone, or null when the schedule is complete. */
-export function nextPhase(rec: VillaRecord): (typeof PHASES)[number] | null {
-  return PHASES.find((p) => !rec.phases?.[p.key]?.paid) || null;
+export function nextPhase(rec: VillaRecord): PhaseDef | null {
+  return scheduleFor(rec).find((p) => !rec.phases?.[p.key]?.paid) || null;
 }
 
 /** Common extras offered to buyers — free-text custom items are also allowed. */

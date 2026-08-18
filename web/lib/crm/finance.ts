@@ -1,5 +1,5 @@
 import type { Construction, PhaseKey, VillaRecord } from './types';
-import { PHASES } from './types';
+import { scheduleFor } from './schedule';
 import { phaseAmount, paidTotal } from './villas';
 
 /* ── The money, as a question rather than a record ──
@@ -16,15 +16,11 @@ import { phaseAmount, paidTotal } from './villas';
    agreed with a buyer, overrides that and also lets a payment be late before
    the gate is anywhere near. */
 
-/* Which construction stage releases which instalment. The slot deposit has no
-   gate: it is what reserves the plot in the first place, so it is due from the
-   moment the unit stops being free. */
-const GATE: Record<PhaseKey, Construction | null> = {
-  slot: null,
-  foundation: 'foundation',
-  build: 'structure',
-  furnish: 'furnishing',
-};
+/* Which construction stage releases which instalment now travels WITH the step,
+   on `PhaseDef.construction`, rather than living in a lookup table here that
+   only knew the four keys this project happens to use. A `null` gate means the
+   instalment is due from the moment the unit stops being free — the deposit
+   that reserves the plot is not waiting for anything to be built. */
 
 const ORDER: Construction[] = ['not_started', 'foundation', 'structure', 'furnishing', 'done'];
 const reached = (now: Construction | undefined, gate: Construction) =>
@@ -80,7 +76,7 @@ export function financeReport(
     r.contracted += rec.contractValue;
     r.received += paidTotal(rec);
 
-    for (const phase of PHASES) {
+    for (const phase of scheduleFor(rec)) {
       const stored = rec.phases?.[phase.key];
       if (stored?.paid) continue;
 
@@ -88,7 +84,7 @@ export function financeReport(
       if (!amount) continue;
 
       const due = stored?.due;
-      const gate = GATE[phase.key];
+      const gate = phase.construction;
       const gateOpen = gate === null ? true : reached(rec.construction, gate);
 
       let state: DueState;

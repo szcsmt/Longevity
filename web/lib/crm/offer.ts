@@ -1,5 +1,5 @@
 import type { Lead } from './types';
-import { PHASES } from './types';
+import { houseSchedule } from './schedule';
 import { letterIdentity } from './letters';
 import { fmtTHB, villaByName } from './villas';
 
@@ -54,7 +54,9 @@ export function offerHtml({ lead, value, validDays = 14 }: OfferInput): string {
   const buyer = [lead.name, lead.email, lead.phone || lead.whatsapp]
     .filter((v): v is string => Boolean(v));
 
-  const rows = PHASES.map((p) => {
+  /* The house terms: an offer goes out before any unit is agreed, so there
+     is no unit schedule to read yet. */
+  const rows = houseSchedule().map((p) => {
     /* Rounded per line rather than apportioned, because these are the figures
        a buyer will read on an invoice. The percentages are exact; the last
        line absorbs any rounding so the column still sums to the total. */

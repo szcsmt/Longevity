@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import type {
   Activity, AgencyClaim, CardColor, CardItem, Construction, ContractStatus, CrmEvent, Lead, LeadPatch,
-  Note, PhaseKey, ProjectNote, Score, Stage, Task, Qualification, VillaHistoryEntry, VillaRecord,
-  VillaStatus,
+  Note, PhaseDef, PhaseKey, ProjectNote, Score, Stage, Task, Qualification, VillaHistoryEntry,
+  VillaRecord, VillaStatus,
 } from './types';
 import {
   CARD_COLORS, CONTRACT_STEPS, CURRENCIES, DECISION, FINANCING, MOTIVATIONS, NURTURE_REASONS,
-  OBJECTIONS, PHASES, PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, atOrBeyond, isOpenStage,
-  touchByKey,
+  OBJECTIONS, PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, atOrBeyond, isOpenStage, touchByKey,
 } from './types';
+import { DEFAULT_SCHEDULE, houseSchedule, scheduleFor, scheduleProblem, toSchedule } from './schedule';
 import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel } from './language';
@@ -1697,10 +1697,30 @@ export type VillaSaleOp =
   | { op: 'reserve'; amount?: number; expiresAt?: string; agreement?: string; note?: string; by?: string }
   | { op: 'reservationPatch'; patch: { amount?: number | null; paidAt?: string | null; expiresAt?: string | null; agreement?: string | null; note?: string } }
   | { op: 'releaseReservation'; reason: string }
-  | { op: 'contract'; status: ContractStatus; note?: string };
+  | { op: 'contract'; status: ContractStatus; note?: string }
+  /* This unit's own payment terms. `null` puts it back on the standard ones.
+     Refused once money has been taken against the schedule — changing the
+     split under a paid instalment silently rewrites what was received. */
+  | { op: 'schedule'; phases: PhaseDef[] | null };
 
 const num = (v: unknown): number | undefined =>
   typeof v === 'number' && isFinite(v) && v > 0 ? Math.round(v) : undefined;
+
+/* ── Freezing the terms a unit was sold on ──
+
+   Called the first time money is agreed on a unit. It writes nothing while the
+   project sells on the standard schedule — `scheduleFor` already answers
+   DEFAULT_SCHEDULE for a unit with no stamp, so storing it would only make
+   every record bigger for no change in behaviour.
+
+   Once the project sells on something else, the stamp is what stops next
+   year's change of terms from retroactively rewriting a deal already struck. */
+function stampSchedule(rec: VillaRecord): void {
+  if (rec.schedule?.length) return;
+  const house = houseSchedule();
+  if (house === DEFAULT_SCHEDULE) return;
+  rec.schedule = house;
+}
 
 export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<VillaData | null> {
   const be = await backend();
@@ -1731,7 +1751,10 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
         }
       }
       if ('buyerName' in p && p.buyerName !== undefined) rec.buyerName = p.buyerName.trim().slice(0, 120) || undefined;
-      if ('contractValue' in p) rec.contractValue = p.contractValue === null ? undefined : num(p.contractValue) ?? rec.contractValue;
+      if ('contractValue' in p) {
+        rec.contractValue = p.contractValue === null ? undefined : num(p.contractValue) ?? rec.contractValue;
+        if (rec.contractValue) stampSchedule(rec);
+      }
       if ('promisedDate' in p) rec.promisedDate = p.promisedDate ? String(p.promisedDate).slice(0, 10) : undefined;
       if ('construction' in p && p.construction) {
         const valid = ['not_started', 'foundation', 'structure', 'furnishing', 'done'];
@@ -1744,10 +1767,11 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
       break;
     }
     case 'phase': {
-      const def = PHASES.find((ph) => ph.key === action.key);
+      const def = scheduleFor(rec).find((ph) => ph.key === action.key);
       if (!def) return 'abort';
       // Money arriving without a price on record: default from the list so the
       // 7/43/40/10 amounts compute immediately.
+      stampSchedule(rec);
       if (action.paid && defaultContractValue(id, rec))
         t.log(from, rec.status, undefined, `Contract value set from list price (${fmtTHB(rec.contractValue!)})`);
       rec.phases ??= {};
@@ -1760,7 +1784,7 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
         action.paid ? `${def.label} paid${amt ? ` (${fmtTHB(amt)})` : ''}` : `${def.label} unmarked`);
       // Money changes availability: first payment reserves, full schedule = sold.
       if (action.paid && rec.status === 'free') rec.status = 'reserved';
-      if (PHASES.every((ph) => rec.phases?.[ph.key]?.paid)) rec.status = 'sold';
+      if (scheduleFor(rec).every((ph) => rec.phases?.[ph.key]?.paid)) rec.status = 'sold';
       if (rec.status !== from) {
         t.log(from, rec.status, rec.seller, 'Status advanced by payment');
         const advanced = rec.status;
@@ -1790,6 +1814,7 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
         note: cleanText(action.note || '').trim().slice(0, 2000) || undefined,
         by: action.by,
       };
+      stampSchedule(rec);
       rec.status = 'reserved';
       t.log(from, 'reserved', action.by,
         `Reserved for ${heldBy(rec)}` +
@@ -1852,6 +1877,24 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
         c.status = step.id;
         t.log(from, rec.status, undefined, `Contract: ${step.label.toLowerCase()}`);
       }
+      break;
+    }
+    case 'schedule': {
+      const anyPaid = scheduleFor(rec).some((ph) => rec.phases?.[ph.key]?.paid);
+      if (anyPaid) {
+        throw new VillaConflict(
+          `${id} has instalments already paid against its schedule. Changing the split now would rewrite what was received.`,
+        );
+      }
+      if (action.phases === null) {
+        rec.schedule = undefined;
+        t.log(from, rec.status, undefined, 'Payment schedule: back to the standard terms');
+        break;
+      }
+      const problem = scheduleProblem(action.phases);
+      if (problem) throw new VillaConflict(`That schedule will not do: ${problem}`);
+      rec.schedule = toSchedule(action.phases)!;
+      t.log(from, rec.status, undefined, `Payment schedule set to ${rec.schedule.map((ph) => ph.pct).join(' / ')}`);
       break;
     }
     case 'extraAdd': {

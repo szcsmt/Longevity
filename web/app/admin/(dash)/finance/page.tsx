@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { isAdmin } from '@/lib/crm/auth';
 import { getVillaData, integrityIssues, reservationWatch, type HeldUnit } from '@/lib/crm/store';
 import { financeReport, type DueState, type Instalment } from '@/lib/crm/finance';
+import { houseSchedule, houseScheduleProblem, scheduleSummary } from '@/lib/crm/schedule';
 import { fmtTHB, fmtTHBShort } from '@/lib/crm/villas';
 
 export const dynamic = 'force-dynamic';
@@ -129,6 +130,19 @@ export default async function FinancePage() {
         <Link className="crm-btn" href="/admin/masterplan">Masterplan →</Link>
       </div>
 
+      {/* A misconfigured house schedule produces wrong money in every figure on
+          this page. Falling back silently would leave the numbers looking fine
+          and being wrong, which is the worst of the two failures. */}
+      {houseScheduleProblem() && (
+        <div className="crm-card" style={{ borderColor: 'var(--c-hot)', marginBottom: 16 }}>
+          <h3 style={{ color: 'var(--c-hot)' }}>The configured payment schedule was refused</h3>
+          <div className="crm-meta">
+            {houseScheduleProblem()} Everything below is computed on the standard
+            {' '}{scheduleSummary(houseSchedule())} schedule until <code>CRM_PAYMENT_SCHEDULE</code> is fixed.
+          </div>
+        </div>
+      )}
+
       <div className="crm-grid crm-stats">
         <Tile label="Contracted" value={fmtTHBShort(r.contracted)} note={`${r.units} units`} />
         <Tile label="Received" value={fmtTHBShort(r.received)} note={`${collected}% collected`} />
@@ -192,7 +206,9 @@ export default async function FinancePage() {
       <p className="crm-meta" style={{ marginTop: 16 }}>
         An instalment counts as due once the work it is tied to is finished on site,
         which is how the schedule actually works. Give one an agreed date on the
-        masterplan and it can also become overdue.
+        masterplan and it can also become overdue. The project sells on
+        {' '}{scheduleSummary(houseSchedule())}; a unit whose buyer negotiated something else keeps
+        its own terms, and changing the house schedule never rewrites a deal already struck.
       </p>
     </>
   );

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 const SALE_OPS = [
   'sale', 'phase', 'extraAdd', 'extraRemove',
-  'reserve', 'reservationPatch', 'releaseReservation', 'contract',
+  'reserve', 'reservationPatch', 'releaseReservation', 'contract', 'schedule',
 ];
 
 export async function GET() {
