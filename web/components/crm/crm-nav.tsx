@@ -30,6 +30,11 @@ const items = [
     icon: <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01" />,
   },
   {
+    href: '/admin/decisions',
+    label: 'Döntés kell',
+    icon: <path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />,
+  },
+  {
     href: '/admin/masterplan',
     label: 'Masterplan',
     icon: <path d="m9 20-6-2V4l6 2m0 14 6-2m-6 2V6m6 12 6 2V6l-6-2m0 14V4M9 6l6-2" />,
@@ -70,12 +75,13 @@ const items = [
 export function CrmNav({
   alerts, hidden = [],
 }: {
-  alerts?: { today?: number; leads?: number; followups?: number };
+  alerts?: { today?: number; decisions?: number; leads?: number; followups?: number };
   hidden?: string[];
 }) {
   const path = usePathname() || '';
   const badgeFor = (href: string) =>
-    href === '/admin/today' ? alerts?.today
+    href === '/admin/decisions' ? alerts?.decisions
+    : href === '/admin/today' ? alerts?.today
     : href === '/admin/leads' ? alerts?.leads
     : href === '/admin/tasks' ? alerts?.followups
     : undefined;

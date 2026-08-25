@@ -63,11 +63,36 @@ export interface PhaseDef {
   construction: Construction | null;
 }
 
+/* ── An extra a buyer asked for ──
+
+   Somebody typing "podcast studio, 400,000" into a villa is a REQUEST, not a
+   decision. Until now it read as though it were settled: the line appeared on
+   the unit with a price beside it and nothing said whether anybody had agreed
+   to build it. That is how a promise nobody made ends up in a handover.
+
+   So an extra carries its own answer. It starts pending, and stays pending —
+   visibly, in red — until the owner approves or refuses it. */
 export interface VillaExtra {
   id: string;
   label: string;   // e.g. "Podcast studio", "Office setup"
   price?: number;  // THB, optional
+
+  requested_at?: string;
+  requested_by?: string;
+  /* Exactly one of these is set once a decision has been made. Both absent
+     means nobody has looked at it yet. Absent on extras recorded before this
+     existed, which read as pending — which is the honest answer for them. */
+  approved_at?: string;
+  approved_by?: string;
+  refused_at?: string;
+  refused_by?: string;
+  refuse_reason?: string;
 }
+
+export type ExtraState = 'pending' | 'approved' | 'refused';
+
+export const extraState = (x: VillaExtra): ExtraState =>
+  x.approved_at ? 'approved' : x.refused_at ? 'refused' : 'pending';
 
 /* ── The reservation, as a process rather than a status word ──
 

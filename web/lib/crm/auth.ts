@@ -72,12 +72,13 @@ export type Capability =
   | 'leads.export'     // every contact we hold, in one file, on somebody's laptop
   | 'money.read'       // contract values, payments, commission
   | 'money.write'      // the masterplan ledger: phases, reservations, contracts, schedules
-  | 'partners.write';  // agency records, commission terms, and overriding a claim
+  | 'partners.write'   // agency records, commission terms, and overriding a claim
+  | 'deals.approve';   // saying yes to what a buyer asked for, and what it costs
 
 const CAPABILITIES: Record<CrmRole, Capability[]> = {
   admin: [
     'leads.write', 'leads.reassign', 'leads.merge', 'leads.archive', 'leads.purge',
-    'leads.export', 'money.read', 'money.write', 'partners.write',
+    'leads.export', 'money.read', 'money.write', 'partners.write', 'deals.approve',
   ],
   head: ['leads.write', 'leads.reassign', 'leads.merge', 'leads.archive', 'leads.export', 'money.read'],
   agent: ['leads.write'],

@@ -598,6 +598,55 @@ felül, hogy mikor ment ki tényleg a szerződés.
 
 ---
 
+## 6b. Döntést igényel — ami rád vár
+
+`/admin/decisions` · a menüben **Döntés kell**, piros számmal
+
+Minden, ami **egy emberre vár**. Nem munka, nem utánakövetés — **döntés**: amíg valaki nem
+mond igent vagy nemet, addig a válasz egyik sem.
+
+Eddig mindegyik azon a képernyőn lakott, ami éppen megtermelte: az extra kérés a villán, a
+lejárt foglalás a Payments-en, a két ügynökség a lead lapján. Így egyik sem látszott, hacsak
+valaki véletlenül meg nem nyitotta a megfelelő oldalt — **egy döntés pedig, amit senkinek nem
+mutatnak meg, olyan döntés, amit senki nem hoz meg.**
+
+| Mi kerül ide | Miért döntés |
+|---|---|
+| **Extra kérés** | valaki kért valamit; senki nem mondott rá igent vagy nemet |
+| **Lejárt foglalás** | a villa se nem eladott, se nem elérhető — hosszabbítasz vagy elengeded |
+| **Ügynökségi vita** | két ügynökség állítja, hogy ő hozta ugyanazt a vevőt; aki ezt eldönti, azt dönti el, ki kap pénzt |
+| **Ellentmondás** | egy szám, ami csendben rossz, amíg valaki meg nem mondja, melyik rekord az igaz |
+
+**A lista a legrégebben váró tétellel kezdődik.** Egy hónapja nyitott kérdés nem *fontosabb* a
+mainál — csak kínosabb, és ez a jobb rendezés egy olyan listához, amire senki nem válaszolt.
+Ami egy hétnél régebben vár, az pirosan.
+
+### Extra kérések — a beírás nem megállapodás
+
+Ha valaki beír egy extrát a villára („Podcast studio, 400 000"), az **kérés**, nem döntés.
+Eddig úgy olvasódott, mintha meg lenne beszélve: ott volt a soron az ár, és semmi nem mondta,
+hogy bárki elvállalta-e. **Így születik olyan ígéret, amit senki nem tett** — és derül ki
+átadáskor.
+
+Mostantól minden extrának állapota van:
+
+| | |
+|---|---|
+| 🔴 **jóváhagyásra vár** | valaki kérte, senki nem válaszolt — ez kerül a Döntést igényel listára |
+| 🟢 **jóváhagyva** | ki hagyta jóvá és mikor |
+| ⚪ **elutasítva** | ki, mikor, és opcionálisan miért — az indoklás a villa előzményeibe kerül |
+
+**Jóváhagyni csak a tulajdonos tud.** Nem az értékesítő, és nem is a pénzügy: egy extra
+jóváhagyása azt jelenti, hogy a fejlesztő elvállalja megépíteni, azon az áron. A gomb a többi
+szerepkörnél meg sem jelenik, és a szerver is elutasítja.
+
+Egy meggondolt döntés **felülírja** az előzőt — nem marad ott mindkét bélyeg a rekordon.
+
+Az azelőtt rögzített extrák **jóváhagyásra várónak** olvasódnak, ami náluk az őszinte válasz:
+tényleg nem mondott rájuk igent senki.
+
+---
+
 ## 7. Payments — mennyi pénz áll kint
 
 **Reservations running out** — ha van lejárt vagy héten belül lejáró foglalás, az oldal tetején

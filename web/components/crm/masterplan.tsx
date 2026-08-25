@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { Construction, VillaRecord, VillaHistoryEntry, VillaStatus } from '@/lib/crm/types';
-import { CONSTRUCTION, CONTRACT_STEPS } from '@/lib/crm/types';
+import { CONSTRUCTION, CONTRACT_STEPS, extraState } from '@/lib/crm/types';
 import { isCustomSchedule, scheduleFor, scheduleSummary } from '@/lib/crm/schedule';
 import { EXTRA_PRESETS, VILLAS, fmtTHB, nextPhase, paidTotal, phaseAmount } from '@/lib/crm/villas';
 import { REPLY_FLAG_DAYS } from '@/lib/crm/rules';
@@ -714,14 +714,58 @@ export function Masterplan({
                 {(rec?.extras || []).length === 0 && (
                   <div className="crm-meta" style={{ marginBottom: 8 }}>Nincs extra kérés rögzítve.</div>
                 )}
-                {(rec?.extras || []).map((x) => (
-                  <div className="mp-extra" key={x.id}>
-                    <span>{x.label}</span>
-                    {x.price ? <span className="px">{fmtTHB(x.price)}</span> : <span className="px" />}
-                    <button type="button" aria-label={`${x.label} törlése`} disabled={saving}
-                      onClick={() => sel && api({ id: sel, op: 'extraRemove', extraId: x.id })}>×</button>
-                  </div>
-                ))}
+                {(rec?.extras || []).map((x) => {
+                  const st = extraState(x);
+                  return (
+                    <div key={x.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--c-line-2)' }}>
+                      <div className="mp-extra" style={{ borderBottom: 0, padding: 0 }}>
+                        <span>{x.label}</span>
+                        {x.price ? <span className="px">{fmtTHB(x.price)}</span> : <span className="px" />}
+                        <button type="button" aria-label={`${x.label} törlése`} disabled={saving}
+                          onClick={() => sel && api({ id: sel, op: 'extraRemove', extraId: x.id })}>×</button>
+                      </div>
+
+                      {/* Az állapot, nem a puszta tény. Egy beírt sor ár mellett
+                          úgy olvasódik, mintha meg lenne beszélve — így születik
+                          olyan ígéret, amit senki nem tett. */}
+                      <div className="crm-meta" style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        {st === 'approved' && (
+                          <span className="badge hot" style={{ color: 'var(--c-free, #2FA968)', borderColor: 'rgba(47,169,104,0.4)', background: 'rgba(47,169,104,0.12)' }}>
+                            jóváhagyva
+                          </span>
+                        )}
+                        {st === 'refused' && <span className="badge cold">elutasítva</span>}
+                        {st === 'pending' && <span className="badge hot">jóváhagyásra vár</span>}
+
+                        <span>
+                          {st === 'approved' && `${x.approved_by || 'tulajdonos'} · ${fmtDay(x.approved_at)}`}
+                          {st === 'refused' && `${x.refused_by || 'tulajdonos'} · ${fmtDay(x.refused_at)}${x.refuse_reason ? ` — ${x.refuse_reason}` : ''}`}
+                          {st === 'pending' && `${x.requested_by ? `${x.requested_by} kérte` : 'kérve'}${x.requested_at ? ` · ${fmtDay(x.requested_at)}` : ''}`}
+                        </span>
+                      </div>
+
+                      {admin && (
+                        <div className="act-row" style={{ marginTop: 8 }}>
+                          {st !== 'approved' && (
+                            <button className="crm-btn sm" disabled={saving}
+                              onClick={() => sel && api({ id: sel, op: 'extraDecide', extraId: x.id, approve: true })}>
+                              Jóváhagyom
+                            </button>
+                          )}
+                          {st !== 'refused' && (
+                            <button className="crm-btn ghost sm" disabled={saving}
+                              onClick={() => {
+                                const why = window.prompt('Miért nem? (opcionális — a villa előzményeibe kerül)');
+                                if (why !== null && sel) api({ id: sel, op: 'extraDecide', extraId: x.id, approve: false, reason: why });
+                              }}>
+                              Elutasítom
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                 <div style={{ marginTop: 12 }}>
                   <input className="crm-input" list="mp-extra-presets" placeholder="Pl. Podcast studio…"
                     value={extraLabel} onChange={(e) => setExtraLabel(e.target.value)} style={{ marginBottom: 8 }} />

@@ -1830,8 +1830,12 @@ export type VillaSaleOp =
      One that has been agreed with a buyer overrides that, and is the only way
      a payment can be late before the building work is anywhere near it. */
   | { op: 'phaseDue'; key: PhaseKey; due: string | null }
-  | { op: 'extraAdd'; label: string; price?: number }
+  | { op: 'extraAdd'; label: string; price?: number; by?: string }
   | { op: 'extraRemove'; extraId: string }
+  /* The answer to an extra. Approving one commits the developer to building
+     something and to what it costs, so it is the owner's decision and never a
+     side effect of typing the request in. */
+  | { op: 'extraDecide'; extraId: string; approve: boolean; reason?: string; by?: string }
   /* ── The reservation as a process ──
      `reserve` takes the villa off the market AND records the agreement behind
      it; `reservationPatch` fills in what was not known at the time (the deposit
@@ -2065,8 +2069,36 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
     case 'extraAdd': {
       const label = action.label.trim().slice(0, 120);
       if (!label) return 'abort';
-      (rec.extras ??= []).push({ id: randomUUID(), label, price: num(action.price) });
-      t.log(from, rec.status, undefined, `Extra added: ${label}`);
+      (rec.extras ??= []).push({
+        id: randomUUID(),
+        label,
+        price: num(action.price),
+        requested_at: now(),
+        requested_by: action.by,
+      });
+      // "Requested", not "added" — nobody has agreed to build it yet.
+      t.log(from, rec.status, action.by, `Extra requested: ${label}`);
+      break;
+    }
+    case 'extraDecide': {
+      const extra = (rec.extras || []).find((e) => e.id === action.extraId);
+      if (!extra) return 'abort';
+      const why = cleanText(action.reason || '').trim().slice(0, 500);
+      /* One answer at a time: deciding again replaces the previous answer
+         rather than leaving both stamps on the record. */
+      delete extra.approved_at; delete extra.approved_by;
+      delete extra.refused_at; delete extra.refused_by; delete extra.refuse_reason;
+      if (action.approve) {
+        extra.approved_at = now();
+        extra.approved_by = action.by;
+      } else {
+        extra.refused_at = now();
+        extra.refused_by = action.by;
+        extra.refuse_reason = why || undefined;
+      }
+      t.log(from, rec.status, action.by,
+        `Extra ${action.approve ? 'approved' : 'refused'}: ${extra.label}` +
+        (!action.approve && why ? ` — ${why}` : ''));
       break;
     }
     case 'extraRemove': {

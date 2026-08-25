@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 const SALE_OPS = [
   'sale', 'phase', 'extraAdd', 'extraRemove',
   'reserve', 'reservationPatch', 'releaseReservation', 'contract', 'schedule', 'phaseDue',
+  'extraDecide',
 ];
 
 export async function GET() {
@@ -33,7 +34,15 @@ export async function PATCH(req: Request) {
       /* Who reserved it is stamped here rather than trusted from the body —
          a claim on a villa carrying somebody else's name would be worse than
          one carrying none. */
-      const payload = b.op === 'reserve' ? { ...b, by: (await currentUser()) || undefined } : b;
+      /* Deciding on an extra commits the developer to building something and
+         to what it costs. That is the owner's call, not finance's. */
+      if (b.op === 'extraDecide' && !(await can('deals.approve'))) {
+        return Response.json({ ok: false, error: 'Az extra jóváhagyása a tulajdonos döntése.' }, { status: 403 });
+      }
+      // Who asked, and who answered, are stamped from the session — never
+      // trusted from the body.
+      const stamped = ['reserve', 'extraAdd', 'extraDecide'].includes(b.op);
+      const payload = stamped ? { ...b, by: (await currentUser()) || undefined } : b;
       const data = await updateVillaSale(id, payload as unknown as VillaSaleOp);
       if (!data) return Response.json({ ok: false, error: 'invalid op' }, { status: 400 });
       return Response.json({ ok: true, ...data });

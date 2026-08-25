@@ -520,6 +520,9 @@ unknown phase key or an empty extra label, → `400 "invalid op"`):
 | `reservationPatch` | `patch: { amount?, paidAt?, expiresAt?, agreement?, note? }` | Fills in what was not known at the time. A `paidAt` arriving writes its own line on the villa history. `null` clears a field; a value that is not a `YYYY-MM-DD` date is dropped. |
 | `releaseReservation` | `reason` (required) | The hold lapsing or being cancelled: villa back to `free` and **every trace of the deal cleared** — buyer link, contract value, phases, schedule, contract state — the same clearing a manual status change to `free` does. The whole thing is kept on the villa history with the reason. Pushes `unit.updated` with `status: "available"`. |
 | `contract` | `status: "none"|"sent"|"review"|"signed"`, `note?` | The SPA. Each step stamps its own date the **first** time it is reached, so stepping back to correct a mis-click never rewrites when the contract went out. |
+| `extraAdd` | `label`, `price?` | Records what a buyer **asked for**. It starts **pending**: typing an extra in is a request, not an agreement, and `requested_by` is stamped from the session. |
+| `extraDecide` | `extraId`, `approve: bool`, `reason?` | The answer. **Needs `deals.approve` — the owner alone**: approving commits the developer to building something at that price. Deciding again replaces the previous answer rather than leaving both stamps on the record. |
+| `phaseDue` | `key`, `due: "YYYY-MM-DD" \| null` | The date an instalment was **agreed** to fall due. Most carry none — the schedule is governed by progress on site — and one that does is the only way a payment can be late before the building work is near it. |
 | `schedule` | `phases: PhaseDef[] | null` | This unit's own payment terms; `null` restores the standard ones. **Refused (`409`)** once an instalment has been paid against the schedule, and when the percentages do not add up to 100 (±0.01). |
 | `extraAdd` | `label` (required, capped 120), `price?` | Adds a buyer extra (e.g. "Podcast studio"). Empty label → `400`. |
 | `extraRemove` | `extraId` | Removes the extra; logged when it existed. |
@@ -690,6 +693,7 @@ auditing every route, and a route reads as the decision it is guarding.
 | `money.read` — contract values, payments, commission | ✓ | ✓ | — | ✓ | — | ✓ |
 | `money.write` — the masterplan ledger | ✓ | — | — | ✓ | — | — |
 | `partners.write` — agency records, commission terms, overriding a claim | ✓ | — | — | — | — | — |
+| `deals.approve` — saying yes to what a buyer asked for, and what it costs | ✓ | — | — | — | — | — |
 
 Reading every lead, the pipeline, the masterplan and the analytics needs no capability at all —
 any signed-in session may.
