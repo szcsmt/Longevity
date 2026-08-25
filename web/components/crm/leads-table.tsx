@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Lead } from '@/lib/crm/types';
-import { STAGES, SCORES } from '@/lib/crm/types';
+import { STAGES } from '@/lib/crm/types';
 import { hasNoNextStep, isNurtured, isStalled, nextAction, nextActionState, stageAgeDays } from '@/lib/crm/rules';
 
 /* Fixed locale + UTC so server prerender and browser hydration agree. */
@@ -56,8 +56,6 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
   const router = useRouter();
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
-  const [bulkStage, setBulkStage] = useState('');
-  const [bulkScore, setBulkScore] = useState('');
 
   const allSelected = leads.length > 0 && leads.every((l) => sel.has(l.id));
   const ids = useMemo(() => [...sel], [sel]);
@@ -70,7 +68,7 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
     });
   }
 
-  async function bulk(action: 'stage' | 'score' | 'archive', value?: string) {
+  async function bulk(action: 'archive', value?: string) {
     if (!ids.length) return;
     if (action === 'archive' && !confirm(
       `Archive ${ids.length} ${ids.length === 1 ? 'lead' : 'leads'}?\n\n` +
@@ -94,8 +92,6 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
         alert(`${data.failed} ${data.failed === 1 ? 'lead' : 'leads'} could not be updated — the list below shows the current state.${why}`);
       }
       setSel(new Set());
-      setBulkStage('');
-      setBulkScore('');
     } finally {
       setBusy(false);
       // Refresh REGARDLESS of outcome — a partial write must never leave the
@@ -118,23 +114,14 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
     <>
       {/* Always rendered (disabled at zero selection) so ticking the first
           checkbox never shifts the table under the pointer. */}
-      {leads.length > 0 && !readOnly && (
-        <div className={`bulk-bar${any ? '' : ' idle'}`}>
-          <span className="tabnum" style={{ fontWeight: 600 }}>
-            {any ? `${sel.size} selected` : 'Select leads for bulk actions'}
-          </span>
-          <select className="crm-select sm" value={bulkStage} disabled={busy || !any} aria-label="Move selection to stage"
-            onChange={(e) => { setBulkStage(e.target.value); if (e.target.value) bulk('stage', e.target.value); }}>
-            <option value="">Move to stage…</option>
-            {STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </select>
-          <select className="crm-select sm" value={bulkScore} disabled={busy || !any} aria-label="Set selection score"
-            onChange={(e) => { setBulkScore(e.target.value); if (e.target.value) bulk('score', e.target.value); }}>
-            <option value="">Set score…</option>
-            {SCORES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
-          </select>
-          {canDelete && <button className="crm-btn danger sm" disabled={busy || !any} onClick={() => bulk('archive')}>Archive</button>}
-          <button className="crm-btn ghost sm" disabled={busy || !any} onClick={() => setSel(new Set())}>Clear</button>
+      {/* Only once something is actually ticked. An always-present bar telling
+          you what you could do if you selected something is a row of furniture
+          on a page that is read far more often than it is acted on. */}
+      {leads.length > 0 && !readOnly && any && (
+        <div className="bulk-bar">
+          <span className="tabnum" style={{ fontWeight: 600 }}>{sel.size} selected</span>
+          {canDelete && <button className="crm-btn danger sm" disabled={busy} onClick={() => bulk('archive')}>Archive</button>}
+          <button className="crm-btn ghost sm" disabled={busy} onClick={() => setSel(new Set())}>Clear</button>
         </div>
       )}
 

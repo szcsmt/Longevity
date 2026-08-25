@@ -10,11 +10,9 @@ import { TIMEFRAMES } from '@/lib/crm/types';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
 import { LeadsTable } from '@/components/crm/leads-table';
-import { DedupeButton } from '@/components/crm/dedupe-button';
 
 export const dynamic = 'force-dynamic';
 
-const FORM_TYPES = ['enquiry', 'reserve', 'brochure_request', 'manual'];
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || '';
 
 const SCORE_RANK: Record<string, number> = { hot: 0, warm: 1, cold: 2 };
@@ -60,8 +58,8 @@ export default async function LeadsPage({
   // otherwise pass the check and hand Array.sort a non-function comparator.
   const sort = Object.hasOwn(SORTS, str(sp.sort)) ? str(sp.sort) : 'received';
   const leads = (await listLeads(filter as never)).sort(SORTS[sort]);
-  const [archiver, exporter, merger, editor, me] = await Promise.all([
-    can('leads.archive'), can('leads.export'), can('leads.merge'), canEdit(), currentUser(),
+  const [archiver, exporter, editor, me] = await Promise.all([
+    can('leads.archive'), can('leads.export'), canEdit(), currentUser(),
   ]);
   /* Read off the unfiltered table rather than the filtered view, or choosing a
      source would empty the list of every other source to switch back to. */
@@ -109,7 +107,6 @@ export default async function LeadsPage({
         </div>
         <div className="act-row">
           {editor && <Link className="crm-btn gold" href="/admin/leads/new">+ Add lead</Link>}
-          {merger && <DedupeButton />}
           {/* The export walks out of the building with every contact on it,
               so it needs its own permission rather than riding along with
               being able to read the list. */}
@@ -119,7 +116,6 @@ export default async function LeadsPage({
               {filter.owner === mine ? 'Everyone' : 'My leads'}
             </Link>
           )}
-          <Link className="crm-btn" href="/admin/pipeline">Pipeline view →</Link>
           {archiver && (
             <Link className="crm-btn ghost" href={showArchived ? '/admin/leads' : '/admin/leads?archived=only'}>
               {showArchived ? '← Back to leads' : 'Archive'}
@@ -143,12 +139,6 @@ export default async function LeadsPage({
           <select className="crm-select" name="score" defaultValue={filter.score} aria-label="Filter by score">
             <option value="">All scores</option>
             {SCORES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
-          </select>
-        </div>
-        <div className="fld">
-          <select className="crm-select" name="form_type" defaultValue={filter.form_type} aria-label="Filter by form type">
-            <option value="">All forms</option>
-            {FORM_TYPES.map((f) => <option key={f} value={f}>{f.replace('_', ' ')}</option>)}
           </select>
         </div>
         {/* With one salesperson this is noise, so it only appears once there
@@ -210,7 +200,6 @@ export default async function LeadsPage({
         </div>
         {showArchived && <input type="hidden" name="archived" value="only" />}
         <button className="crm-btn gold" type="submit">Filter</button>
-        <Link className="crm-btn ghost" href="/admin/leads">Reset</Link>
       </form>
 
       <LeadsTable leads={leads} sortHrefs={sortHrefs} sort={sort} readOnly={!editor} canDelete={archiver} />

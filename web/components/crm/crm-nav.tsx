@@ -59,11 +59,6 @@ const items = [
     label: 'Analytics',
     icon: <path d="M3 12c3-6 6-9 9-9s6 3 9 9c-3 6-6 9-9 9s-6-3-9-9Zm9 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />,
   },
-  {
-    href: '/admin/activity',
-    label: 'Activity',
-    icon: <path d="M2 12h4l3-8 6 16 3-8h4" />,
-  },
 ];
 
 /* Red badge counts: leads = untouched new + awaiting-reply, followups =

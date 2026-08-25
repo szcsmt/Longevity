@@ -27,7 +27,7 @@ A lényeg az üdvözlés alatti **figyelmeztető kapszulák**. Csak akkor jelenn
 |---|---|
 | ⚠ lejárt teendő | nyitott teendő, aminek a határideje elmúlt |
 | érintetlen új lead | „New" fázisú lead, ami 1 napnál régebbi, és még se jegyzet, se teendő nincs rajta |
-| elakadt lead | a fázisában a megengedettnél régebb óta ül (lásd 11. fejezet) |
+| elakadt lead | a fázisában a megengedettnél régebb óta ül (lásd 10. fejezet) |
 | következő lépés nélkül | aktív lead, amin nincs nyitott teendő és nem fut válasz-időzítő sem |
 | válaszra vár | 3+ napja nem jött válasz a kiküldött e-mailre |
 
@@ -757,13 +757,7 @@ A veszteség-okok a **strukturált mezőből** jönnek, nem a jegyzet szövegéb
 
 ---
 
-## 10. Activity — mi történik a weboldalon
-
-`/admin/activity` — minden látogatói interakció a weboldalon, név nélkül: látogatás, kattintás, WhatsApp-gomb, hívás-gomb, e-mail, brossúra-letöltés, űrlap-megnyitás. Fent összesítők, alatta típus szerint szűrhető napló. Arra jó, hogy lásd: mozog-e az oldal, melyik csatorna él. A leadeket nem szennyezi — ez csak jelzés.
-
----
-
-## 11. Hogyan kerülnek be a leadek — és mit csinál a rendszer magától
+## 10. Hogyan kerülnek be a leadek — és mit csinál a rendszer magától
 
 - **Weboldal-űrlapok**: minden beküldés azonnal leadet csinál. A hőfokot a rendszer magától állítja: konkrét villára irányuló megkeresés vagy foglalási szándék = **hot**, általános érdeklődés = **warm** (befektetési/foglalási területről indítva hot), brossúra-kérés = **cold**.
 - **Egy ember = egy lead**: ha ugyanaz az e-mail/telefonszám ír újra (akár WhatsAppon), az üzenet a **meglévő** leadre kerül jegyzetként — nem születik duplikátum. Az üres mezők kitöltődnek, a hőfok csak felfelé módosul. A beérkező üzenet válasznak számít (törli a válasz-időzítőt), az elveszett leadet pedig újraéleszti.
@@ -800,7 +794,7 @@ A veszteség-okok a **strukturált mezőből** jönnek, nem a jegyzet szövegéb
 
 ---
 
-## 12. Ki mit lát és mit tehet
+## 11. Ki mit lát és mit tehet
 
 **Hat fiók-típus** van:
 
@@ -861,7 +855,7 @@ ne zárjon ki valakit a saját CRM-jéből. Szólj, ha kell egy, és beállítom
 
 ---
 
-## 13. A napi rutin
+## 12. A napi rutin
 
 **Reggel:**
 1. Nyisd meg a **Mai teendők** oldalt (`/admin/today`). Ez a munkalista, sorrendbe rakva. Ha üres, minden kézben van.
