@@ -509,6 +509,11 @@ export interface Activity {
   /** Who did it, when a signed-in person did. Absent for anything the system
       or the customer did — those read as the CRM's own actions. */
   by?: string;
+  /* An id in whatever system the entry came from — a Gmail message id, so far.
+     It is what stops a message being filed twice when a sync overlaps, and it
+     is on the entry rather than in a separate table because the entry is the
+     thing that would be duplicated. */
+  ref?: string;
   /* On a logged contact: whether a conversation actually happened. A structured
      field rather than something to read out of `detail`, because the automated
      sequence depends on it — talking to somebody hands the conversation to a

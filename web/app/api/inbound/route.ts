@@ -2,6 +2,7 @@ import { upsertLeadFromPayload, recordInboundReply } from '@/lib/crm/store';
 import { forwardToOperator } from '@/lib/crm/forward';
 import { readReply, readingAsNote } from '@/lib/crm/triage';
 import { svixHeaders, verifySvix } from '@/lib/crm/svix';
+import { addressOf, justTheReply, stripHtml } from '@/lib/crm/email-text';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,35 +47,9 @@ async function fetchBody(emailId: string): Promise<{ text: string; subject?: str
   }
 }
 
-const stripHtml = (html: string) =>
-  html.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, '')
-      .replace(/<br\s*\/?>|<\/p>|<\/div>|<\/tr>/gi, '\n')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-
-/** "Jane Doe <jane@x.com>" → "jane@x.com" */
-const addressOf = (from: string) => (from.match(/<([^>]+)>/)?.[1] || from).trim().toLowerCase();
-
-/* Quoted history and signatures make a two-line reply look like a thread. Cut
-   at the first quote marker so the note — and the reading — see what the person
-   actually wrote this time. */
-function justTheReply(text: string): string {
-  const markers = [
-    /^\s*On .+ wrote:\s*$/m,
-    /^\s*-{2,}\s*Original Message\s*-{2,}\s*$/im,
-    /^\s*From:\s.+$/m,
-    /^\s*>{1,}/m,
-    /^\s*_{10,}\s*$/m,
-  ];
-  let cut = text.length;
-  for (const m of markers) {
-    const hit = text.match(m);
-    if (hit?.index !== undefined && hit.index < cut) cut = hit.index;
-  }
-  return text.slice(0, cut).trim() || text.trim();
-}
+/* stripHtml, addressOf and justTheReply now live in email-text.ts — the Gmail
+   sync needs the identical logic, and two copies of a quote-trimmer is two
+   behaviours the moment somebody fixes a bug in one of them. */
 
 export async function POST(request: Request) {
   /* The signature covers the raw bytes, so the body is read as text and parsed

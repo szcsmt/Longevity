@@ -4,6 +4,7 @@ import { sendDigest } from '@/lib/crm/digest';
 import { autoEmailsEnabled } from '@/lib/crm/mailer';
 import { whatsappEnabled } from '@/lib/crm/whatsapp';
 import { syncNow as syncGoogleTasks } from '@/lib/crm/google-tasks';
+import { syncNow as syncGmail } from '@/lib/crm/gmail';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,5 +35,10 @@ export async function GET(req: Request) {
      a Google account; a failure here must never fail the sweep. */
   const googleTasks = await syncGoogleTasks(true).catch(() => ({ ok: false, error: 'sync threw' }));
 
-  return Response.json({ ok: true, enabled: canSend, ...sequence, digest, googleTasks });
+  /* The mailbox, once a day as a backstop. The real cadence comes from the
+     browser while somebody is working — see components/crm/mail-sync.tsx —
+     but a night with nobody logged in should not leave a gap in the record. */
+  const gmail = await syncGmail(true).catch(() => ({ ok: false, error: 'sync threw' }));
+
+  return Response.json({ ok: true, enabled: canSend, ...sequence, digest, googleTasks, gmail });
 }

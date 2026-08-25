@@ -1200,6 +1200,89 @@ export async function recordSentEmail(id: string, email: import('./types').SentE
   });
 }
 
+/* ── A message from the mailbox the selling happens in ──
+
+   Filed by the Gmail sync, in both directions. An incoming message behaves
+   exactly as a reply through Resend does — a person now owns the conversation —
+   and an outgoing one arms the reply timer that somebody used to have to
+   remember to click.
+
+   Deduplicated on the Gmail message id, because a sync window that overlaps the
+   previous one is normal and filing the same message twice is not. */
+
+export interface MailboxMessage {
+  gmailId: string;
+  direction: 'in' | 'out';
+  subject?: string;
+  body: string;
+  at: string;          // ISO — when Gmail says it was sent
+  counterpart: string; // the lead's address, whichever end it was on
+  by?: string;         // the salesperson, on an outgoing message we can attribute
+}
+
+export type MailboxResult = 'filed' | 'duplicate' | null;
+
+export async function recordMailboxMessage(id: string, m: MailboxMessage): Promise<MailboxResult> {
+  let outcome: MailboxResult = null;
+  await mutate(id, (lead) => {
+    outcome = null;
+    if ((lead.history || []).some((h) => h.ref === m.gmailId)) {
+      outcome = 'duplicate';
+      return;
+    }
+
+    const said = cleanText(m.body).trim().slice(0, 8000);
+    const head = m.subject ? `${m.subject}\n\n` : '';
+    const inbound = m.direction === 'in';
+
+    (lead.history ??= []).push({
+      id: randomUUID(),
+      kind: inbound ? 'message' : 'email',
+      detail: inbound
+        ? `Reply received by e-mail${m.subject ? ` — ${m.subject}` : ''}`
+        : `E-mail sent${m.subject ? ` — ${m.subject}` : ''}`,
+      at: m.at,
+      ref: m.gmailId,
+      ...(m.by ? { by: m.by } : {}),
+    });
+
+    if (said) {
+      lead.notes.unshift({
+        id: randomUUID(),
+        body: `${inbound ? '📥' : '📤'} ${head}${said}`,
+        at: m.at,
+        ...(m.by && !inbound ? { by: m.by } : {}),
+      });
+    }
+
+    if (inbound) {
+      /* They wrote. Same consequences as a reply arriving any other way: the
+         waiting is over, the chase is done, and a deal we had written off is
+         a deal again. */
+      if (lead.awaiting_reply_since) {
+        lead.awaiting_reply_since = undefined;
+        const chase = lead.tasks.find((t) => t.title === REPLY_TASK_TITLE && !t.done);
+        if (chase) chase.done = true;
+      }
+      if (lead.stage === 'lost') {
+        logActivity(lead, 'stage', `${stageLabel('lost')} → ${stageLabel('new')} (re-engaged by e-mail)`);
+        lead.stage = 'new';
+        lead.lost_reason = undefined;
+        lead.lost_from = undefined;
+      }
+    } else {
+      /* We wrote. This is the click somebody used to have to remember: the
+         reply timer starts itself, and speed-to-lead finally counts an e-mail
+         a salesperson actually sent. */
+      markFirstResponse(lead);
+      if (!lead.awaiting_reply_since) lead.awaiting_reply_since = m.at;
+    }
+
+    outcome = 'filed';
+  });
+  return outcome;
+}
+
 /* ── A customer replied ──
 
    The single most important event in the whole system: it means a human is on
@@ -1700,6 +1783,23 @@ export async function setVillaStatus(
       );
     }
 
+    /* ── A unit is never held for nobody ──
+
+       Reserved and sold both assert that a specific person is behind the
+       deal. Without a name the masterplan shows a plot everybody can see and
+       nobody can account for: the money has nothing attached to it, the
+       buyer's lead has no unit, and the first anyone notices is when a second
+       buyer is offered the same villa.
+
+       `integrityIssues` has reported this as `held-without-buyer` all along.
+       Reporting is what you do about the rows that already exist; refusing is
+       what stops tomorrow's. */
+    if ((status === 'reserved' || status === 'sold') && !heldBy(rec)) {
+      throw new VillaConflict(
+        `${id}: name the buyer first. A unit cannot be ${status === 'sold' ? 'sold' : 'reserved'} for nobody.`,
+      );
+    }
+
     rec.status = status;
     rec.seller = seller;
     rec.note = note;
@@ -1724,6 +1824,12 @@ export type VillaSaleOp =
       construction?: Construction;
     } }
   | { op: 'phase'; key: PhaseKey; paid: boolean; amount?: number }
+  /* When an instalment was AGREED to fall due. The schedule is normally
+     governed by progress on site — the 43% falls due when the foundation is
+     finished, whenever that happens to be — so most phases never carry a date.
+     One that has been agreed with a buyer overrides that, and is the only way
+     a payment can be late before the building work is anywhere near it. */
+  | { op: 'phaseDue'; key: PhaseKey; due: string | null }
   | { op: 'extraAdd'; label: string; price?: number }
   | { op: 'extraRemove'; extraId: string }
   /* ── The reservation as a process ──
@@ -1936,6 +2042,24 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
       if (problem) throw new VillaConflict(`That schedule will not do: ${problem}`);
       rec.schedule = toSchedule(action.phases)!;
       t.log(from, rec.status, undefined, `Payment schedule set to ${rec.schedule.map((ph) => ph.pct).join(' / ')}`);
+      break;
+    }
+    case 'phaseDue': {
+      const def = scheduleFor(rec).find((ph) => ph.key === action.key);
+      if (!def) return 'abort';
+      const day = action.due && /^\d{4}-\d{2}-\d{2}$/.test(action.due.slice(0, 10))
+        ? action.due.slice(0, 10)
+        : null;
+      if (action.due && !day) return 'abort';
+
+      rec.phases ??= {};
+      const phase = (rec.phases[action.key] ??= { paid: false });
+      const was = phase.due;
+      phase.due = day ? new Date(`${day}T00:00:00.000Z`).toISOString() : undefined;
+      if ((was || '').slice(0, 10) !== (day || '')) {
+        t.log(from, rec.status, undefined,
+          day ? `${def.label} due ${day}` : `${def.label} — agreed date removed`);
+      }
       break;
     }
     case 'extraAdd': {

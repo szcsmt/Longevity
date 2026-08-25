@@ -4,6 +4,7 @@ import { attentionCounts } from '@/lib/crm/store';
 import { CrmNav } from '@/components/crm/crm-nav';
 import { LogoutButton } from '@/components/crm/logout-button';
 import { AutoRefresh } from '@/components/crm/auto-refresh';
+import { MailSync } from '@/components/crm/mail-sync';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,8 @@ export default async function DashLayout({ children }: { children: React.ReactNo
   return (
     <div className="crm-root">
       <AutoRefresh seconds={6} />
+      {/* The mailbox, kept in step while somebody is actually looking. */}
+      <MailSync minutes={3} />
       <div className="crm-shell">
         <aside className="crm-side">
           <div className="crm-brand">
