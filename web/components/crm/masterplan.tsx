@@ -24,10 +24,13 @@ const fmtDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-GB'
 const daysSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 
 export function Masterplan({
-  image, villas, initial, history: initHistory, leads, readOnly = false,
+  image, villas, initial, history: initHistory, leads, readOnly = false, admin = false,
 }: {
   image: string; villas: Villa[]; initial: Record<string, VillaRecord>;
   history: VillaHistoryEntry[]; leads: LeadOption[]; readOnly?: boolean;
+  /** Changing a unit's payment split is the owner's call, not finance's — it
+      rewrites what the buyer agreed to pay and when. */
+  admin?: boolean;
 }) {
   const [records, setRecords] = useState<Record<string, VillaRecord>>(initial);
   const [history, setHistory] = useState<VillaHistoryEntry[]>(initHistory);
@@ -44,6 +47,7 @@ export function Masterplan({
   /* Percentages being typed, keyed by phase. Empty means "as stored" — the
      draft only holds what somebody has actually touched. */
   const [split, setSplit] = useState<Record<string, string>>({});
+  const [editingSchedule, setEditingSchedule] = useState(false);
   /* Calendar day, for reading a reservation's expiry. Computed once per render
      rather than per row. */
   const today = new Date().toISOString().slice(0, 10);
@@ -93,7 +97,7 @@ export function Masterplan({
     setContractDraft(r?.contractValue ? String(r.contractValue) : '');
     setEditingValue(false);
     setExtraLabel(''); setExtraPrice('');
-    setResAmount(''); setResExpiry(''); setSplit({});
+    setResAmount(''); setResExpiry(''); setSplit({}); setEditingSchedule(false);
     setSel(id);
     setErr(null);
   }
@@ -126,7 +130,8 @@ export function Masterplan({
 
   async function saveStatus() {
     if (!sel) return;
-    if (form.status !== 'free' && !form.seller.trim()) return; // seller required for reserved/sold
+    // Vevő és értékesítő is kell, mielőtt egy telek lefoglalható vagy eladható.
+    if (form.status !== 'free' && (!form.seller.trim() || !buyerNamed)) return;
     await api({ id: sel, status: form.status, seller: form.seller, note: form.note });
   }
 
@@ -143,6 +148,8 @@ export function Masterplan({
   /* The steps this unit is actually sold on — its own, if it negotiated any,
      otherwise the standard ones. */
   const phases = scheduleFor(rec);
+  /* Van-e egyáltalán kinek tartani a telket — akár leadből, akár kézzel. */
+  const buyerNamed = Boolean((rec?.buyerName || '').trim() || rec?.buyerLeadId);
   const paid = rec ? paidTotal(rec) : 0;
   const splitTotal = phases.reduce((sum, p) => sum + (Number(split[p.key] ?? p.pct) || 0), 0);
   const next = rec ? nextPhase(rec) : null;
@@ -320,11 +327,36 @@ export function Masterplan({
               </div>
 
               {form.status !== 'free' && (
-                <div style={{ marginBottom: 14 }}>
-                  <label className="crm-label">Ki adta el / foglalta le? <span style={{ color: 'var(--c-hot)' }}>*</span></label>
-                  <input className="crm-input" value={form.seller} placeholder="Pl. Longevity Sales"
-                    onChange={(e) => setForm((f) => ({ ...f, seller: e.target.value }))} />
-                </div>
+                <>
+                  {/* ── A vevő neve ──
+
+                      Foglalt és eladott állapot egyaránt azt állítja, hogy egy
+                      konkrét ember áll az üzlet mögött. Név nélkül a masterplan
+                      olyan telket mutat, amit mindenki lát és senki nem tud
+                      számonkérni: a pénz mögött nincs senki, a vevő leadjén
+                      nincs telek, és először akkor derül ki, amikor ugyanazt a
+                      villát felajánlják egy másik vevőnek. */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label className="crm-label">Vevő neve <span style={{ color: 'var(--c-hot)' }}>*</span></label>
+                    <input className="crm-input" defaultValue={rec?.buyerName || ''}
+                      placeholder="Pl. Elena Rossi" disabled={saving}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v !== (rec?.buyerName || '')) sale({ buyerName: v });
+                      }} />
+                    <div className="crm-meta" style={{ marginTop: 6 }}>
+                      {rec?.buyerLeadId
+                        ? 'A hozzákötött CRM-leadből jön — lent átírható vagy leválasztható.'
+                        : 'Vagy kösd hozzá a CRM-leadet lent, és a név magától kitöltődik.'}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <label className="crm-label">Ki adta el / foglalta le? <span style={{ color: 'var(--c-hot)' }}>*</span></label>
+                    <input className="crm-input" value={form.seller} placeholder="Pl. Longevity Sales"
+                      onChange={(e) => setForm((f) => ({ ...f, seller: e.target.value }))} />
+                  </div>
+                </>
               )}
 
               <div style={{ marginBottom: 14 }}>
@@ -334,7 +366,7 @@ export function Masterplan({
               </div>
 
               <button className="crm-btn gold" onClick={saveStatus}
-                disabled={saving || (form.status !== 'free' && !form.seller.trim())}
+                disabled={saving || (form.status !== 'free' && (!form.seller.trim() || !buyerNamed))}
                 style={{ width: '100%', justifyContent: 'center' }}>
                 {saving ? 'Mentés…' : 'Státusz mentése'}
               </button>
@@ -343,7 +375,14 @@ export function Masterplan({
                   {err}
                 </div>
               )}
-              {form.status !== 'free' && !form.seller.trim() && (
+              {/* A gomb tiltása nem védelem — a szerver is elutasítja. De aki
+                  ide ér, tudja meg előre, mi hiányzik, ne mentés után. */}
+              {form.status !== 'free' && !buyerNamed && (
+                <div className="crm-meta" style={{ marginTop: 8, color: 'var(--c-hot)' }}>
+                  Add meg a vevő nevét — telek nem foglalható és nem adható el senkinek.
+                </div>
+              )}
+              {form.status !== 'free' && buyerNamed && !form.seller.trim() && (
                 <div className="crm-meta" style={{ marginTop: 8, color: 'var(--c-hot)' }}>Add meg, ki adta el / foglalta le.</div>
               )}
 
@@ -536,7 +575,16 @@ export function Masterplan({
                 {/* The heading used to say "7 / 43 / 40 / 10" in hard-coded
                     text, which stopped being true the moment a unit could
                     carry its own terms. */}
-                <h3>Fizetési ütem — {scheduleSummary(phases)}</h3>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>Fizetési ütem — {scheduleSummary(phases)}</span>
+                  {/* Az ütem a szerződés feltétele, nem a szoftver adottsága.
+                      Átírni viszont ritka és következményes — ezért ikon mögött
+                      van, és csak a tulajdonosnak jelenik meg. */}
+                  {admin && (
+                    <button type="button" className="mp-cv-edit" aria-label="Fizetési ütem módosítása"
+                      onClick={() => setEditingSchedule((v) => !v)}>✎</button>
+                  )}
+                </h3>
                 {isCustomSchedule(rec) && (
                   <div className="crm-meta" style={{ marginBottom: 10, color: 'var(--c-gold-bright)' }}>
                     Egyedi ütem ezen a villán — nem a ház alapértelmezése.
@@ -560,6 +608,17 @@ export function Masterplan({
                         <div className="gate">{p.gate}{ph?.paid && ph.at ? ` · fizetve ${fmtDay(ph.at)}` : ''}</div>
                       </div>
                       {amt > 0 && <span className="amt">{fmtTHB(amt)}</span>}
+                      {/* Mikorra ígérte. A legtöbb részletnek nincs dátuma —
+                          az építkezés állása hozza esedékessé —, de amiben
+                          megállapodtatok, az felülírja, és csak attól tud
+                          egyáltalán késni valami. */}
+                      {!readOnly && !ph?.paid && (
+                        <input className="crm-input" type="date"
+                          defaultValue={(ph?.due || '').slice(0, 10)} disabled={saving}
+                          aria-label={`${p.label} fizetési határidő`}
+                          style={{ width: 138, padding: '4px 7px', fontSize: 12 }}
+                          onChange={(e) => sel && api({ id: sel, op: 'phaseDue', key: p.key, due: e.target.value || null })} />
+                      )}
                     </div>
                   );
                 })}
@@ -587,7 +646,7 @@ export function Masterplan({
                     érvényben akkor is, ha a ház jövőre mást árul. Csak a
                     százalékok írhatók át itt; a lépések számát és a hozzájuk
                     tartozó építési mérföldköveket a projekt beállítása adja. */}
-                {!readOnly && (
+                {admin && editingSchedule && (
                   <div style={{ marginTop: 14, borderTop: '1px solid var(--c-line-2)', paddingTop: 12 }}>
                     <label className="crm-label">Egyedi fizetési ütem (%)</label>
                     <div className="act-row" style={{ alignItems: 'flex-end' }}>
@@ -608,13 +667,17 @@ export function Masterplan({
                           if (!sel) return;
                           const next = phases.map((p) => ({ ...p, pct: Number(split[p.key] ?? p.pct) }));
                           const ok = await api({ id: sel, op: 'schedule', phases: next });
-                          if (ok) setSplit({});
+                          if (ok) { setSplit({}); setEditingSchedule(false); }
                         }}>
                         Mentés
                       </button>
                       {isCustomSchedule(rec) && (
                         <button className="crm-btn ghost sm" disabled={saving}
-                          onClick={async () => { if (sel && await api({ id: sel, op: 'schedule', phases: null })) setSplit({}); }}>
+                          onClick={async () => {
+                            if (sel && await api({ id: sel, op: 'schedule', phases: null })) {
+                              setSplit({}); setEditingSchedule(false);
+                            }
+                          }}>
                           Vissza az alapértelmezéshez
                         </button>
                       )}
@@ -674,7 +737,7 @@ export function Masterplan({
                         const raw = extraPrice.replace(/[^\d]/g, '');
                         if (await api({ id: sel, op: 'extraAdd', label: extraLabel, price: raw ? parseInt(raw, 10) : undefined })) {
                           setExtraLabel(''); setExtraPrice('');
-    setResAmount(''); setResExpiry(''); setSplit({});
+    setResAmount(''); setResExpiry(''); setSplit({}); setEditingSchedule(false);
                         }
                       }}>
                       + Hozzáadás

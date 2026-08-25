@@ -16,8 +16,10 @@ export default async function MasterplanPage() {
      before that became impossible: otherwise the select finds no matching
      option, shows an empty box, and reads as though the buyer had been
      unlinked — a silent inconsistency on the one screen where the money is. */
-  const [{ villas: records, history }, leads, admin] = await Promise.all([
-    getVillaData(), listLeads({ archived: 'include' }), can('money.write'),
+  /* Two different permissions on one screen: writing the ledger is finance's
+     job, changing what a buyer agreed to pay is the owner's. */
+  const [{ villas: records, history }, leads, canWrite, owner] = await Promise.all([
+    getVillaData(), listLeads({ archived: 'include' }), can('money.write'), can('partners.write'),
   ]);
   const villas = villaData.villas as Villa[];
 
@@ -48,7 +50,7 @@ export default async function MasterplanPage() {
         </div>
       </div>
       <div className="crm-card" style={{ padding: 'clamp(16px,2vw,24px)' }}>
-        <Masterplan image={villaData.image} villas={villas} initial={records} history={history} leads={leadOptions} readOnly={!admin} />
+        <Masterplan image={villaData.image} villas={villas} initial={records} history={history} leads={leadOptions} readOnly={!canWrite} admin={owner} />
       </div>
     </>
   );

@@ -30,8 +30,9 @@ after(() => rmSync(dir, { recursive: true, force: true }));
 /** A lead holding a reserved unit — the shape most of these tests need. */
 async function buyerHolding(unit: string, name: string, email: string) {
   const lead = await store.createManualLead({ name, email });
-  await store.setVillaStatus(unit, 'reserved', { seller: 'Anna' });
+  // The buyer goes on first: a unit can no longer be reserved for nobody.
   await store.updateVillaSale(unit, { op: 'sale', patch: { buyerLeadId: lead.id } });
+  await store.setVillaStatus(unit, 'reserved', { seller: 'Anna' });
   return lead;
 }
 
@@ -118,10 +119,10 @@ describe('permanent deletion of a holder', () => {
 
 describe('the integrity report', () => {
   it('finds a unit pointing at a lead that no longer exists', async () => {
-    await store.setVillaStatus('C1', 'reserved', { seller: 'Anna' });
     await store.updateVillaSale('C1', {
       op: 'sale', patch: { buyerName: 'Vanished Person' },
     });
+    await store.setVillaStatus('C1', 'reserved', { seller: 'Anna' });
     // Write a reference by hand to the id of a lead that was never created —
     // the state left behind by a delete from before any of this existed.
     const villas = await fileBackend.getVillas();
@@ -135,14 +136,21 @@ describe('the integrity report', () => {
   });
 
   it('finds a reserved unit with nobody named on it', async () => {
-    await store.setVillaStatus('C2', 'reserved', { seller: 'Anna' });
+    /* This state can no longer be reached through the API — reserving a unit
+       for nobody is refused. It is written straight to the backend here
+       because that is the only way it exists now: rows left behind from before
+       the refusal. Reporting is what you do about those; refusing is what
+       stops tomorrow's. */
+    await fileBackend.setVilla('C2', {
+      status: 'reserved', seller: 'Anna', updatedAt: new Date().toISOString(), rev: 0,
+    }, 0);
     const issues = await store.integrityIssues();
     assert.ok(issues.some((i) => i.villaId === 'C2' && i.kind === 'held-without-buyer'));
   });
 
   it('ignores a released unit, whose leftover sale data is history', async () => {
-    await store.setVillaStatus('C3', 'reserved', { seller: 'Anna' });
     await store.updateVillaSale('C3', { op: 'sale', patch: { buyerName: 'Someone' } });
+    await store.setVillaStatus('C3', 'reserved', { seller: 'Anna' });
     await store.setVillaStatus('C3', 'free');
     const issues = await store.integrityIssues();
     assert.ok(!issues.some((i) => i.villaId === 'C3'), 'a free unit is never an issue');

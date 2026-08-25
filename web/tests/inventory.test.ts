@@ -58,34 +58,38 @@ describe('the revision guard on a unit', () => {
   });
 });
 
-describe('two people reserving the same villa at the same moment', () => {
+describe('two writes landing on the same unit at the same moment', () => {
   const unit = 'A2';
 
   before(async () => {
     await store.setVillaStatus(unit, 'free');
   });
 
-  it('keeps both attempts in the audit trail rather than losing one', async () => {
-    /* Fired together, on purpose. Whichever loses the revision race re-reads
-       and redoes its change, so neither write disappears — which is the whole
-       point: an operator must be able to see that both things happened. */
+  /* This used to fire two simultaneous reservations. It cannot any more: a
+     unit must name its buyer before it is reserved, and a second reservation
+     for a unit somebody already holds is refused outright — which is a
+     business rule, and has its own tests below.
+
+     The revision guard is a different thing, and still worth proving: two
+     writes that are both perfectly legal, landing on the same record in the
+     same instant, must interleave rather than one overwriting the other. */
+  it('keeps both, rather than losing whichever lands second', async () => {
+    await store.updateVillaSale(unit, { op: 'sale', patch: { buyerName: 'Race Buyer' } });
+
     await Promise.all([
       store.setVillaStatus(unit, 'reserved', { seller: 'Anna' }),
-      store.setVillaStatus(unit, 'reserved', { seller: 'Bence' }),
+      store.updateVillaSale(unit, { op: 'sale', patch: { contractValue: 9_000_000 } }),
     ]);
 
-    const { villas, history } = await store.getVillaData();
-    assert.equal(villas[unit].status, 'reserved');
-
-    const mine = history.filter((h) => h.villaId === unit);
-    const sellers = new Set(mine.map((h) => h.seller).filter(Boolean));
-    assert.ok(sellers.has('Anna'), 'Anna’s attempt must be on record');
-    assert.ok(sellers.has('Bence'), 'Bence’s attempt must be on record');
+    const rec = (await store.getVillaData()).villas[unit];
+    assert.equal(rec.status, 'reserved', 'the reservation survived');
+    assert.equal(rec.contractValue, 9_000_000, 'and so did the price written at the same second');
+    assert.equal(rec.buyerName, 'Race Buyer', 'and neither write dropped the buyer');
   });
 
   it('leaves exactly one revision per write, so nothing was silently merged', async () => {
     const rec = (await store.getVillaData()).villas[unit];
-    assert.ok((rec.rev || 0) >= 2, `expected at least two revisions, got ${rec.rev}`);
+    assert.ok((rec.rev || 0) >= 3, `expected a revision per write, got ${rec.rev}`);
   });
 });
 
@@ -94,8 +98,8 @@ describe('a unit that is already taken', () => {
 
   before(async () => {
     await store.setVillaStatus(unit, 'free');
-    await store.setVillaStatus(unit, 'reserved', { seller: 'Anna' });
     await store.updateVillaSale(unit, { op: 'sale', patch: { buyerName: 'Amanda Hunter' } });
+    await store.setVillaStatus(unit, 'reserved', { seller: 'Anna' });
   });
 
   it('refuses a second reservation, and says who holds it', async () => {
@@ -130,6 +134,9 @@ describe('a unit that is already taken', () => {
 
   it('allows re-reserving once the unit is deliberately released', async () => {
     await store.setVillaStatus(unit, 'free');
+    // Releasing clears the sale data, so the next reservation names its own
+    // buyer — which is the point of the rule, not an inconvenience of it.
+    await store.updateVillaSale(unit, { op: 'sale', patch: { buyerName: 'Second Buyer' } });
     const data = await store.setVillaStatus(unit, 'reserved', { seller: 'Bence' });
     assert.equal(data?.villas[unit].status, 'reserved');
   });
@@ -140,6 +147,7 @@ describe('linking a buyer', () => {
 
   before(async () => {
     await store.setVillaStatus(unit, 'free');
+    await store.updateVillaSale(unit, { op: 'sale', patch: { buyerName: 'Placeholder' } });
     await store.setVillaStatus(unit, 'reserved', { seller: 'Anna' });
   });
 
@@ -161,5 +169,59 @@ describe('linking a buyer', () => {
     const rec = (await store.getVillaData()).villas[unit];
     const data = await store.updateVillaSale(unit, { op: 'sale', patch: { buyerLeadId: rec.buyerLeadId! } });
     assert.equal(data?.villas[unit].buyerLeadId, rec.buyerLeadId);
+  });
+});
+
+describe('a unit is never held for nobody', () => {
+  /* The masterplan used to let a plot be marked reserved or sold with no buyer
+     on it. `integrityIssues` reported those as `held-without-buyer`, which is
+     what you do about the rows that already exist; this is what stops
+     tomorrow's. */
+
+  it('refuses to reserve a unit with no buyer named', async () => {
+    const unit = 'F1';
+    await store.setVillaStatus(unit, 'free');
+    await assert.rejects(
+      () => store.setVillaStatus(unit, 'reserved', { seller: 'Anna' }),
+      (err: Error) => {
+        assert.equal(err.name, 'VillaConflict');
+        assert.match(err.message, /name the buyer first/);
+        return true;
+      },
+    );
+    assert.notEqual((await store.getVillaData()).villas[unit]?.status, 'reserved');
+  });
+
+  it('refuses to sell one, for the same reason', async () => {
+    const unit = 'F2';
+    await store.setVillaStatus(unit, 'free');
+    await assert.rejects(
+      () => store.setVillaStatus(unit, 'sold', { seller: 'Anna' }),
+      /cannot be sold for nobody/,
+    );
+  });
+
+  it('accepts a name typed straight onto the unit', async () => {
+    const unit = 'F3';
+    await store.setVillaStatus(unit, 'free');
+    await store.updateVillaSale(unit, { op: 'sale', patch: { buyerName: 'Walk-in Buyer' } });
+    const data = await store.setVillaStatus(unit, 'reserved', { seller: 'Anna' });
+    assert.equal(data?.villas[unit].status, 'reserved');
+  });
+
+  it('accepts a linked CRM lead just as well', async () => {
+    const unit = 'F4';
+    await store.setVillaStatus(unit, 'free');
+    const lead = await store.createManualLead({ name: 'Linked Buyer', email: 'lb@example.com' });
+    await store.updateVillaSale(unit, { op: 'sale', patch: { buyerLeadId: lead.id } });
+    const data = await store.setVillaStatus(unit, 'sold', { seller: 'Anna' });
+    assert.equal(data?.villas[unit].status, 'sold');
+  });
+
+  it('still lets a unit go back to free without one', async () => {
+    // Releasing is how a mistake gets undone — it must never need a buyer.
+    const unit = 'F3';
+    const data = await store.setVillaStatus(unit, 'free');
+    assert.notEqual(data?.villas[unit]?.status, 'reserved');
   });
 });

@@ -3,6 +3,7 @@ import { can } from '@/lib/crm/auth';
 import { getVillaData, integrityIssues, reservationWatch, type HeldUnit } from '@/lib/crm/store';
 import { financeReport, type DueState, type Instalment } from '@/lib/crm/finance';
 import { houseSchedule, houseScheduleProblem, scheduleSummary } from '@/lib/crm/schedule';
+import { DueDate } from '@/components/crm/due-date';
 import { fmtTHB, fmtTHBShort } from '@/lib/crm/villas';
 
 export const dynamic = 'force-dynamic';
@@ -36,10 +37,10 @@ function Tile({ label, value, note, alarm }: { label: string; value: string; not
   );
 }
 
-function Row({ i }: { i: Instalment }) {
+function Row({ i, canWrite }: { i: Instalment; canWrite: boolean }) {
   const who = i.buyerName || 'Unnamed buyer';
   return (
-    <div className="task" style={{ alignItems: 'center' }}>
+    <div className="task" style={{ alignItems: 'center', gap: 12 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="task-title" style={{ fontWeight: 500 }}>
           {i.villaId} · {i.label}
@@ -51,6 +52,10 @@ function Row({ i }: { i: Instalment }) {
           {' · '}{i.reason}
         </div>
       </div>
+      {/* An agreed date, set right here. Without one an instalment can only
+          ever be "due now" — which is true, and gives nobody a day to chase
+          against. */}
+      <DueDate villaId={i.villaId} phaseKey={i.key} due={i.due} readOnly={!canWrite} />
       <span className={`task-due${i.state === 'overdue' ? ' over' : ''}`} style={{ whiteSpace: 'nowrap' }}>
         {fmtTHB(i.amount)}
       </span>
@@ -85,14 +90,14 @@ function HoldRow({ h }: { h: HeldUnit }) {
   );
 }
 
-function Group({ state, items }: { state: DueState; items: Instalment[] }) {
+function Group({ state, items, canWrite }: { state: DueState; items: Instalment[]; canWrite: boolean }) {
   const total = items.reduce((s, i) => s + i.amount, 0);
   return (
     <div className="crm-card">
       <h3>{STATE_LABEL[state]}{items.length ? ` · ${fmtTHBShort(total)}` : ''}</h3>
       {items.length === 0
         ? <div className="empty">Nothing here.</div>
-        : items.map((i) => <Row key={`${i.villaId}-${i.key}`} i={i} />)}
+        : items.map((i) => <Row key={`${i.villaId}-${i.key}`} i={i} canWrite={canWrite} />)}
     </div>
   );
 }
@@ -109,8 +114,8 @@ export default async function FinancePage() {
     );
   }
 
-  const [{ villas }, issues, holds] = await Promise.all([
-    getVillaData(), integrityIssues(), reservationWatch(),
+  const [{ villas }, issues, holds, canWrite] = await Promise.all([
+    getVillaData(), integrityIssues(), reservationWatch(), can('money.write'),
   ]);
   const pressing = holds.filter((h) => h.state !== 'held');
   const r = financeReport(villas);
@@ -157,12 +162,12 @@ export default async function FinancePage() {
 
       <div className="crm-grid crm-cols-2" style={{ marginTop: 16 }}>
         <div className="stack">
-          <Group state="overdue" items={by('overdue')} />
-          <Group state="due" items={by('due')} />
+          <Group state="overdue" items={by('overdue')} canWrite={canWrite} />
+          <Group state="due" items={by('due')} canWrite={canWrite} />
         </div>
         <div className="stack">
-          <Group state="soon" items={by('soon')} />
-          <Group state="later" items={by('later')} />
+          <Group state="soon" items={by('soon')} canWrite={canWrite} />
+          <Group state="later" items={by('later')} canWrite={canWrite} />
         </div>
       </div>
 

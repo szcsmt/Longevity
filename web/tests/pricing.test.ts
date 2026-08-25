@@ -25,6 +25,7 @@ delete process.env.PARTNER_WEBHOOK_URL;
 process.env.CRM_AGENTS = 'Anna|anna@example.com||en';
 
 const store = await import('../lib/crm/store');
+const { financeReport } = await import('../lib/crm/finance');
 const villas = await import('../lib/crm/villas');
 const { analytics } = await import('../lib/crm/analytics');
 const catalogue = (await import('../lib/villas.json', { with: { type: 'json' } })).default as {
@@ -76,6 +77,8 @@ describe('selling an unpriced unit', () => {
   const AGREED = 9_400_000;
 
   before(async () => {
+    // A unit is never sold for nobody — the buyer goes on first.
+    await store.updateVillaSale(unit, { op: 'sale', patch: { buyerName: 'Cash Buyer' } });
     await store.setVillaStatus(unit, 'sold', { seller: 'Anna' });
   });
 
@@ -121,6 +124,7 @@ describe('a priced unit', () => {
   it('uses its list price until a contract value is recorded', async () => {
     const list = store.unitListPrice(unit)!;
     assert.ok(list > 0);
+    await store.updateVillaSale(unit, { op: 'sale', patch: { buyerName: 'List Price Buyer' } });
     await store.setVillaStatus(unit, 'reserved', { seller: 'Anna' });
 
     const a = await analytics('all');
@@ -149,5 +153,46 @@ describe('the two inventory counts', () => {
     const priced = a.financial.bySize.reduce((n, x) => n + x.total, 0);
     assert.equal(priced + a.financial.unpricedCount, total,
       'priced plus unpriced must be the whole development, with nothing quietly missing');
+  });
+});
+
+describe('an instalment with an agreed date', () => {
+  /* The schedule is normally governed by progress on site — the 43% falls due
+     when the foundation is finished, whenever that is — so most instalments
+     carry no date and read as "due now" the moment their gate opens. True, and
+     no use: there is nothing to chase against and nothing that can be late. */
+  const unit = 'D9';
+
+  it('records the date and puts it on the villa history', async () => {
+    await store.setVillaStatus(unit, 'free');
+    await store.updateVillaSale(unit, { op: 'sale', patch: { buyerName: 'Dated Buyer', contractValue: 10_000_000 } });
+    await store.setVillaStatus(unit, 'reserved', { seller: 'Anna' });
+    await store.updateVillaSale(unit, { op: 'phaseDue', key: 'slot', due: '2026-11-30' });
+
+    const rec = (await store.getVillaData()).villas[unit];
+    assert.equal(rec.phases!.slot!.due!.slice(0, 10), '2026-11-30');
+    const { history } = await store.getVillaData();
+    assert.ok(history.some((h) => h.villaId === unit && /due 2026-11-30/.test(h.note || '')));
+  });
+
+  it('lets a payment be late before the building work is anywhere near it', async () => {
+    const { villas } = await store.getVillaData();
+    const past = { ...villas[unit] };
+    past.phases = { ...past.phases, slot: { paid: false, due: '2020-01-01T00:00:00.000Z' } };
+
+    const report = financeReport({ [unit]: past });
+    const slot = report.instalments.find((i) => i.key === 'slot')!;
+    assert.equal(slot.state, 'overdue');
+    assert.ok((slot.daysLate || 0) > 0, 'and it can say how late');
+  });
+
+  it('takes the date away again', async () => {
+    await store.updateVillaSale(unit, { op: 'phaseDue', key: 'slot', due: null });
+    assert.equal((await store.getVillaData()).villas[unit].phases!.slot!.due, undefined);
+  });
+
+  it('refuses a date that is not a date', async () => {
+    await store.updateVillaSale(unit, { op: 'phaseDue', key: 'slot', due: 'next spring' });
+    assert.equal((await store.getVillaData()).villas[unit].phases!.slot!.due, undefined);
   });
 });
