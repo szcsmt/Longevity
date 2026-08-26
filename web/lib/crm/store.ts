@@ -13,8 +13,8 @@ import { scoreFor } from './scoring';
 import { pickOwner } from './agents';
 import { guessLanguage, languageLabel, leadCountry } from './language';
 import {
-  ACTIVE_STAGES, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, activeClaim, matchesFlag, missingQualification,
-  workQueue, type QueueKey,
+  ACTIVE_STAGES, ANSWER_HOURS, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, activeClaim, matchesFlag,
+  missingQualification, workQueue, type QueueKey,
 } from './rules';
 import { fmtTHB, phaseAmount, priceForSize, villaByName } from './villas';
 import unitCatalog from '../villas.json';
@@ -869,6 +869,9 @@ export async function logTouch(
       const chase = lead.tasks.find((t) => t.title === REPLY_TASK_TITLE && !t.done);
       if (chase) chase.done = true;
     }
+    /* Getting hold of somebody answers them, whatever they wrote in. A lead
+       who was phoned back is not still waiting on an e-mail. */
+    stopAnswerClock(lead);
     if (lead.stage === 'new') {
       logActivity(lead, 'stage', `${stageLabel('new')} → ${stageLabel('contacted')} (spoke with them)`, actor);
       lead.stage = 'contacted';
@@ -1258,12 +1261,14 @@ export async function recordMailboxMessage(id: string, m: MailboxMessage): Promi
     if (inbound) {
       /* They wrote. Same consequences as a reply arriving any other way: the
          waiting is over, the chase is done, and a deal we had written off is
-         a deal again. */
+         a deal again. And the clock turns round — now it is our answer that is
+         outstanding. */
       if (lead.awaiting_reply_since) {
         lead.awaiting_reply_since = undefined;
         const chase = lead.tasks.find((t) => t.title === REPLY_TASK_TITLE && !t.done);
         if (chase) chase.done = true;
       }
+      startAnswerClock(lead, m.at);
       if (lead.stage === 'lost') {
         logActivity(lead, 'stage', `${stageLabel('lost')} → ${stageLabel('new')} (re-engaged by e-mail)`);
         lead.stage = 'new';
@@ -1273,8 +1278,10 @@ export async function recordMailboxMessage(id: string, m: MailboxMessage): Promi
     } else {
       /* We wrote. This is the click somebody used to have to remember: the
          reply timer starts itself, and speed-to-lead finally counts an e-mail
-         a salesperson actually sent. */
+         a salesperson actually sent. And whatever we owed them, we have now
+         given — the answer clock stops without anybody ticking anything. */
       markFirstResponse(lead);
+      stopAnswerClock(lead);
       if (!lead.awaiting_reply_since) lead.awaiting_reply_since = m.at;
     }
 
@@ -1315,6 +1322,9 @@ export async function recordInboundReply(id: string, r: InboundReply): Promise<L
       const chase = lead.tasks.find((t) => t.title === REPLY_TASK_TITLE && !t.done);
       if (chase) chase.done = true;
     }
+    /* However the reply reached us — Gmail, the inbound webhook, WhatsApp —
+       somebody is now waiting on an answer. One rule, one clock. */
+    startAnswerClock(lead, now());
 
     if (lead.stage === 'lost') {
       logActivity(lead, 'stage', `${stageLabel('lost')} → ${stageLabel('new')} (re-engaged)`);
@@ -1340,6 +1350,38 @@ export async function recordInboundReply(id: string, r: InboundReply): Promise<L
 }
 
 const REPLY_NOW_TASK = 'Answer today — they are waiting';
+
+/* ── The clock that starts when THEY write ──
+
+   The reply timer measures their silence after we wrote to them. This is the
+   mirror image, and it is the half that costs money: a buyer who writes and
+   waits three days for an answer has already started reading somebody else's
+   brochure.
+
+   One obligation, not one per message. Five e-mails in an afternoon is a
+   customer who is keen, not five things to do — so a second message never
+   stacks a second task, and the deadline stays the one set by the first. */
+const ANSWER_TASK_TITLE = 'Reply — they are waiting on us';
+
+function startAnswerClock(lead: Lead, at: string): void {
+  if (lead.tasks.some((t) => t.title === ANSWER_TASK_TITLE && !t.done)) return;
+  const due = new Date(new Date(at).getTime() + ANSWER_HOURS * 3_600_000);
+  lead.tasks.push({
+    id: randomUUID(),
+    title: ANSWER_TASK_TITLE,
+    due: due.toISOString(),
+    done: false,
+    at: now(),
+  });
+}
+
+/* We answered. Ticking it here rather than making somebody remember is the
+   whole point — the task existed to make sure the reply happened, and the
+   reply is proof that it did. */
+function stopAnswerClock(lead: Lead): void {
+  const open = lead.tasks.find((t) => t.title === ANSWER_TASK_TITLE && !t.done);
+  if (open) open.done = true;
+}
 
 /* ── A call was booked ──
 

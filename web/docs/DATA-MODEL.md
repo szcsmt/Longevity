@@ -311,6 +311,28 @@ It is a structured field rather than something parsed out of `detail`, because
 `sequenceState` depends on it, and a rule that reads text is a rule that breaks
 when somebody rewords a label.
 
+### The answer clock
+
+`REPLY_FLAG_DAYS` measures **their** silence after we wrote. `ANSWER_HOURS` measures **ours**
+after they did — and it is the half that costs money: a buyer who writes and waits three days
+for an answer has already started reading somebody else's brochure.
+
+An inbound message of any kind — the Gmail sync, the Resend webhook, a recorded WhatsApp reply —
+opens a dated task, `"Reply — they are waiting on us"`, due `ANSWER_HOURS` (default 24) from the
+message. Past the deadline it is simply an overdue follow-up, so it lands in the Today queue's
+`overdue` section with no extra rule anywhere.
+
+Three properties worth stating, because each is a decision:
+
+- **One obligation, not one per message.** Five e-mails in an afternoon is a customer who is
+  keen, not five things to do. A second message never stacks a second task, and **the deadline
+  stays the one set by the first** — writing again does not buy us another day.
+- **It stops by itself.** An outgoing message ticks it, and so does getting hold of them by
+  phone: answering is answering, and a lead who was called back is not still waiting on an
+  e-mail. Nobody has to remember to tick anything, because the reply is the proof.
+- **A call that rang out does not stop it.** Trying is not answering — the same distinction
+  `reached` draws everywhere else.
+
 ### Opening a channel — `logOutreach(id, channel, actor)`
 
 The lead page's **Email**, **WhatsApp** and **Call** buttons open a `mailto:`, a

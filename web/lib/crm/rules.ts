@@ -126,6 +126,23 @@ function configuredReplyDays(): number {
 
 export const REPLY_FLAG_DAYS = configuredReplyDays();
 
+/* ── The other direction ──
+
+   The reply timer above measures THEIR silence after we wrote. This one
+   measures OURS after they did, and it is the one that costs money: a buyer
+   who writes and waits three days for an answer has already started reading
+   somebody else's brochure.
+
+   Hours rather than days, because that is the unit the promise is made in.
+   `NEXT_PUBLIC_CRM_ANSWER_HOURS` moves it; see the note on the stage
+   thresholds for why the variable is a public one. */
+function configuredAnswerHours(): number {
+  const n = Number((process.env.NEXT_PUBLIC_CRM_ANSWER_HOURS || '').trim());
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 24;
+}
+
+export const ANSWER_HOURS = configuredAnswerHours();
+
 /* ══════════════════ The next step ══════════════════
 
    A lead's next step is its earliest-due open task. Not a separate field: a

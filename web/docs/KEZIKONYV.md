@@ -153,6 +153,29 @@ riportban. Üresre állítva visszatér a telefonszám szerinti olvasatra. Az **
 
 Alatta gyorsgombok: **✉ Email** (levelezőt nyit), **WhatsApp** (wa.me link), **Call** (tárcsázás).
 
+### Ha a vevő ír, 24 óránk van válaszolni
+
+A válasz-időzítő azt méri, hogy **ők** mennyi ideje hallgatnak, miután írtunk. Ez a tükörképe:
+azt méri, hogy **mi** mennyi ideje hallgatunk, miután ők írtak — és ez az a fele, ami pénzbe
+kerül. Aki ír és három napig vár a válaszra, az addigra már más brossúráját olvassa.
+
+Amint bejön egy üzenet — Gmailen, a CRM saját levelére válaszként, WhatsAppon —, a leaden
+keletkezik egy **határidős teendő 24 órára**: *„Reply — they are waiting on us"*. Ha lejár, minden
+külön szabály nélkül a **Mai teendők → Late** szakaszába kerül, mert onnantól egyszerűen egy
+lejárt követés.
+
+Három dolog, ami szándékosan van így:
+
+- **Egy kötelezettség, nem üzenetenként egy.** Aki egy délután ötször ír, az egy lelkes vevő,
+  nem öt teendő. A második üzenet **nem** csinál új teendőt, és **nem tolja ki a határidőt** sem —
+  az az első üzenettől ketyeg.
+- **Magától lezárul.** Ha kimegy egy válasz-e-mail, kipipálódik. És akkor is, ha inkább
+  felhívtad: a válasz az válasz, és akit visszahívtak, az nem vár tovább e-mailre. Nem kell
+  kézzel semmit kipipálni — a válasz maga a bizonyíték.
+- **A nem felvett hívás nem zárja le.** A próbálkozás nem válasz.
+
+Az órák száma állítható (`NEXT_PUBLIC_CRM_ANSWER_HOURS`), ha 24 helyett mást szeretnél.
+
 Mindhárom **felkerül az idővonalra** — pontosan azzal a szöveggel, ami tényleg történt:
 *„Opened WhatsApp to write to them"*, nem *„elküldve"*. A levelezőprogram megnyitása nem
 elküldött üzenet, és amit nem tudunk, azt nem írjuk le. Ezért ez a bejegyzés **nem számít
