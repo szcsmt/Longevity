@@ -132,7 +132,7 @@ describe('the integrity report', () => {
     const issues = await store.integrityIssues();
     const found = issues.find((i) => i.villaId === 'C1' && i.kind === 'dangling-buyer');
     assert.ok(found, `expected a dangling-buyer issue, got ${JSON.stringify(issues)}`);
-    assert.match(found!.detail, /no longer exists/);
+    assert.match(found!.detail, /már nem létezik/);
   });
 
   it('finds a reserved unit with nobody named on it', async () => {

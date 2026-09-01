@@ -6,7 +6,7 @@ import type {
 } from './types';
 import {
   CARD_COLORS, CONTRACT_STEPS, CURRENCIES, DECISION, FINANCING, MOTIVATIONS, NURTURE_REASONS,
-  OBJECTIONS, PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, atOrBeyond, isOpenStage, touchByKey,
+  CALLBACK_TITLE, OBJECTIONS, PURPOSES, SCORES, STAGES, TIMEFRAMES, VISITS, atOrBeyond, isOpenStage, touchByKey,
 } from './types';
 import { DEFAULT_SCHEDULE, houseSchedule, scheduleFor, scheduleProblem, toSchedule } from './schedule';
 import { scoreFor } from './scoring';
@@ -14,17 +14,19 @@ import { pickOwner } from './agents';
 import { guessLanguage, languageLabel, leadCountry } from './language';
 import {
   ACTIVE_STAGES, ANSWER_HOURS, REPLY_FLAG_DAYS, STAGE_MAX_DAYS, activeClaim, matchesFlag,
-  missingQualification, workQueue, type QueueKey,
+  missingQualification, waWindowOpen, workQueue, type QueueKey,
 } from './rules';
 import { fmtTHB, phaseAmount, priceForSize, villaByName } from './villas';
 import unitCatalog from '../villas.json';
 export {
   STAGE_MAX_DAYS, REPLY_FLAG_DAYS, SECTION_META, stageAgeDays, stageEnteredAt, isStalled,
   hasNoNextStep, nextAction, nextActionState, hasConversed, isNurtured, isQueueKey, matchesFlag,
-  workQueue, activeClaim, creditedClaim, competingClaims,
+  workQueue, activeClaim, creditedClaim, competingClaims, waWindowOpen,
 } from './rules';
 export type { QueueKey, QueueSection } from './rules';
+import { cache } from 'react';
 import { getBackend } from './backend';
+import { sendWhatsApp, waNumber, whatsappEnabled } from './whatsapp';
 import { leadSource } from './sources';
 import { fxRates, toBase } from './money';
 export type { VillaHistoryEntry, VillaRecord, VillaStatus } from './types';
@@ -114,12 +116,42 @@ export const isArchived = (l: Lead): boolean => Boolean(l.archived_at);
    So the filtering lives HERE, in one function, and the aggregates call it
    rather than the backend. `backend.allLeads()` still returns everything, on
    purpose — the backup depends on it. */
+/* ══════════════ Reading the same table six times to draw one screen ══════════════
+
+   Drawing the Today page used to pull the entire lead table SIX times, every
+   villa record five times, and four hundred rows of villa history four times.
+   Not because anything was written badly: because six different questions —
+   how many need attention, what is in the queue, which holds are lapsing,
+   what contradicts what — each honestly went and asked the database, and
+   nobody had ever added up what one screen cost.
+
+   Multiply by an auto-refresh every six seconds, in a tab nobody was looking
+   at, and it is fourteen thousand full downloads of the database a day. That
+   is what exhausted a month of Neon's data transfer in a single working day
+   and took the CRM off the air.
+
+   `cache()` scopes a read to one request: the first caller does the query,
+   the rest get the same promise, and the next request starts clean. It
+   deduplicates across the layout AND the page inside it, which passing
+   arguments around cannot do — they are separate renders. Outside a request
+   (the test suite) React quietly declines to cache and calls straight
+   through, which is the behaviour a test wants anyway.
+
+   The one thing to be careful of: a request that WRITES and then reads must
+   not be handed the copy from before its own write. Exactly one place does
+   that — villaTxn, which returns the new state at the end of a transaction —
+   and it asks for a fresh read by name. */
+const leadTable = cache(async (): Promise<Lead[]> => (await backend()).allLeads());
+const villaTable = cache(async (): Promise<Record<string, VillaRecord>> => (await backend()).getVillas());
+const villaLog = cache(async (limit: number): Promise<VillaHistoryEntry[]> =>
+  (await backend()).getVillaHistory(limit));
+
 async function liveLeads(): Promise<Lead[]> {
-  return (await (await backend()).allLeads()).filter((l) => !isArchived(l));
+  return (await leadTable()).filter((l) => !isArchived(l));
 }
 
 export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
-  const leads = await (await backend()).allLeads();
+  const leads = await leadTable();
   const q = filter.q?.trim().toLowerCase();
   const archived = filter.archived || 'exclude';
   const rates = fxRates();
@@ -472,6 +504,70 @@ export class StageConflict extends CrmConflict {
 
 const NEEDS_A_UNIT: Stage[] = ['reserved', 'contract', 'won'];
 
+/* ══════════════════ The stages the CRM can work out for itself ══════════════════
+
+   Moving a lead through the pipeline was entirely manual, and manual means it
+   drifts: the villa ledger would say a unit was reserved and signed while the
+   buyer sat in "Contacted", because reserving the plot is the thing somebody
+   remembers to do and dragging a card is the thing they do not. Every report
+   downstream — the funnel, the forecast, whose leads are stalled — then reads
+   a pipeline that describes the CRM's paperwork rather than the business.
+
+   So the CRM advances the stage itself, on exactly the events where the stage
+   follows from a FACT it already holds:
+
+     → Contacted   somebody sent them something, or got hold of them
+     → Qualified   the qualification has no unanswered questions left
+     → Reserved    a unit is held in their name on the masterplan
+     → Contract    the contract on that unit is signed
+     → Won         every instalment on that unit is paid
+
+   And deliberately NOT: Presentation, Visit, Negotiation. Those describe what
+   happened in a conversation, and nothing in the database knows whether a call
+   was a presentation or a chat. Guessing them would put leads in stages nobody
+   put them in, which is worse than leaving them a click away — a wrong stage
+   is believed, an unmoved one is noticed.
+
+   Three rules hold for every automatic move:
+
+     it only goes FORWARD — the ledger recording a payment must never drag a
+       lead back out of a stage a human deliberately moved it to;
+     it never touches a CLOSED lead — won is finished, and lost is re-opened
+       only by the customer coming back, which is its own rule;
+     it is always WRITTEN DOWN, with the reason, on the timeline. A stage that
+       changes with no line explaining it is the fastest way to make somebody
+       distrust the whole screen. */
+function autoStage(lead: Lead, to: Stage, why: string, actor?: string): void {
+  if (lead.stage === 'won' || lead.stage === 'lost') return;
+  if (atOrBeyond(lead.stage, to)) return;
+  logActivity(lead, 'stage', `${stageLabel(lead.stage)} → ${stageLabel(to)} (${why})`, actor);
+  lead.stage = to;
+}
+
+/** Move a lead on because something happened to a UNIT. Used from villaTxn's
+    after-hooks, so a failure here can never roll back the sale it followed:
+    the ledger is the record of what was agreed, and a lead card that lagged
+    behind by one stage is not worth refusing a reservation over. */
+export async function advanceLeadStage(
+  leadId: string | undefined,
+  to: Stage,
+  why: string,
+  villaId?: string,
+): Promise<void> {
+  if (!leadId) return;
+  try {
+    await mutate(leadId, (lead) => {
+      /* Reserved and beyond require a unit named on the lead — the rule
+         updateLead enforces by hand. Coming from the masterplan we know which
+         unit it is, so the invariant is satisfied rather than violated. */
+      if (villaId && !lead.villa) lead.villa = villaId;
+      autoStage(lead, to, why);
+    });
+  } catch (err) {
+    console.error('[stage] could not advance', leadId, to, err);
+  }
+}
+
 export async function updateLead(id: string, patch: LeadPatch, actor?: string): Promise<Lead | null> {
   let refusal: string | null = null;
   const result = await mutate(id, (lead) => {
@@ -525,6 +621,14 @@ export async function updateLead(id: string, patch: LeadPatch, actor?: string): 
     if (patch.stage && patch.stage !== 'lost') {
       lead.lost_reason = undefined;
       lead.lost_from = undefined;
+    }
+    /* The residence of interest is one of the five answers "qualified" is
+       made of, and it lives on the lead rather than in the qualification —
+       so naming it here can be the edit that completes the set. Skipped when
+       the same call moved the stage by hand: a person who just chose a stage
+       has said what it is, and the CRM does not get to disagree. */
+    if (!patch.stage && missingQualification(lead).length === 0) {
+      autoStage(lead, 'qualified', 'minden minősítő kérdés megválaszolva', actor);
     }
   });
   if (refusal) throw new StageConflict(refusal);
@@ -726,6 +830,42 @@ export async function allTasks(): Promise<GlobalTask[]> {
   );
 }
 
+/* ── Every note anybody wrote on a lead, in one place ──
+
+   A note lived on its lead and nowhere else, which meant reading the week
+   meant opening thirty leads one at a time. Nobody does that, so the notes
+   were written and never read again — and a note nobody reads is a
+   conversation nobody remembers having.
+
+   Newest first, with the open call-back the lead is carrying, because the
+   question being asked of this list is usually not "what did I say" but "what
+   did I promise, and when". */
+export interface LeadNote {
+  leadId: string;
+  leadName: string;
+  leadStage: Stage;
+  note: Note;
+  /** The call-back outstanding on that lead, if any — what was agreed. */
+  due?: string;
+}
+
+export async function allLeadNotes(limit = 300): Promise<LeadNote[]> {
+  const leads = await liveLeads();
+  return leads
+    .flatMap((l) => {
+      const open = l.tasks.find((t) => !t.done && t.due);
+      return l.notes.map((note) => ({
+        leadId: l.id,
+        leadName: l.name || 'Névtelen lead',
+        leadStage: l.stage,
+        note,
+        due: open?.due,
+      }));
+    })
+    .sort((a, b) => b.note.at.localeCompare(a.note.at))
+    .slice(0, limit);
+}
+
 export async function addNote(id: string, body: string, actor?: string): Promise<Lead | null> {
   const note: Note = { id: randomUUID(), body: cleanText(body).trim().slice(0, 4000), at: now(), ...(actor ? { by: actor } : {}) };
   return mutate(id, (lead) => {
@@ -739,6 +879,28 @@ export async function addTask(id: string, title: string, due?: string, actor?: s
   return mutate(id, (lead) => {
     lead.tasks.push(task);
     markFirstResponse(lead);
+  });
+}
+
+/** Move, or drop, the one outstanding call-back. `null` clears it — the way
+    to say "this one does not need chasing" after the CRM booked it by default.
+    Kept as its own operation rather than a general task edit because the
+    call-back is the one task the CRM creates on somebody's behalf, and taking
+    it away has to be as easy as it was to make. */
+export async function setCallback(id: string, due: string | null, actor?: string): Promise<Lead | null> {
+  const day = due && /^\d{4}-\d{2}-\d{2}$/.test(due.slice(0, 10)) ? due.slice(0, 10) : null;
+  if (due !== null && !day) return null;
+  return mutate(id, (lead) => {
+    const open = lead.tasks.find((t) => t.title === CALLBACK_TITLE && !t.done);
+    if (day === null) {
+      if (open) lead.tasks = lead.tasks.filter((t) => t !== open);
+      return;
+    }
+    if (open) open.due = day;
+    else lead.tasks.push({
+      id: randomUUID(), title: CALLBACK_TITLE, due: day, done: false, at: now(),
+      ...(actor ? { by: actor } : {}),
+    });
   });
 }
 
@@ -775,9 +937,9 @@ const QUAL_OPTIONS: Record<string, readonly { id: string }[]> = {
 };
 
 const QUAL_LABELS: Record<string, string> = {
-  budget: 'Budget', timeframe: 'Timeframe', purpose: 'Purpose',
-  financing: 'Funding', decision: 'Decision maker', visit: 'Samui visit',
-  motivation: 'Motivation', objection: 'Objection',
+  budget: 'Keret', timeframe: 'Mikorra', purpose: 'Mire kell',
+  financing: 'Honnan a pénz', decision: 'Ki dönt', visit: 'Járt-e Samuin',
+  motivation: 'Mi hajtja', objection: 'Mi tartja vissza',
 };
 
 const labelOf = (field: string, id?: string) =>
@@ -802,7 +964,7 @@ export async function setQualification(
       if (next !== q.budget) {
         logActivity(
           lead, 'value',
-          next ? `Budget set to ${q.currency || 'THB'} ${next.toLocaleString('en-US')}` : 'Budget cleared',
+          next ? `Keret: ${q.currency || 'THB'} ${next.toLocaleString('en-US')}` : 'Keret törölve',
           actor,
         );
         q.budget = next;
@@ -823,6 +985,12 @@ export async function setQualification(
 
     // Learning any of this is a person doing the work of selling.
     markFirstResponse(lead);
+
+    /* The last unanswered question just got an answer. "Qualified" means
+       precisely that and nothing more, so there is nothing left to judge. */
+    if (missingQualification(lead).length === 0) {
+      autoStage(lead, 'qualified', 'minden minősítő kérdés megválaszolva', actor);
+    }
   });
 }
 
@@ -839,15 +1007,37 @@ export async function setQualification(
    reached touch clears the reply timer, ticks its chase task, moves a new lead
    to Contacted, and stops the sequence. A call that rang out does none of that —
    it is worth recording, but it is not contact. */
+/* ── Logging a call, and the call after it ──
+
+   Recording what happened used to be the whole of it, and the next step —
+   "ring him Tuesday" — went into the note box with everything else. A note is
+   not a reminder. It is a sentence in a paragraph nobody reopens, and the way
+   a lead gets lost is not that somebody decides to drop it: it is that the
+   only record of the next step was prose.
+
+   So logging a call schedules the next one, in the same click. The date comes
+   from the touch itself (`followUpDays`) unless the caller names one, and
+   `callback: null` is the explicit way to say this one needs no chasing. The
+   result is a real task, with a due date, which the queue counts, the
+   follow-up calendar shows, and the badge goes red about.
+
+   Nothing is created if a call-back is already scheduled: logging two attempts
+   in a morning should not produce two reminders for the same conversation. */
 export async function logTouch(
   id: string,
   key: string,
   note?: string,
   actor?: string,
+  callback?: string | null,
 ): Promise<Lead | null> {
   const touch = touchByKey(key);
   if (!touch) return null;
   const said = cleanText(note || '').trim().slice(0, 2000);
+  const due = callback === null
+    ? null
+    : (callback && /^\d{4}-\d{2}-\d{2}$/.test(callback.slice(0, 10)))
+      ? callback.slice(0, 10)
+      : new Date(Date.now() + touch.followUpDays * 86_400_000).toISOString().slice(0, 10);
 
   return mutate(id, (lead) => {
     (lead.history ??= []).push({
@@ -862,6 +1052,21 @@ export async function logTouch(
     // Any logged touch is a person acting, which is what speed-to-lead measures.
     markFirstResponse(lead);
 
+    if (due) {
+      const already = lead.tasks.find((t) => t.title === CALLBACK_TITLE && !t.done);
+      if (already) {
+        /* One outstanding call-back per lead. If the new date is sooner, it
+           wins — a second attempt today means we said we would try again
+           sooner, not that the old promise still stands. */
+        if (!already.due || due < already.due) already.due = due;
+      } else {
+        lead.tasks.push({
+          id: randomUUID(), title: CALLBACK_TITLE, due, done: false, at: now(),
+          ...(actor ? { by: actor } : {}),
+        });
+      }
+    }
+
     if (!touch.reached) return;
 
     if (lead.awaiting_reply_since) {
@@ -873,7 +1078,7 @@ export async function logTouch(
        who was phoned back is not still waiting on an e-mail. */
     stopAnswerClock(lead);
     if (lead.stage === 'new') {
-      logActivity(lead, 'stage', `${stageLabel('new')} → ${stageLabel('contacted')} (spoke with them)`, actor);
+      logActivity(lead, 'stage', `${stageLabel('new')} → ${stageLabel('contacted')} (beszéltünk vele)`, actor);
       lead.stage = 'contacted';
     }
   });
@@ -1034,6 +1239,23 @@ export async function setNurture(
        reply timer running would have the lead flagged the moment it wakes,
        for a silence we chose. */
     lead.awaiting_reply_since = undefined;
+    /* Same for the call-back the last call booked. Parking somebody until
+       November while a reminder to ring them on Tuesday sits underneath is
+       two decisions contradicting each other, and the CRM would act on the
+       older one — the lead would surface as overdue the whole time it was
+       supposed to be asleep.
+
+       The two kinds of task part company here. The call-back is the CRM's own
+       guess at when to ring next, and parking is a person overruling it, so
+       it goes: carrying it to the wake date would invent a promise nobody
+       made, and the lead would come back as "a task is due" rather than as
+       "this is the one you set aside", which is the more useful sentence.
+       A task somebody typed is theirs and survives — it only moves far enough
+       not to go off while the lead is asleep. */
+    lead.tasks = lead.tasks.filter((t) => !(t.title === CALLBACK_TITLE && !t.done));
+    for (const t of lead.tasks) {
+      if (!t.done && t.due && t.due.slice(0, 10) < day) t.due = day;
+    }
     markFirstResponse(lead);
   });
 }
@@ -1096,6 +1318,11 @@ export async function logOutreach(
     // which is exactly what speed-to-lead measures — even if the message
     // itself never left.
     markFirstResponse(lead);
+    /* Deliberately NOT moved to Contacted. Opening WhatsApp is a person going
+       to write, not a message arriving — the tests below hold the CRM to that
+       distinction, and they are right to. The stage moves when something
+       actually left (a sent e-mail) or somebody was actually reached (a call
+       logged as answered). */
   });
 }
 
@@ -1283,6 +1510,9 @@ export async function recordMailboxMessage(id: string, m: MailboxMessage): Promi
       markFirstResponse(lead);
       stopAnswerClock(lead);
       if (!lead.awaiting_reply_since) lead.awaiting_reply_since = m.at;
+      /* A lead we have written to is not an untouched one, whoever forgot to
+         drag the card. */
+      autoStage(lead, 'contacted', 'e-mail kiment nekik');
     }
 
     outcome = 'filed';
@@ -1311,11 +1541,79 @@ export interface InboundReply {
   reading?: { score: Score; note: string; urgency: string } | null;
 }
 
+/* ══════════════ Writing to a buyer on WhatsApp, from inside the CRM ══════════════
+
+   The inbound half of this has worked for months: a message to the business
+   number lands on the lead's timeline. The outbound half did not exist — the
+   automated sequence could send, and a person could not. So the moment a
+   salesperson wanted to answer, they picked up their own phone, and that
+   conversation — the one that actually mattered, the one following a real
+   call — was the one nobody else could ever read.
+
+   That is the whole gap in "nothing gets lost", and it is not a small one:
+   the messages that went missing were not the automated nudges, they were the
+   negotiation.
+
+   Sending here does the same four things a sent e-mail does, because it is the
+   same event through a different pipe: the text lands on the timeline, the
+   reply timer starts, whatever we owed them is now given, and a lead nobody
+   had spoken to becomes Contacted.
+
+   ── Meta's 24-hour rule ──
+
+   Outside 24 hours from the customer's OWN last message, free text is refused
+   and only a pre-approved template may be sent. That is Meta's rule and there
+   is no way around it. What the CRM can do is say so before somebody writes a
+   paragraph, which `waWindowOpen` is for — being told afterwards that it did
+   not go is exactly how people go back to their own handsets. */
+
+export type WhatsAppSend = 'sent' | 'no-number' | 'disabled' | 'refused';
+
+export async function sendWhatsAppToLead(
+  id: string,
+  text: string,
+  actor?: string,
+): Promise<{ result: WhatsAppSend; lead: Lead | null }> {
+  const lead = await getLead(id);
+  if (!lead) return { result: 'no-number', lead: null };
+
+  const body = cleanText(text).trim().slice(0, 4000);
+  if (!body) return { result: 'refused', lead };
+
+  const to = lead.whatsapp || lead.phone;
+  if (!waNumber(to)) return { result: 'no-number', lead };
+  if (!whatsappEnabled()) return { result: 'disabled', lead };
+
+  /* Sent BEFORE anything is written down. A timeline that says a message went
+     out when it did not is worse than no timeline: somebody reads it, believes
+     the buyer was answered, and moves on. */
+  const ok = await sendWhatsApp(to!, body);
+  if (!ok) return { result: 'refused', lead };
+
+  const saved = await mutate(id, (l) => {
+    (l.history ??= []).push({
+      id: randomUUID(),
+      kind: 'whatsapp',
+      detail: `📤 WhatsApp — ${body}`,
+      at: now(),
+      ...(actor ? { by: actor } : {}),
+    });
+    markFirstResponse(l);
+    stopAnswerClock(l);
+    if (!l.awaiting_reply_since) l.awaiting_reply_since = now();
+    autoStage(l, 'contacted', 'WhatsApp üzenet ment ki nekik', actor);
+  });
+
+  return { result: 'sent', lead: saved };
+}
+
 export async function recordInboundReply(id: string, r: InboundReply): Promise<Lead | null> {
   const channel = r.channel || 'email';
   return mutate(id, (lead) => {
     lead.notes.unshift({ id: randomUUID(), body: cleanText(r.message).trim().slice(0, 8000), at: now() });
-    logActivity(lead, 'message', `Reply received by ${channel}`);
+    logActivity(lead, 'message', `Válasz érkezett — ${channel}`);
+    /* Meta's 24-hour window starts here, and only a WhatsApp message opens it. */
+    if (channel === 'whatsapp') lead.wa_last_inbound = now();
 
     if (lead.awaiting_reply_since) {
       lead.awaiting_reply_since = undefined;
@@ -1437,7 +1735,7 @@ export async function recordBooking(id: string, b: BookingEvent): Promise<Lead |
       lead.score = 'hot';
     }
     if (lead.stage === 'new' || lead.stage === 'lost') {
-      logActivity(lead, 'stage', `${stageLabel(lead.stage)} → ${stageLabel('contacted')} (call booked)`);
+      logActivity(lead, 'stage', `${stageLabel(lead.stage)} → ${stageLabel('contacted')} (időpontot foglalt)`);
       lead.stage = 'contacted';
       lead.lost_reason = undefined;
     }
@@ -1623,9 +1921,16 @@ export interface VillaData {
   history: VillaHistoryEntry[];
 }
 
-export async function getVillaData(): Promise<VillaData> {
-  const be = await backend();
-  const [villas, history] = await Promise.all([be.getVillas(), be.getVillaHistory(400)]);
+/** The masterplan as it stands. `fresh` skips the request-scoped copy — for
+    the one caller that has just written and must not be told what was true a
+    moment ago. */
+export async function getVillaData(opts?: { fresh?: boolean }): Promise<VillaData> {
+  if (opts?.fresh) {
+    const be = await backend();
+    const [villas, history] = await Promise.all([be.getVillas(), be.getVillaHistory(400)]);
+    return { villas, history };
+  }
+  const [villas, history] = await Promise.all([villaTable(), villaLog(400)]);
   return { villas, history };
 }
 
@@ -1740,7 +2045,9 @@ async function villaTxn(
 
     for (const entry of logs) await be.addVillaHistory(entry).catch(() => {});
     for (const fn of afters) await fn().catch(() => {});
-    return getVillaData();
+    /* Fresh, deliberately: this request has just written, and the cached copy
+       is the masterplan as it was before the reservation it is reporting. */
+    return getVillaData({ fresh: true });
   }
   throw new Error(`villa ${id}: too many concurrent updates`);
 }
@@ -1856,6 +2163,13 @@ export async function setVillaStatus(
     t.log(from, status, seller, note);
     if (!opts?.silent) t.after(() => sheetSync(id, status, seller, note));
     t.after(() => partnerPush(id, status, rec));
+    /* Setting the unit's status by hand says the same thing as reaching it
+       through the ledger, so it moves the buyer the same way. */
+    if (status === 'sold') {
+      t.after(() => advanceLeadStage(rec.buyerLeadId, 'won', `${id} eladva`, id));
+    } else if (status === 'reserved') {
+      t.after(() => advanceLeadStage(rec.buyerLeadId, 'reserved', `${id} lefoglalva a nevére`, id));
+    }
   });
 }
 
@@ -1973,7 +2287,10 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
         action.paid ? `${def.label} paid${amt ? ` (${fmtTHB(amt)})` : ''}` : `${def.label} unmarked`);
       // Money changes availability: first payment reserves, full schedule = sold.
       if (action.paid && rec.status === 'free') rec.status = 'reserved';
-      if (scheduleFor(rec).every((ph) => rec.phases?.[ph.key]?.paid)) rec.status = 'sold';
+      if (scheduleFor(rec).every((ph) => rec.phases?.[ph.key]?.paid)) {
+        rec.status = 'sold';
+        t.after(() => advanceLeadStage(rec.buyerLeadId, 'won', `${id} teljes vételára befolyt`, id));
+      }
       if (rec.status !== from) {
         t.log(from, rec.status, rec.seller, 'Status advanced by payment');
         const advanced = rec.status;
@@ -2013,6 +2330,7 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
         t.after(() => sheetSync(id, 'reserved', rec.seller, rec.note));
         t.after(() => partnerPush(id, 'reserved', rec));
       }
+      t.after(() => advanceLeadStage(rec.buyerLeadId, 'reserved', `${id} lefoglalva a nevére`, id));
       break;
     }
     case 'reservationPatch': {
@@ -2069,6 +2387,12 @@ export async function updateVillaSale(id: string, action: VillaSaleOp): Promise<
       if (c.status !== step.id) {
         c.status = step.id;
         t.log(from, rec.status, undefined, `Contract: ${step.label.toLowerCase()}`);
+        /* Signed is the one contract step that is also a pipeline stage. The
+           earlier ones — sent, under review — are progress on a document, not
+           on the deal, and the lead is already at Reserved for all of them. */
+        if (step.id === 'signed') {
+          t.after(() => advanceLeadStage(rec.buyerLeadId, 'contract', `${id} adásvételije aláírva`, id));
+        }
       }
       break;
     }
@@ -2236,9 +2560,12 @@ export interface IntegrityIssue {
   detail: string;
 }
 
+/* The three unit statuses in the words the screen uses for them. */
+const statusLabel = (v: VillaStatus): string =>
+  v === 'reserved' ? 'le van foglalva' : v === 'sold' ? 'el van adva' : 'szabad';
+
 export async function integrityIssues(): Promise<IntegrityIssue[]> {
-  const be = await backend();
-  const [villas, leads] = await Promise.all([be.getVillas(), be.allLeads()]);
+  const [villas, leads] = await Promise.all([villaTable(), leadTable()]);
   const byId = new Map(leads.map((l) => [l.id, l]));
   const issues: IntegrityIssue[] = [];
 
@@ -2250,18 +2577,18 @@ export async function integrityIssues(): Promise<IntegrityIssue[]> {
       if (!lead) {
         issues.push({
           kind: 'dangling-buyer', villaId, leadId: rec.buyerLeadId,
-          detail: `${villaId} is ${rec.status} to a lead that no longer exists${rec.buyerName ? ` (recorded as ${rec.buyerName})` : ''}.`,
+          detail: `${villaId} olyan leadhez van kötve (${statusLabel(rec.status)}), ami már nem létezik${rec.buyerName ? ` — a rögzített név: ${rec.buyerName}` : ''}.`,
         });
       } else if (isArchived(lead)) {
         issues.push({
           kind: 'archived-buyer', villaId, leadId: lead.id,
-          detail: `${villaId} is ${rec.status} to ${lead.name || lead.email || 'a buyer'}, whose lead is archived.`,
+          detail: `${villaId} ${statusLabel(rec.status)} — ${lead.name || lead.email || 'egy vevő'} nevén, akinek a leadje archiválva van.`,
         });
       }
     } else if (!rec.buyerName) {
       issues.push({
         kind: 'held-without-buyer', villaId,
-        detail: `${villaId} is ${rec.status} with no buyer named.`,
+        detail: `${villaId} ${statusLabel(rec.status)}, de nincs megnevezve a vevő.`,
       });
     }
 
@@ -2272,7 +2599,7 @@ export async function integrityIssues(): Promise<IntegrityIssue[]> {
     if (!rec.contractValue && !unitListPrice(villaId)) {
       issues.push({
         kind: 'unit-without-price', villaId,
-        detail: `${villaId} is ${rec.status} with no price on it, so it counts as zero revenue.`,
+        detail: `${villaId} ${statusLabel(rec.status)}, de nincs rajta ár — nulla bevételként számít.`,
       });
     }
   }
@@ -2284,7 +2611,7 @@ export async function integrityIssues(): Promise<IntegrityIssue[]> {
     if (isArchived(lead) || !ACTIVE_STAGES.includes(lead.stage) || lead.owner) continue;
     issues.push({
       kind: 'lead-without-owner', leadId: lead.id,
-      detail: `${lead.name || lead.email || 'A lead'} is ${lead.stage} with no salesperson responsible for it.`,
+      detail: `${lead.name || lead.email || 'Egy lead'} a(z) „${stageLabel(lead.stage)}" fázisban van, de senki nem felelős érte.`,
     });
   }
 
@@ -2500,6 +2827,12 @@ export interface NoteInput {
 }
 
 /** Pinned first, then most recently touched. That ordering IS the board. */
+/** The blocked contact keys, for the backup. Nothing else needs the raw list
+    — the intake path asks whether one specific contact is on it. */
+export async function blockedContacts(): Promise<string[]> {
+  return (await backend()).getBlocklist();
+}
+
 export async function listNotes(): Promise<ProjectNote[]> {
   const notes = await (await backend()).allNotes();
   return notes.sort((a, b) =>

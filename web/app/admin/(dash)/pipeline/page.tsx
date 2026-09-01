@@ -10,10 +10,10 @@ export default async function PipelinePage() {
     <>
       <div className="crm-head">
         <div>
-          <h1 className="crm-title">Pipeline</h1>
-          <p className="crm-sub">Drag cards between stages (or use the ‹ › controls). Click a card to open it.</p>
+          <h1 className="crm-title">Leadek · tábla nézet</h1>
+          <p className="crm-sub">Húzd a kártyát másik oszlopba (vagy használd a ‹ › gombokat). Kattints rá a megnyitáshoz.</p>
         </div>
-        <Link className="crm-btn" href="/admin/leads">List view →</Link>
+        <Link className="crm-btn" href="/admin/leads">← Lista nézet</Link>
       </div>
       <PipelineBoard leads={leads} />
     </>

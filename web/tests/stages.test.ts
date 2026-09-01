@@ -118,8 +118,8 @@ describe('a stage that is judgement', () => {
     const after = await store.updateLead(lead.id, { stage: 'presentation' }, 'Anna');
     const entry = (after!.history || []).filter((h) => h.kind === 'stage').at(-1)!;
 
-    assert.match(entry.detail, /New → Presentation/);
-    assert.match(entry.detail, /still unknown: budget, timeframe, purpose/);
+    assert.match(entry.detail, /Új → Bemutató/);
+    assert.match(entry.detail, /still unknown: keret, mikorra, mire kell/);
   });
 
   it('says nothing when the conversation actually established it', async () => {
@@ -130,13 +130,13 @@ describe('a stage that is judgement', () => {
     const after = await store.updateLead(lead.id, { villa: 'Residence L', stage: 'qualified' }, 'Anna');
     const entry = (after!.history || []).filter((h) => h.kind === 'stage').at(-1)!;
 
-    assert.equal(entry.detail, 'New → Qualified');
+    assert.equal(entry.detail, 'Új → Minősítve');
   });
 
   it('does not nag about qualification on the way to Contacted', async () => {
     const lead = await fresh();
     const after = await store.updateLead(lead.id, { stage: 'contacted' }, 'Anna');
-    assert.equal((after!.history || []).filter((h) => h.kind === 'stage').at(-1)!.detail, 'New → Contacted');
+    assert.equal((after!.history || []).filter((h) => h.kind === 'stage').at(-1)!.detail, 'Új → Kapcsolatban');
   });
 });
 

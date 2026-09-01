@@ -14,7 +14,7 @@ function NextStepLine({ lead }: { lead: Lead }) {
   if (!task) {
     // Won and lost cards need no plan; everything else does.
     if (lead.stage === 'won' || lead.stage === 'lost') return null;
-    return <div className="mt flag nonext">Nothing planned</div>;
+    return <div className="mt flag nonext">Nincs betervezve</div>;
   }
   return (
     <div className={`mt${state === 'overdue' ? ' q-late' : ''}`}>
@@ -29,11 +29,17 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<Stage | null>(null);
 
-  // Resync from the server whenever AutoRefresh re-renders the page — but not
-  // mid-move, when the optimistic state is ahead of the incoming snapshot.
-  useEffect(() => {
-    if (!busy) setLeads(initial);
-  }, [initial, busy]);
+  /* Resync from the server whenever AutoRefresh re-renders the page — but not
+     mid-move, when the optimistic state is ahead of the incoming snapshot.
+     Adjusted during render rather than in an effect: an effect would paint the
+     card back in its old column for one frame before correcting itself, which
+     on a board somebody is dragging cards around is the worst possible moment
+     to flicker. */
+  const [adopted, setAdopted] = useState(initial);
+  if (adopted !== initial && !busy) {
+    setAdopted(initial);
+    setLeads(initial);
+  }
 
   const [losingLead, setLosingLead] = useState<Lead | null>(null);
 
@@ -75,7 +81,7 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
     } catch (err) {
       // The card goes back where it was, either way — nothing was saved.
       setLeads((ls) => ls.map((l) => (l.id === lead.id ? { ...l, stage: prev } : l)));
-      alert(err instanceof Error ? err.message : 'Could not save the move — check your connection and try again.');
+      alert(err instanceof Error ? err.message : 'A mozgatást nem sikerült menteni — ellenőrizd a kapcsolatot, és próbáld újra.');
     } finally {
       setBusy(null);
     }
@@ -148,7 +154,7 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
                   onDragEnd={() => { setDragId(null); setOverCol(null); }}
                 >
                   <Link href={`/admin/leads/${l.id}`} style={{ textDecoration: 'none', color: 'inherit' }} draggable={false}>
-                    <div className="nm">{l.name || 'Unknown'}</div>
+                    <div className="nm">{l.name || 'Névtelen'}</div>
                     <div className="mt">
                       {l.villa || l.form_type || 'enquiry'}
                       {l.source ? ` · ${l.source}` : ''}
@@ -161,8 +167,8 @@ export function PipelineBoard({ leads: initial }: { leads: Lead[] }) {
                   <div className="kb-card-foot">
                     <span className={`badge ${l.score}`}>{l.score}</span>
                     <div className="kb-move">
-                      <button onClick={() => moveStep(l, -1)} disabled={idx === 0} aria-label="Move back">‹</button>
-                      <button onClick={() => moveStep(l, 1)} disabled={idx === STAGES.length - 1} aria-label="Move forward">›</button>
+                      <button onClick={() => moveStep(l, -1)} disabled={idx === 0} aria-label="Vissza<">‹</button>
+                      <button onClick={() => moveStep(l, 1)} disabled={idx === STAGES.length - 1} aria-label="Előre">›</button>
                     </div>
                   </div>
                 </div>

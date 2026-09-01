@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { captureSource, sendLead } from '@/lib/source';
+import { sendLead } from '@/lib/source';
 import { useT } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
@@ -25,9 +25,7 @@ export function BrochureDownload({ variant }: { variant: 'cta' | 'footer' }) {
   const [gdpr, setGdpr]     = useState(false);
   const [errors, setErrors] = useState<{ name?: boolean; email?: boolean; gdpr?: boolean }>({});
   const [done, setDone]     = useState(false);
-  const [source, setSource] = useState('');
 
-  useEffect(() => { setSource(captureSource()); }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -124,7 +122,11 @@ export function BrochureDownload({ variant }: { variant: 'cta' | 'footer' }) {
                 <h3 style={{ fontFamily: ff, fontWeight: 400, fontSize: 'clamp(23px,2.8vw,30px)', lineHeight: 1.18, color: 'var(--cream)', margin: '0 0 12px' }}>{t('br.where')}</h3>
                 <p style={{ fontFamily: ff, fontSize: 'clamp(13px,1.3vw,15px)', lineHeight: 1.7, color: 'var(--cr70)', margin: '0 0 clamp(22px,2.8vw,30px)' }}>{t('br.enterEmail')}</p>
                 <form onSubmit={submit} style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <input type="hidden" name="source" value={source} readOnly />
+                  {/* The source field used to be filled from the URL into
+                      state on mount, and nothing ever read it: this form posts
+                      through sendLead(), which carries the UTM parameters
+                      itself. A hidden input with no reader is not a fallback,
+                      it is a render nobody needed. */}
                   <input type="text" placeholder={t('cta.ph.name')} value={name}
                     onChange={e => { setName(e.target.value); if (errors.name) setErrors(p => ({ ...p, name: undefined })); }} style={inp(errors.name)} />
                   <input type="email" autoFocus placeholder="your@email.com" value={email}

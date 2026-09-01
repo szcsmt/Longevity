@@ -28,7 +28,7 @@ export function NewAgencyForm() {
         body: JSON.stringify({ name, country, status }),
       });
       const data = await res.json();
-      if (!res.ok) { alert(data?.error || 'The agency could not be added.'); return; }
+      if (!res.ok) { alert(data?.error || 'Az ügynökséget nem sikerült felvenni.'); return; }
       setName(''); setCountry(''); setStatus('prospect'); setOpen(false);
       router.refresh();
     } finally {
@@ -39,32 +39,32 @@ export function NewAgencyForm() {
   if (!open) {
     return (
       <div className="act-row" style={{ marginBottom: 18 }}>
-        <button className="crm-btn gold" onClick={() => setOpen(true)}>+ Add agency</button>
+        <button className="crm-btn gold" onClick={() => setOpen(true)}>+ Új ügynökség</button>
       </div>
     );
   }
 
   return (
     <div className="crm-card" style={{ marginBottom: 18 }}>
-      <h3>New agency</h3>
+      <h3>Új ügynökség</h3>
       <div className="crm-filters" style={{ marginBottom: 0 }}>
         <div className="fld grow">
-          <label className="crm-label">Name</label>
+          <label className="crm-label">Név</label>
           <input className="crm-input" value={name} autoFocus placeholder="Bangkok Prime Property"
             onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="fld">
-          <label className="crm-label">Country</label>
+          <label className="crm-label">Ország</label>
           <input className="crm-input" value={country} placeholder="TH" onChange={(e) => setCountry(e.target.value)} />
         </div>
         <div className="fld">
-          <label className="crm-label">Where we stand</label>
+          <label className="crm-label">Hol tartunk</label>
           <select className="crm-select" value={status} onChange={(e) => setStatus(e.target.value)}>
             {AGENCY_STATUS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
         </div>
-        <button className="crm-btn gold" disabled={busy || !name.trim()} onClick={submit}>Add</button>
-        <button className="crm-btn ghost" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
+        <button className="crm-btn gold" disabled={busy || !name.trim()} onClick={submit}>Hozzáadás</button>
+        <button className="crm-btn ghost" disabled={busy} onClick={() => setOpen(false)}>Mégse</button>
       </div>
     </div>
   );

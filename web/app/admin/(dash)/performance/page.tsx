@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { can, isAuthed } from '@/lib/crm/auth';
+import { ReportTabs } from '@/components/crm/report-tabs';
+import { can, isAdmin, isAuthed } from '@/lib/crm/auth';
 import { listLeads } from '@/lib/crm/store';
 import { performance } from '@/lib/crm/performance';
 import { agencyPerformance } from '@/lib/crm/partners';
@@ -33,6 +34,23 @@ const hours = (n: number | null) =>
 
 export default async function PerformancePage() {
   if (!(await isAuthed())) return null;
+  /* Hidden from the menu for everyone but the owner, and refused here too — a
+     screen that ranks the team by what they closed is the owner's, and hiding
+     a link is a tidier menu rather than a permission. */
+  if (!(await isAdmin())) {
+    return (
+      <>
+        <ReportTabs />
+      <div className="crm-head"><h1 className="crm-title">Teljesítmény</h1></div>
+        <div className="crm-card">
+          <div className="empty" style={{ padding: 46 }}>
+            Ez az oldal a tulajdonosé. Hogy ki mennyit zárt — olyan kérdés, amire
+            egyvalakinek kell látnia a választ.
+          </div>
+        </div>
+      </>
+    );
+  }
   /* Marketing reads this screen for the funnel and the attribution and must
      not read it for the money. Hiding the columns rather than the page: what a
      campaign produced in buyers is exactly their business. */
@@ -46,18 +64,18 @@ export default async function PerformancePage() {
     <>
       <div className="crm-head">
         <div>
-          <h1 className="crm-title">Performance</h1>
+          <h1 className="crm-title">Teljesítmény</h1>
           <p className="crm-sub">
             {p.total} live {p.total === 1 ? 'lead' : 'leads'} · {p.open} open · {p.won} sold · {p.lost} lost.
             Where deals die, how long they take, and who is producing.
           </p>
         </div>
-        <Link className="crm-btn" href="/admin/analytics">Marketing analytics →</Link>
+        <Link className="crm-btn" href="/admin/analytics">Marketing analitika →</Link>
       </div>
 
       {/* ── What needs a decision today ── */}
       <div className="crm-card attention" style={{ marginBottom: 16 }}>
-        <h3>Needs management attention</h3>
+        <h3>Vezetői figyelmet igényel</h3>
         <div className="fin-grid">
           <Link className="crm-row" href="/admin/leads?flag=uncontacted"><Tile k="Nobody has spoken to" v={String(p.attention.uncontacted)} s="new leads with no conversation" /></Link>
           <Link className="crm-row" href="/admin/leads?flag=overdue"><Tile k="Late follow-ups" v={String(p.attention.overdue)} s="past the date somebody set" /></Link>
@@ -68,7 +86,7 @@ export default async function PerformancePage() {
 
       {/* ── Money and time ── */}
       <div className="crm-card" style={{ marginBottom: 16 }}>
-        <h3>The shape of the business</h3>
+        <h3>Az üzlet alakja</h3>
         <div className="fin-grid">
           <Tile k="Sold" v={money ? fmtTHBshort(p.wonValue) : String(p.won)} s={`${p.won} ${p.won === 1 ? 'deal' : 'deals'}`} />
           {money && <Tile k="In the pipeline" v={fmtTHBshort(p.pipelineValue)} s="qualified and still open" />}
@@ -79,15 +97,15 @@ export default async function PerformancePage() {
 
       {/* ── Where deals die ── */}
       <div className="crm-card" style={{ marginBottom: 16 }}>
-        <h3>The funnel <span className="h3-note">· reached each stage, and the drop from the one before</span></h3>
+        <h3>A tölcsér <span className="h3-note">· ki jutott el az egyes fázisokig, és mennyi esett ki az előzőből</span></h3>
         <table className="crm-table">
           <thead>
             <tr>
-              <th>Stage</th>
-              <th style={{ textAlign: 'right' }}>Reached</th>
-              <th style={{ textAlign: 'right' }}>Of all leads</th>
-              <th style={{ textAlign: 'right' }}>From previous</th>
-              <th style={{ textAlign: 'right' }}>Lost here</th>
+              <th>Fázis</th>
+              <th style={{ textAlign: 'right' }}>Eljutott ide</th>
+              <th style={{ textAlign: 'right' }}>Az összes leadből</th>
+              <th style={{ textAlign: 'right' }}>Az előzőből</th>
+              <th style={{ textAlign: 'right' }}>Itt veszett el</th>
             </tr>
           </thead>
           <tbody>
@@ -121,17 +139,17 @@ export default async function PerformancePage() {
 
       {/* ── Who is producing ── */}
       <div className="crm-card table-scroll" style={{ marginBottom: 16 }}>
-        <h3 style={{ padding: '0 14px' }}>By salesperson</h3>
+        <h3 style={{ padding: '0 14px' }}>Értékesítőnként</h3>
         <table className="crm-table">
           <thead>
             <tr>
-              <th>Who</th>
-              <th style={{ textAlign: 'right' }}>Leads</th>
-              <th style={{ textAlign: 'right' }}>Open</th>
-              {money && <th style={{ textAlign: 'right' }}>Pipeline</th>}
-              <th style={{ textAlign: 'right' }}>Sold</th>
-              {money && <th style={{ textAlign: 'right' }}>Sales value</th>}
-              <th style={{ textAlign: 'right' }}>Needs attention</th>
+              <th>Ki</th>
+              <th style={{ textAlign: 'right' }}>Lead</th>
+              <th style={{ textAlign: 'right' }}>Nyitott</th>
+              {money && <th style={{ textAlign: 'right' }}>Folyamatban</th>}
+              <th style={{ textAlign: 'right' }}>Eladva</th>
+              {money && <th style={{ textAlign: 'right' }}>Eladási érték</th>}
+              <th style={{ textAlign: 'right' }}>Figyelmet igényel</th>
             </tr>
           </thead>
           <tbody>
@@ -155,15 +173,15 @@ export default async function PerformancePage() {
       {/* ── Which marketing produces buyers, not leads ── */}
       <div className="crm-grid crm-cols-2" style={{ marginBottom: 16, alignItems: 'start' }}>
         <div className="crm-card table-scroll">
-          <h3 style={{ padding: '0 14px' }}>By source <span className="h3-note">· leads are not the point</span></h3>
+          <h3 style={{ padding: '0 14px' }}>Forrásonként <span className="h3-note">· nem a leadek száma a lényeg</span></h3>
           <table className="crm-table">
             <thead>
               <tr>
-                <th>Source</th>
-                <th style={{ textAlign: 'right' }}>Leads</th>
-                <th style={{ textAlign: 'right' }}>Qualified</th>
-                <th style={{ textAlign: 'right' }}>Sold</th>
-                {money && <th style={{ textAlign: 'right' }}>Value</th>}
+                <th>Forrás</th>
+                <th style={{ textAlign: 'right' }}>Lead</th>
+                <th style={{ textAlign: 'right' }}>Minősítve</th>
+                <th style={{ textAlign: 'right' }}>Eladva</th>
+                {money && <th style={{ textAlign: 'right' }}>Érték</th>}
               </tr>
             </thead>
             <tbody>
@@ -187,9 +205,9 @@ export default async function PerformancePage() {
         </div>
 
         <div className="crm-card">
-          <h3>Why we lose</h3>
+          <h3>Miért veszítünk</h3>
           {p.lostReasons.length === 0 ? (
-            <div className="empty">Nothing lost yet.</div>
+            <div className="empty">Még semmi nem veszett el.</div>
           ) : (
             p.lostReasons.map((r) => (
               <div className="bar-row" key={r.reason}>
@@ -204,15 +222,15 @@ export default async function PerformancePage() {
 
       {p.byCountry.length > 0 && (
         <div className="crm-card table-scroll" style={{ marginBottom: 16 }}>
-          <h3 style={{ padding: '0 14px' }}>By country <span className="h3-note">· from the dialling code unless somebody corrected it</span></h3>
+          <h3 style={{ padding: '0 14px' }}>Országonként <span className="h3-note">· az országhívóból, hacsak valaki nem javította</span></h3>
           <table className="crm-table">
             <thead>
               <tr>
-                <th>Country</th>
-                <th style={{ textAlign: 'right' }}>Leads</th>
-                <th style={{ textAlign: 'right' }}>Qualified</th>
-                <th style={{ textAlign: 'right' }}>Sold</th>
-                {money && <th style={{ textAlign: 'right' }}>Value</th>}
+                <th>Ország</th>
+                <th style={{ textAlign: 'right' }}>Lead</th>
+                <th style={{ textAlign: 'right' }}>Minősítve</th>
+                <th style={{ textAlign: 'right' }}>Eladva</th>
+                {money && <th style={{ textAlign: 'right' }}>Érték</th>}
               </tr>
             </thead>
             <tbody>
@@ -243,16 +261,16 @@ export default async function PerformancePage() {
           tables simply do not appear until the links carry the tags. */}
       {p.byCampaign.length > 0 && (
         <div className="crm-card table-scroll" style={{ marginBottom: 16 }}>
-          <h3 style={{ padding: '0 14px' }}>By campaign</h3>
+          <h3 style={{ padding: '0 14px' }}>Kampányonként</h3>
           <table className="crm-table">
             <thead>
               <tr>
-                <th>Campaign</th>
-                <th style={{ textAlign: 'right' }}>Leads</th>
-                <th style={{ textAlign: 'right' }}>Qualified</th>
-                <th style={{ textAlign: 'right' }}>Reserved</th>
-                <th style={{ textAlign: 'right' }}>Sold</th>
-                {money && <th style={{ textAlign: 'right' }}>Value</th>}
+                <th>Kampány</th>
+                <th style={{ textAlign: 'right' }}>Lead</th>
+                <th style={{ textAlign: 'right' }}>Minősítve</th>
+                <th style={{ textAlign: 'right' }}>Lefoglalva</th>
+                <th style={{ textAlign: 'right' }}>Eladva</th>
+                {money && <th style={{ textAlign: 'right' }}>Érték</th>}
               </tr>
             </thead>
             <tbody>
@@ -285,10 +303,10 @@ export default async function PerformancePage() {
             <thead>
               <tr>
                 <th>Ad</th>
-                <th style={{ textAlign: 'right' }}>Leads</th>
-                <th style={{ textAlign: 'right' }}>Qualified</th>
-                <th style={{ textAlign: 'right' }}>Sold</th>
-                {money && <th style={{ textAlign: 'right' }}>Value</th>}
+                <th style={{ textAlign: 'right' }}>Lead</th>
+                <th style={{ textAlign: 'right' }}>Minősítve</th>
+                <th style={{ textAlign: 'right' }}>Eladva</th>
+                {money && <th style={{ textAlign: 'right' }}>Érték</th>}
               </tr>
             </thead>
             <tbody>
@@ -312,16 +330,16 @@ export default async function PerformancePage() {
       {/* ── Partners ── */}
       {producing.length > 0 && (
         <div className="crm-card table-scroll" style={{ marginBottom: 24 }}>
-          <h3 style={{ padding: '0 14px' }}>By agency</h3>
+          <h3 style={{ padding: '0 14px' }}>Ügynökségenként</h3>
           <table className="crm-table">
             <thead>
               <tr>
-                <th>Agency</th>
-                <th style={{ textAlign: 'right' }}>Introduced</th>
-                <th style={{ textAlign: 'right' }}>Open</th>
-                <th style={{ textAlign: 'right' }}>Sold</th>
-                <th style={{ textAlign: 'right' }}>Conversion</th>
-                {money && <th style={{ textAlign: 'right' }}>Sales value</th>}
+                <th>Ügynökség</th>
+                <th style={{ textAlign: 'right' }}>Behozott</th>
+                <th style={{ textAlign: 'right' }}>Nyitott</th>
+                <th style={{ textAlign: 'right' }}>Eladva</th>
+                <th style={{ textAlign: 'right' }}>Konverzió</th>
+                {money && <th style={{ textAlign: 'right' }}>Eladási érték</th>}
               </tr>
             </thead>
             <tbody>

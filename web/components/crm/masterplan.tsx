@@ -56,12 +56,22 @@ export function Masterplan({
      that turns a deliberate safeguard into a button that appears broken. */
   const [err, setErr] = useState<string | null>(null);
 
-  // The layout auto-refreshes every few seconds; adopt the fresh server
-  // snapshot so the board always shows current data — except mid-save, when
-  // our optimistic state is ahead of the incoming props.
-  useEffect(() => {
-    if (!saving) { setRecords(initial); setHistory(initHistory); }
-  }, [initial, initHistory, saving]);
+  /* The layout auto-refreshes on a timer; adopt the fresh server snapshot so
+     the board always shows current data — except mid-save, when our optimistic
+     state is ahead of the incoming props.
+
+     Adjusted DURING render rather than in an effect. React's own guidance for
+     this: an effect renders the stale value first and corrects it a frame
+     later, which on a board of sixty-nine tiles is a visible flash of the old
+     state every time the page refreshes itself. Setting state during render of
+     the same component is allowed — React discards the output and re-runs
+     immediately, before anything reaches the screen. */
+  const [adopted, setAdopted] = useState(initial);
+  if (adopted !== initial && !saving) {
+    setAdopted(initial);
+    setRecords(initial);
+    setHistory(initHistory);
+  }
 
   const byId = useMemo(() => Object.fromEntries(villas.map((v) => [v.id, v])), [villas]);
   const leadById = useMemo(() => Object.fromEntries(leads.map((l) => [l.id, l])), [leads]);
@@ -703,7 +713,7 @@ export function Masterplan({
                     </div>
                   ))}
                   <div className="crm-meta" style={{ marginTop: 8, fontSize: 11.5 }}>
-                    Ha vevő lesz, a fenti „Vevő (CRM lead)" választóval kösd a telekhez.
+                    Ha vevő lesz, a fenti „Vevő (CRM lead)” választóval kösd a telekhez.
                   </div>
                 </div>
               )}

@@ -38,7 +38,7 @@ export default async function AgencyPage({ params }: { params: Promise<{ id: str
     <>
       <div className="crm-head">
         <div>
-          <Link href="/admin/agencies" className="crm-meta" style={{ textDecoration: 'none' }}>← All agencies</Link>
+          <Link href="/admin/agencies" className="crm-meta" style={{ textDecoration: 'none' }}>← Összes ügynökség</Link>
           <h1 className="crm-title" style={{ marginTop: 6 }}>{agency.name}</h1>
           <p className="crm-sub">
             {AGENCY_STATUS.find((s) => s.id === agency.status)?.label || agency.status}
@@ -50,31 +50,31 @@ export default async function AgencyPage({ params }: { params: Promise<{ id: str
         </div>
         {agency.website && (
           <a className="crm-btn" href={agency.website.startsWith('http') ? agency.website : `https://${agency.website}`}
-            target="_blank" rel="noreferrer">Website ↗</a>
+            target="_blank" rel="noreferrer">Weboldal ↗</a>
         )}
       </div>
 
       <div className="crm-grid crm-stats" style={{ marginBottom: 18 }}>
-        {stat('Introduced', String(perf.registered))}
-        {stat('Still live', String(perf.live))}
-        {stat('Sold', String(perf.won))}
-        {money && stat('Sales value', perf.wonValue ? fmtTHB(perf.wonValue) : '—')}
-        {money && stat('Commission owed', perf.commissionOutstanding === undefined ? '—' : fmtTHB(perf.commissionOutstanding))}
+        {stat('Behozott', String(perf.registered))}
+        {stat('Még élő', String(perf.live))}
+        {stat('Eladva', String(perf.won))}
+        {money && stat('Eladási érték', perf.wonValue ? fmtTHB(perf.wonValue) : '—')}
+        {money && stat('Jutalék-tartozás', perf.commissionOutstanding === undefined ? '—' : fmtTHB(perf.commissionOutstanding))}
       </div>
 
       {admin ? (
         <AgencyEditor agency={agency} houseDays={houseProtectionDays()} generated={perf.commission} />
       ) : (
         <div className="crm-card" style={{ marginBottom: 18 }}>
-          <h3>The agreement</h3>
+          <h3>A megállapodás</h3>
           <dl className="kv">
-            <dt>Status</dt><dd>{AGENCY_STATUS.find((s) => s.id === agency.status)?.label || agency.status}</dd>
-            <dt>Country</dt><dd>{agency.country || '—'}</dd>
-            <dt>Agents</dt><dd>{agency.contacts.filter((c) => !c.inactive).map((c) => c.name).join(', ') || '—'}</dd>
+            <dt>Állapot</dt><dd>{AGENCY_STATUS.find((s) => s.id === agency.status)?.label || agency.status}</dd>
+            <dt>Ország</dt><dd>{agency.country || '—'}</dd>
+            <dt>Ügynökök</dt><dd>{agency.contacts.filter((c) => !c.inactive).map((c) => c.name).join(', ') || '—'}</dd>
           </dl>
           {/* Commission terms are the owner's business, and a salesperson does
               not need them to register a buyer. */}
-          <div className="crm-meta" style={{ marginTop: 10 }}>Commission terms are visible to the owner.</div>
+          <div className="crm-meta" style={{ marginTop: 10 }}>A jutalékfeltételeket csak a tulajdonos látja.</div>
         </div>
       )}
 
@@ -89,11 +89,11 @@ export default async function AgencyPage({ params }: { params: Promise<{ id: str
           <table className="crm-table">
             <thead>
               <tr>
-                <th>Buyer</th>
-                <th>Registered</th>
-                <th>Their agent</th>
-                <th>Stage</th>
-                {money && <th style={{ textAlign: 'right' }}>Value</th>}
+                <th>Vevő</th>
+                <th>Regisztrálva</th>
+                <th>Az ő ügynöke</th>
+                <th>Fázis</th>
+                {money && <th style={{ textAlign: 'right' }}>Érték</th>}
                 <th></th>
               </tr>
             </thead>
@@ -104,7 +104,7 @@ export default async function AgencyPage({ params }: { params: Promise<{ id: str
                   <tr key={l.id}>
                     <td>
                       <Link href={`/admin/leads/${l.id}`} className="crm-row">
-                        <div className="crm-name">{l.name || 'Unknown'}</div>
+                        <div className="crm-name">{l.name || 'Névtelen'}</div>
                         <div className="crm-meta">{l.email || l.phone || '—'}</div>
                       </Link>
                     </td>
@@ -113,7 +113,7 @@ export default async function AgencyPage({ params }: { params: Promise<{ id: str
                     <td><span className="badge stage">{STAGES.find((s) => s.id === l.stage)?.label}</span></td>
                     {money && <td className="tabnum" style={{ textAlign: 'right' }}>{l.value ? fmtTHB(l.value) : '—'}</td>}
                     <td style={{ textAlign: 'right' }}>
-                      <Link href={`/admin/leads/${l.id}`} className="crm-btn ghost sm">Open</Link>
+                      <Link href={`/admin/leads/${l.id}`} className="crm-btn ghost sm">Megnyitás</Link>
                     </td>
                   </tr>
                 );

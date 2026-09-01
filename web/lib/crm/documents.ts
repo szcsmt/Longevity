@@ -24,7 +24,7 @@ export const DOCUMENTS: CrmDocument[] = [
     id: 'overview',
     title: 'Longevity Resort brochure',
     file: '/brochure/longevity-brochure-short-2026.pdf',
-    note: '13 pages, 9.9 MB. The short edition — the story cut to what a stranger needs.',
+    note: '13 oldal, 9,9 MB. A rövid kiadás — a történet arra vágva, amennyi egy idegennek kell.',
     audience: 'First contact. This is the one that goes out with the welcome.',
   },
   /* A 12-page, 2.6 MB cut of the same story is on disk at
@@ -35,7 +35,7 @@ export const DOCUMENTS: CrmDocument[] = [
     id: 'brochure',
     title: 'Longevity Resort brochure',
     file: '/brochure/longevity-brochure-2026.pdf',
-    note: '52 pages, 14 MB. The resort, the residences, the villa types with prices.',
+    note: '52 oldal, 14 MB. A resort, a lakások, a villatípusok árakkal.',
     audience: 'Someone who is already reading. Sent once they have shown interest, not on day one.',
   },
 ];

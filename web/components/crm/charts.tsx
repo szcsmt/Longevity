@@ -132,26 +132,34 @@ export function Donut({ segments, centerValue, centerLabel, unit = '' }: {
   const total = segments.reduce((s, d) => s + d.value, 0);
   if (!total) return <Empty />;
   const R = 46, C = 2 * Math.PI * R, GAP = 2.5;
-  let acc = 0;
+
+  /* Each arc starts where the previous one ended, so every segment needs the
+     running total before it. That used to be a `let` incremented inside the
+     map — which is a variable being written while React renders, and React is
+     free to render twice, discard one pass, or resume a half-finished one.
+     The arithmetic is the same; it just happens before the drawing does. */
+  const arcs = segments.filter((s) => s.value > 0).reduce<
+    { label: string; color: string; value: number; frac: number; dash: number; offset: number }[]
+  >((out, s) => {
+    const frac = s.value / total;
+    const offset = out.length ? out[out.length - 1].offset + out[out.length - 1].frac * C : 0;
+    out.push({ label: s.label, color: s.color, value: s.value, frac, dash: Math.max(0, frac * C - GAP), offset });
+    return out;
+  }, []);
+
   return (
     <div className="cx-donut" ref={ref} onMouseLeave={() => { setHi(null); leave(); }}>
       <div className="cx-donut-svg">
         <svg viewBox="0 0 120 120" width="100%" height="100%">
           <g transform="rotate(-90 60 60)">
             <circle cx="60" cy="60" r={R} fill="none" stroke="rgba(228,217,195,0.06)" strokeWidth="15" />
-            {segments.filter((s) => s.value > 0).map((s) => {
-              const frac = s.value / total;
-              const dash = Math.max(0, frac * C - GAP);
-              const el = (
-                <circle key={s.label} cx="60" cy="60" r={R} fill="none" stroke={s.color}
-                  strokeWidth={hi === s.label ? 19 : 15} strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={-acc}
-                  strokeLinecap="butt" style={{ transition: 'stroke-width .15s' }}
-                  onMouseMove={(e) => { setHi(s.label); move(e, <><b>{fmtInt(s.value)}{unit ? ` ${unit}` : ''}</b><span>{s.label} · {Math.round(frac * 100)}%</span></>); }}
-                />
-              );
-              acc += frac * C;
-              return el;
-            })}
+            {arcs.map((a) => (
+              <circle key={a.label} cx="60" cy="60" r={R} fill="none" stroke={a.color}
+                strokeWidth={hi === a.label ? 19 : 15} strokeDasharray={`${a.dash} ${C - a.dash}`} strokeDashoffset={-a.offset}
+                strokeLinecap="butt" style={{ transition: 'stroke-width .15s' }}
+                onMouseMove={(e) => { setHi(a.label); move(e, <><b>{fmtInt(a.value)}{unit ? ` ${unit}` : ''}</b><span>{a.label} · {Math.round(a.frac * 100)}%</span></>); }}
+              />
+            ))}
           </g>
         </svg>
         <div className="cx-donut-center">

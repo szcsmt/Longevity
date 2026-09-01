@@ -76,12 +76,12 @@ const finish = (
 export const entryPrice = (): number => Math.min(...VILLAS.map((v) => v.price));
 
 export const FIT_SIGNALS: { key: string; label: string; max: number }[] = [
-  { key: 'budget',    label: 'Budget covers an entry-level villa', max: 3 },
-  { key: 'timeframe', label: 'Buying soon',                        max: 3 },
-  { key: 'purpose',   label: 'Knows what it is for',               max: 2 },
-  { key: 'financing', label: 'The money is already theirs',        max: 2 },
-  { key: 'villa',     label: 'Wants a specific residence',         max: 2 },
-  { key: 'decision',  label: 'Decides alone',                      max: 1 },
+  { key: 'budget',    label: 'A keret elég egy belépő szintű villára', max: 3 },
+  { key: 'timeframe', label: 'Hamarosan vásárol',                     max: 3 },
+  { key: 'purpose',   label: 'Tudja, mire kell',                      max: 2 },
+  { key: 'financing', label: 'A pénz már az övé',                     max: 2 },
+  { key: 'villa',     label: 'Konkrét lakást szeretne',                max: 2 },
+  { key: 'decision',  label: 'Egyedül dönt',                          max: 1 },
 ];
 
 export const FIT_MAX = FIT_SIGNALS.reduce((n, s) => n + s.max, 0);
@@ -98,38 +98,38 @@ export function fitScore(lead: Lead, rates?: Rates): Score {
       /* Recorded in a currency nobody has configured a rate for. Neither a
          point nor a gap: we know the number, we cannot compare it, and
          pretending either way would be a guess. */
-      reasons.push('Budget recorded, but not comparable without an exchange rate');
+      reasons.push('A keret rögzítve, de árfolyam nélkül nem összehasonlítható');
     } else if (inBaht >= entryPrice()) {
       value += 3;
-      reasons.push('Budget covers an entry-level villa');
+      reasons.push('A keret elég egy belépő szintű villára');
     } else {
-      reasons.push('Budget is under the entry price');
+      reasons.push('A keret a belépő ár alatt van');
     }
-  } else missing.push('Budget');
+  } else missing.push('keret');
 
   const soon: Record<string, number> = { '0-3': 3, '3-6': 2, '6-12': 1, '12+': 0 };
   if (q.timeframe && q.timeframe !== 'unknown') {
     value += soon[q.timeframe] ?? 0;
-    if ((soon[q.timeframe] ?? 0) > 0) reasons.push('Buying within a year');
-  } else missing.push('Timeframe');
+    if ((soon[q.timeframe] ?? 0) > 0) reasons.push('Egy éven belül vásárol');
+  } else missing.push('mikorra');
 
   if (q.purpose) {
     value += q.purpose === 'lifestyle' ? 1 : 2;
-    reasons.push(q.purpose === 'lifestyle' ? 'Buying to live in' : 'Buying as an investment');
-  } else missing.push('Purpose');
+    reasons.push(q.purpose === 'lifestyle' ? 'Saját használatra veszi' : 'Befektetésnek veszi');
+  } else missing.push('mire kell');
 
   if (q.financing && q.financing !== 'unknown') {
     value += q.financing === 'cash' ? 2 : 1;
-    if (q.financing === 'cash') reasons.push('Cash buyer');
-  } else missing.push('Cash or financing');
+    if (q.financing === 'cash') reasons.push('Készpénzes vevő');
+  } else missing.push('honnan a pénz');
 
   if ((lead.villa || '').trim()) {
     value += 2;
-    reasons.push('Has a residence in mind');
-  } else missing.push('Residence of interest');
+    reasons.push('Van kiszemelt lakása');
+  } else missing.push('melyik lakás');
 
-  if (q.decision === 'sole') { value += 1; reasons.push('Decides alone'); }
-  else if (!q.decision || q.decision === 'unknown') missing.push('Who decides');
+  if (q.decision === 'sole') { value += 1; reasons.push('Egyedül dönt'); }
+  else if (!q.decision || q.decision === 'unknown') missing.push('ki dönt');
 
   return finish(value, FIT_MAX, reasons, missing, FIT_BANDS);
 }
@@ -187,11 +187,11 @@ export function engagementScore(lead: Lead): Score {
    most valuable thing on the list precisely BECAUSE nobody is talking to them. */
 export function scoreVerdict(fit: Score, engagement: Score): string {
   const f = fit.band, e = engagement.band;
-  if (f === 'high' && e === 'high') return 'Ready to be closed';
-  if (f === 'high' && e === 'low') return 'Can buy, has gone quiet — chase this one';
-  if (f === 'high') return 'Can buy, keep the conversation going';
-  if (f === 'low' && e === 'high') return 'Talks to us, may not be able to buy — qualify properly';
-  if (fit.missing.length >= 3) return 'Too little known to say — qualify them';
-  if (e === 'low') return 'Little to go on either way';
-  return 'Worth working';
+  if (f === 'high' && e === 'high') return 'Le lehet zárni';
+  if (f === 'high' && e === 'low') return 'Tud venni, de elhallgatott — ezt keresd meg';
+  if (f === 'high') return 'Tud venni — tartsd életben a beszélgetést';
+  if (f === 'low' && e === 'high') return 'Beszél velünk, de lehet, hogy nem tud venni — minősítsd rendesen';
+  if (fit.missing.length >= 3) return 'Túl keveset tudunk róla — minősítsd';
+  if (e === 'low') return 'Egyik irányban sincs sok támpont';
+  return 'Érdemes dolgozni rajta';
 }

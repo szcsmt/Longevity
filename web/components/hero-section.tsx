@@ -181,6 +181,12 @@ export function HeroSection() {
     // ── Reduced-motion only: static poster, no scrub, no sequence load ──
     if (reduce) {
       titleOn = ctaOn = true;
+      /* eslint-disable-next-line react-hooks/set-state-in-effect --
+         prefers-reduced-motion is a browser capability, and the server has no
+         browser to ask. This is the branch where the whole scroll animation is
+         skipped, so the extra render costs one static poster frame — and the
+         alternative, threading a media query through render, would mean the
+         first paint guessing at an accessibility setting. */
       setTitleVisible(true);
       setCtaVisible(true);
       return () => detachSizer();

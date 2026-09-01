@@ -56,6 +56,6 @@ describe('configuring the reply timer', () => {
   it('is the number the queue tells the operator about', () => {
     // The section blurb is built from the same constant, so the screen can
     // never quote a threshold the rule is not using.
-    assert.match(SECTION_META.find((s) => s.key === 'silent')!.blurb, /more than 7 days/);
+    assert.match(SECTION_META.find((s) => s.key === 'silent')!.blurb, /Több mint 7 napja/);
   });
 });

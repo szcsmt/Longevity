@@ -15,7 +15,7 @@ export function DedupeButton() {
       const report = await (await fetch('/api/crm/dedupe')).json();
       if (!report.ok) return;
       if (!report.groups) {
-        alert('No duplicates — every contact has exactly one lead.');
+        alert('Nincs duplikátum — minden kapcsolathoz pontosan egy lead tartozik.');
         return;
       }
       const names = report.sample?.length ? `\n\ne.g.: ${report.sample.join(', ')}` : '';
@@ -25,7 +25,7 @@ export function DedupeButton() {
         `Merge each into the contact's original lead? Notes, tasks and history are all kept.`,
       )) return;
       const result = await (await fetch('/api/crm/dedupe', { method: 'POST' })).json();
-      alert(result.ok ? `Done — ${result.merged} duplicate ${result.merged === 1 ? 'lead' : 'leads'} folded in.` : 'Something went wrong — nothing was lost, try again.');
+      alert(result.ok ? `Done — ${result.merged} duplicate ${result.merged === 1 ? 'lead' : 'leads'} folded in.` : 'Valami elromlott — semmi nem veszett el, próbáld újra.');
       router.refresh();
     } finally {
       setBusy(false);
@@ -33,8 +33,8 @@ export function DedupeButton() {
   }
 
   return (
-    <button className="crm-btn sm" disabled={busy} onClick={run} title="Fold duplicate leads into one per contact">
-      {busy ? 'Working…' : '⧉ Tidy duplicates'}
+    <button className="crm-btn sm" disabled={busy} onClick={run} title="Duplikált leadek összevonása kapcsolatonként egybe">
+      {busy ? 'Dolgozom…' : '⧉ Tidy duplicates'}
     </button>
   );
 }

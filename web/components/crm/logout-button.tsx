@@ -1,8 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useT } from './lang-provider';
 
 export function LogoutButton() {
+  const t = useT();
   const router = useRouter();
   async function logout() {
     await fetch('/api/crm/logout', { method: 'POST' });
@@ -11,7 +13,7 @@ export function LogoutButton() {
   }
   return (
     <button className="crm-btn ghost sm" onClick={logout} style={{ width: '100%', justifyContent: 'center' }}>
-      Sign out
+      {t('Kilépés')}
     </button>
   );
 }

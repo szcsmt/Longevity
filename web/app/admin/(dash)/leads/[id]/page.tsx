@@ -30,8 +30,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     <>
       <div className="crm-head">
         <div>
-          <Link href="/admin/leads" className="crm-meta" style={{ textDecoration: 'none' }}>← All leads</Link>
-          <h1 className="crm-title" style={{ marginTop: 6 }}>{lead.name || 'Unknown lead'}</h1>
+          <Link href="/admin/leads" className="crm-meta" style={{ textDecoration: 'none' }}>← Összes lead</Link>
+          <h1 className="crm-title" style={{ marginTop: 6 }}>{lead.name || 'Névtelen lead'}</h1>
           <p className="crm-sub">
             {(lead.form_type || 'enquiry').replace('_', ' ')}
             {lead.form_origin ? ` · ${lead.form_origin}` : ''}

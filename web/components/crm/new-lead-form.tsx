@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SCORES } from '@/lib/crm/types';
+import { SCORES, scoreLabel } from '@/lib/crm/types';
 import { VILLAS, fmtTHB, villaByName } from '@/lib/crm/villas';
 
 const SOURCES = ['phone', 'walk-in', 'referral', 'email', 'agent', 'other'];
@@ -24,7 +24,7 @@ export function NewLeadForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!f.name.trim() && !f.email.trim() && !f.phone.trim()) {
-      setErr('Give at least a name, an email or a phone number.');
+      setErr('Adj meg legalább nevet, e-mailt vagy telefonszámot.');
       return;
     }
     setBusy(true);
@@ -43,10 +43,10 @@ export function NewLeadForm() {
         router.push(`/admin/leads/${data.lead.id}`);
         router.refresh();
       } else {
-        setErr(data.error || 'Could not save the lead.');
+        setErr(data.error || 'A leadet nem sikerült menteni.');
       }
     } catch {
-      setErr('Could not save the lead.');
+      setErr('A leadet nem sikerült menteni.');
     } finally {
       setBusy(false);
     }
@@ -57,7 +57,7 @@ export function NewLeadForm() {
       <div className="edit-grid">
         <label>
           <span className="crm-label">Name</span>
-          <input className="crm-input" value={f.name} onChange={set('name')} placeholder="Full name" />
+          <input className="crm-input" value={f.name} onChange={set('name')} placeholder="Teljes név" />
         </label>
         <label>
           <span className="crm-label">Email</span>
@@ -69,17 +69,17 @@ export function NewLeadForm() {
         </label>
         <label>
           <span className="crm-label">WhatsApp</span>
-          <input className="crm-input" value={f.whatsapp} onChange={set('whatsapp')} placeholder="If different from phone" />
+          <input className="crm-input" value={f.whatsapp} onChange={set('whatsapp')} placeholder="Ha eltér a telefonszámtól" />
         </label>
         <label>
-          <span className="crm-label">Villa of interest</span>
+          <span className="crm-label">Melyik lakás érdekli</span>
           <select className="crm-select" value={f.villa} onChange={set('villa')}>
-            <option value="">Not decided</option>
+            <option value="">Még nem dőlt el</option>
             {VILLAS.map((v) => <option key={v.name} value={v.name}>{v.name} · {fmtTHB(v.price)}</option>)}
           </select>
         </label>
         <label>
-          <span className="crm-label">How did they reach us?</span>
+          <span className="crm-label">Hogyan talált ránk?</span>
           <select className="crm-select" value={f.source} onChange={set('source')}>
             {SOURCES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
           </select>
@@ -87,30 +87,30 @@ export function NewLeadForm() {
         <label>
           <span className="crm-label">Score</span>
           <select className="crm-select" value={f.score} onChange={set('score')}>
-            {SCORES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
+            {SCORES.map((s) => <option key={s} value={s}>{scoreLabel(s)}</option>)}
           </select>
         </label>
         <label>
-          <span className="crm-label">Deal value (THB)</span>
+          <span className="crm-label">Üzlet értéke (THB)</span>
           <input
             className="crm-input"
             inputMode="numeric"
             value={f.value}
             onChange={set('value')}
-            placeholder={catalogPrice ? `${catalogPrice.toLocaleString('en-US')} (list price)` : 'Optional'}
+            placeholder={catalogPrice ? `${catalogPrice.toLocaleString('en-US')} (listaár)` : 'Nem kötelező'}
           />
         </label>
         <label style={{ gridColumn: '1 / -1' }}>
-          <span className="crm-label">First note</span>
-          <textarea className="crm-textarea" value={f.note} onChange={set('note')} placeholder="What did they say? What happens next?" />
+          <span className="crm-label">Első jegyzet</span>
+          <textarea className="crm-textarea" value={f.note} onChange={set('note')} placeholder="Mit mondott? Mi a következő lépés?" />
         </label>
       </div>
       {err && <div className="crm-err" style={{ textAlign: 'left' }}>{err}</div>}
       <div className="act-row" style={{ marginTop: 18 }}>
         <button className="crm-btn gold" type="submit" disabled={busy}>
-          {busy ? 'Saving…' : 'Save lead'}
+          {busy ? 'Mentés…' : 'Lead mentése'}
         </button>
-        <button className="crm-btn ghost" type="button" onClick={() => router.back()}>Cancel</button>
+        <button className="crm-btn ghost" type="button" onClick={() => router.back()}>Mégse</button>
       </div>
     </form>
   );

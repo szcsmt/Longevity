@@ -46,7 +46,7 @@ describe('recording what the conversation established', () => {
     await store.setQualification(lead.id, { currency: 'EUR', budget: 180_000 }, 'Anna');
     const after = await store.setQualification(lead.id, { budget: 250_000 }, 'Anna');
 
-    const money = (after!.history || []).filter((h) => h.detail.startsWith('Budget'));
+    const money = (after!.history || []).filter((h) => h.detail.startsWith('Keret'));
     assert.equal(money.length, 2, 'both figures must be on the record, not just the latest');
     assert.match(money[0].detail, /EUR 180,000/);
     assert.match(money[1].detail, /EUR 250,000/);
@@ -91,8 +91,8 @@ describe('values nobody offered', () => {
     const lead = await fresh();
     await store.setQualification(lead.id, { timeframe: 'soon', purpose: 'x' } as never, 'Anna');
     const after = (await store.getLead(lead.id))!;
-    assert.ok(missingQualification(after).includes('Timeframe'));
-    assert.ok(missingQualification(after).includes('Purpose'));
+    assert.ok(missingQualification(after).includes('mikorra'));
+    assert.ok(missingQualification(after).includes('mire kell'));
   });
 
   it('refuses a currency that is not on the list', async () => {
@@ -124,8 +124,8 @@ describe('what is still unknown', () => {
       timeframe: 'unknown', financing: 'unknown',
     }, 'Anna');
     const missing = missingQualification(after!);
-    assert.ok(missing.includes('Timeframe'), 'an honest "unknown" is still unanswered');
-    assert.ok(missing.includes('Cash or financing'));
+    assert.ok(missing.includes('mikorra'), 'an honest "unknown" is still unanswered');
+    assert.ok(missing.includes('honnan a pénz'));
   });
 
   it('empties out once all five are answered', async () => {
@@ -143,7 +143,7 @@ describe('what is still unknown', () => {
     await store.setQualification(lead.id, {
       budget: 9_000_000, timeframe: '0-3', purpose: 'investment', financing: 'cash',
     }, 'Anna');
-    assert.deepEqual(missingQualification((await store.getLead(lead.id))!), ['Residence of interest']);
+    assert.deepEqual(missingQualification((await store.getLead(lead.id))!), ['melyik lakás']);
 
     await store.updateLead(lead.id, { villa: 'Residence XL' }, 'Anna');
     assert.deepEqual(missingQualification((await store.getLead(lead.id))!), []);

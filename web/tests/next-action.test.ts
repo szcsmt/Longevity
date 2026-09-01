@@ -158,11 +158,28 @@ describe('the working queue', () => {
 
   it('surfaces a live lead with nothing planned at all', async () => {
     const lead = await fresh();
-    await store.logTouch(lead.id, 'call', undefined, 'Anna'); // → Contacted, spoken to
+    /* `callback: null` is the deliberate "this one needs no chasing". Logging
+       a call normally books the next one, so the only way to reach the
+       nothing-planned state is to say so on purpose — which is the point of
+       the change: the state still exists, it just cannot be arrived at by
+       forgetting. */
+    await store.logTouch(lead.id, 'call', undefined, 'Anna', null);
     const fetched = (await store.getLead(lead.id))!;
 
     const hit = workQueue([fetched], today).find((s) => s.leads.length);
     assert.equal(hit?.key, 'nonext');
+  });
+
+  it('and logging a call normally leaves one behind', async () => {
+    const lead = await fresh();
+    await store.logTouch(lead.id, 'call', undefined, 'Anna');
+    const fetched = (await store.getLead(lead.id))!;
+    assert.ok(
+      fetched.tasks.some((t) => !t.done && t.due),
+      'a logged call books the next one — that is what stops leads getting lost',
+    );
+    const hit = workQueue([fetched], today).find((s) => s.leads.length);
+    assert.notEqual(hit?.key, 'nonext');
   });
 
   it('agrees with the badge the operator is looking at', async () => {

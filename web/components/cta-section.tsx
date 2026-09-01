@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { BrochureDownload } from '@/components/brochure-download';
-import { captureSource, sendLead } from '@/lib/source';
+import { sendLead } from '@/lib/source';
 import { useT, richText } from '@/lib/i18n';
 
 const ff  = 'var(--font-playfair), serif';
@@ -19,7 +19,7 @@ export function CtaSection() {
   const t = useT();
   const ref   = useRef<HTMLElement>(null);
   const [sent, setSent] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', villa: '', note: '', company: '', source: '', gdpr: false });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', villa: '', note: '', company: '', gdpr: false });
   const [errors, setErrors] = useState<{ name?: string; email?: string; phone?: string; gdpr?: string }>({});
   // Ownership-path steps: each toggles open/closed on click (step 1 open by default).
   const [openSteps, setOpenSteps] = useState<number[]>([0]);
@@ -29,11 +29,6 @@ export function CtaSection() {
 
   useEffect(() => {
     mountedAt.current = Date.now();   // start the spam time-trap clock on mount
-
-    // Fill the hidden source field from ?source= / ?utm_source= (e.g. a QR code),
-    // captured for the whole session so it survives scrolling/navigation.
-    const src = captureSource();
-    if (src) setForm(f => ({ ...f, source: src }));
 
     const items = ref.current?.querySelectorAll<HTMLElement>('.reveal') ?? [];
     items.forEach((el, i) => {
@@ -299,9 +294,12 @@ export function CtaSection() {
                   </label>
                 </div>
 
-                {/* Hidden source field — auto-filled from ?utm_source= / ?source= (e.g. a QR code).
-                    Submitted with the enquiry so each registrant can be attributed. */}
-                <input type="hidden" name="source" value={form.source} readOnly />
+                {/* The hidden source field used to be filled from the URL
+                    into form state on mount, and nothing ever read it: this
+                    form posts through sendLead(), which carries the UTM
+                    parameters itself. An input with no reader is not a
+                    fallback — it is a second render on every page load, and
+                    the attribution was never coming from here. */}
 
                 <div className="lr-form-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(20px,3vw,36px)' }}>
                   <div>

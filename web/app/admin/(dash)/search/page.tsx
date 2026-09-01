@@ -40,14 +40,14 @@ export default async function SearchPage({
           <h1 className="crm-title">Search</h1>
           <p className="crm-sub">
             {q.length < 2
-              ? 'Type at least two characters. Names, e-mail addresses, phone numbers, agencies, their agents and unit numbers.'
+              ? 'Írj be legalább két karaktert. Nevek, e-mail címek, telefonszámok, ügynökségek, azok ügynökei és lakásszámok.'
               : hits.length === 0
                 ? `Nothing matches “${q}”.`
                 : `${hits.length} ${hits.length === 1 ? 'match' : 'matches'} for “${q}”.`}
           </p>
         </div>
         <form method="get" className="act-row">
-          <input className="crm-input" name="q" defaultValue={q} placeholder="Name, e-mail, phone, agency, unit…"
+          <input className="crm-input" name="q" defaultValue={q} placeholder="Név, e-mail, telefon, ügynökség, lakás…"
             aria-label="Search" style={{ minWidth: 260 }} />
           <button className="crm-btn gold" type="submit">Search</button>
         </form>
@@ -56,8 +56,8 @@ export default async function SearchPage({
       {q.length >= 2 && hits.length === 0 && (
         <div className="crm-card">
           <div className="empty" style={{ padding: 40 }}>
-            Nothing found. A phone number is matched on its last nine digits, so the country code
-            and the spacing do not matter — but a name has to be spelt as it was saved.
+            Nincs találat. A telefonszámot az utolsó kilenc számjegye alapján keressük, tehát az
+            országhívó és a szóközök nem számítanak — a nevet viszont úgy kell írni, ahogy el van mentve.
           </div>
         </div>
       )}

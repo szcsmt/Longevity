@@ -19,7 +19,7 @@ export function LostReasonDialog({
   return (
     <>
       <div className="lost-scrim" onClick={onCancel} />
-      <div className="lost-box" role="dialog" aria-label="Lost reason">
+      <div className="lost-box" role="dialog" aria-label="Az elvesztés oka">
         <h3>Why was {leadName || 'this lead'} lost?</h3>
         <div className="lost-opts">
           {LOST_REASONS.map((r) => (
@@ -42,27 +42,27 @@ export function LostReasonDialog({
             and this is the only moment anybody will think about it. */}
         {reason === 'timing' && (
           <div className="lost-hint">
-            Not buying <em>yet</em> is not the same as lost. Cancel, and use <strong>Not now</strong> on
-            the lead instead — pick the date to come back to them, and the CRM will bring them up
-            again on it with the reason attached.
+            Aki <em>még</em> nem vesz, az nem elveszett. Zárd be ezt, és használd a lead lapján a
+            <strong> Félretéve</strong> gombot — válaszd ki a dátumot, amikor visszatérünk rá, és a
+            CRM azon a napon magától elő fogja hozni, az indokkal együtt.
           </div>
         )}
 
         <textarea
           className="crm-textarea"
           rows={2}
-          placeholder="Optional detail — price gap, competitor, circumstances…"
+          placeholder="Részletek, ha van — árkülönbség, versenytárs, körülmények…"
           value={detail}
           onChange={(e) => setDetail(e.target.value)}
         />
         <div className="act-row" style={{ marginTop: 12, justifyContent: 'flex-end' }}>
-          <button className="crm-btn ghost sm" onClick={onCancel}>Cancel</button>
+          <button className="crm-btn ghost sm" onClick={onCancel}>Mégse</button>
           <button
             className="crm-btn danger sm"
             disabled={!reason}
             onClick={() => onConfirm(reason, detail.trim())}
           >
-            Mark as lost
+            Elveszettnek jelölöm
           </button>
         </div>
       </div>

@@ -13,13 +13,17 @@ import { NOTES_REFRESH_EVENT } from '@/components/crm/google-tasks-strip';
    and pins apply immediately and reconcile with whatever the server returns —
    a checkbox that waits for a round trip feels broken on a phone. */
 
+/* The swatch shows the colour the card will actually be. It used to show a
+   half-transparent version of it, because on the dark board that was what a
+   card looked like; on paper the card is the colour, so the dot is too. The
+   values live in crm.css with the cards themselves — one palette, not two. */
 const SWATCH: Record<CardColor, string> = {
-  plain:  'var(--c-panel-2)',
-  gold:   'rgba(201,169,110,0.55)',
-  green:  'rgba(120,178,150,0.50)',
-  blue:   'rgba(111,160,181,0.50)',
-  rose:   'rgba(224,119,78,0.50)',
-  violet: 'rgba(150,130,200,0.50)',
+  plain:  'var(--note-plain)',
+  gold:   'var(--note-gold)',
+  green:  'var(--note-green)',
+  blue:   'var(--note-blue)',
+  rose:   'var(--note-rose)',
+  violet: 'var(--note-violet)',
 };
 
 const uid = () =>
@@ -229,7 +233,7 @@ function NoteCard({ note, readOnly, onOpen, onToggleItem, onPatch, onDelete }: {
   return (
     <div
       role="button" tabIndex={0}
-      className={`nb-card c-${note.color || 'plain'}${note.archived ? ' archived' : ''}`}
+      className={`nb-card c-${note.color || 'plain'}${note.pinned ? ' pinned' : ''}${note.archived ? ' archived' : ''}`}
       aria-label={note.title || note.body?.slice(0, 60) || 'Jegyzet'}
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
@@ -430,33 +434,39 @@ export function NotesBoard({ initial, readOnly }: { initial: ProjectNote[]; read
         </button>
       </div>
 
-      {!readOnly && !archived && <Composer labelPool={labelPool} onCreate={create} />}
+      {/* Everything from here down sits on the board. The editor dialog is
+          inside it too — not for layout, since it is fixed, but so that it
+          inherits the light palette: a white card opening a dark dialog looks
+          like two different applications. */}
+      <div className="nb-board">
+        {!readOnly && !archived && <Composer labelPool={labelPool} onCreate={create} />}
 
-      {visible.length === 0 ? (
-        <div className="crm-card"><div className="empty">
-          {archived ? 'Az archívum üres.' : q || label ? 'Nincs találat.' : 'Még nincs jegyzet — írd meg az elsőt fent.'}
-        </div></div>
-      ) : (
-        <div className="nb-wall">
-          {visible.map((n) => (
-            <NoteCard
-              key={n.id} note={n} readOnly={readOnly}
-              onOpen={() => !readOnly && setEditing(n)}
-              onToggleItem={(itemId) => toggleItem(n.id, itemId)}
-              onPatch={(p) => patch(n.id, p)}
-              onDelete={() => remove(n.id)}
-            />
-          ))}
-        </div>
-      )}
+        {visible.length === 0 ? (
+          <div className="nb-empty">
+            {archived ? 'Az archívum üres.' : q || label ? 'Nincs találat.' : 'Üres a tábla — tűzd ki az első cetlit fent.'}
+          </div>
+        ) : (
+          <div className="nb-wall">
+            {visible.map((n) => (
+              <NoteCard
+                key={n.id} note={n} readOnly={readOnly}
+                onOpen={() => !readOnly && setEditing(n)}
+                onToggleItem={(itemId) => toggleItem(n.id, itemId)}
+                onPatch={(p) => patch(n.id, p)}
+                onDelete={() => remove(n.id)}
+              />
+            ))}
+          </div>
+        )}
 
-      {editing && (
-        <Editor
-          note={editing} labelPool={labelPool}
-          onClose={() => setEditing(null)}
-          onSave={async (d) => { await patch(editing.id, draftToInput(d) as Partial<ProjectNote>); setEditing(null); }}
-        />
-      )}
+        {editing && (
+          <Editor
+            note={editing} labelPool={labelPool}
+            onClose={() => setEditing(null)}
+            onSave={async (d) => { await patch(editing.id, draftToInput(d) as Partial<ProjectNote>); setEditing(null); }}
+          />
+        )}
+      </div>
     </>
   );
 }

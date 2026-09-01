@@ -584,6 +584,41 @@ lead again (used by "Delete & block" on private/non-lead contacts). Key format:
 | `e:` | E-mail, trimmed and lowercased — e.g. `e:jane@example.com` |
 | `p:` | Phone key: digits only, **last 9 digits**, only produced when the number has ≥ 8 digits — e.g. `p:661234567` |
 
+## Session (`crm_sessions`) and access log (`crm_audit_YYYY-MM`)
+
+Both live in the settings key-value corner rather than tables of their own, because neither
+is domain data: they are machinery, and both are small.
+
+A **session** is what a sign-in produces. The cookie carries 32 random bytes; this row holds
+only their SHA-256, the same way the partner portal already stores its links, so a copy of the
+database is not a set of working logins.
+
+| Field | Meaning |
+|---|---|
+| `id` | Public handle — what a revoke button refers to. Not the token. |
+| `hash` | SHA-256 of the token. The token itself is never written down. |
+| `user` | Account name, matched case-insensitively against the env-configured accounts. |
+| `started` / `seen` | The two clocks. `seen` is refreshed at most every 5 minutes. |
+| `ip` / `agent` | Where it began, so the owner can recognise a device that is not theirs. |
+
+The role is deliberately **not** stored: it is read from the environment on every check, so
+demoting somebody takes effect on their next click rather than their next sign-in, and an
+account that has been removed resolves to nothing at all. Expired rows are pruned on every
+write — they are not evidence of anything, because that is what the log is for.
+
+This replaced a cookie that was `sha256(name : password : a-salt-in-the-repository)`. It
+identified the account, which was all it was asked to do, and it had three properties nobody
+wanted: it never changed, so it never expired; it was identical on every device, so one
+person could not be signed out without changing their password and signing out everyone; and
+the salt was in the source, so the value could be *computed* rather than only obtained.
+
+An **audit entry** is `{ at, actor, action, detail?, ip?, agent? }`, newest first, one key per
+month. Actions: `login`, `login.failed`, `logout`, `session.revoked`, `export.csv`,
+`backup.mailed`, `leads.purge`, `settings.changed` — the events where data leaves the system,
+as opposed to the per-lead Activity trail above, which records what happened *inside* it. The
+distinction matters after something goes wrong: Activity says a lead was edited, the audit log
+says whose account the whole list left through.
+
 ## Unit catalogue — `lib/villas.json`
 
 Static masterplan geometry + unit metadata, rendered over `/images/masterplan.png`

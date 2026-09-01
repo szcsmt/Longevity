@@ -10,19 +10,36 @@ All routes are declared `dynamic = 'force-dynamic'` — responses are never cach
 
 | Method | How it works | Used by |
 |---|---|---|
-| Public | No auth. `/api/lead` and `/api/event` are additionally protected by a per-IP rate limit; login/logout are not rate limited. | `/api/lead`, `/api/event`, `/api/crm/login`, `/api/crm/logout` |
-| Session cookie | `lr_crm` httpOnly cookie set by `/api/crm/login`. Value is `base64url(name).sha256(name:password:salt)`; verified against the env-configured accounts on every request (`lib/crm/auth.ts`). Password/token checks use constant-time comparison. | All `/api/crm/*` routes except login/logout |
+| Public | No auth. `/api/lead` and `/api/event` are protected by a per-IP rate limit; `/api/crm/login` by a per-IP failed-attempt brake. | `/api/lead`, `/api/event`, `/api/crm/login`, `/api/crm/logout` |
+| Session cookie | `lr_crm` httpOnly cookie set by `/api/crm/login`. Value is 32 random bytes, base64url — it means nothing on its own. The store (`lib/crm/sessions.ts`) holds only its SHA-256, alongside the account name, when the session began, when it was last used, and the IP and user agent it began from. Sessions expire on two clocks (idle and absolute) and can be revoked individually. | All `/api/crm/*` routes except login/logout |
 | Body secret | `secret` field in the JSON body compared to `SHEET_SECRET`. Fails closed. | `/api/villa-sync` |
 | `x-api-key` | Header (preferred) or `?key=` query param compared to `ESTATE_API_KEY`. Fails closed. | `/api/3destate/units` |
 | `CRON_SECRET` bearer | `Authorization: Bearer <CRON_SECRET>`. A valid session cookie is accepted as an alternative (manual trigger by an operator) — any session for `/api/crm/cron`, an **admin** session for `/api/crm/backup`. | `/api/crm/cron`, `/api/crm/backup` |
 
-Two roles exist (`lib/crm/auth.ts`): **admin** (full access) and **viewer** (read-only —
-every mutating CRM endpoint rejects a viewer session with
-`403 {"ok":false,"error":"read-only account"}`). Accounts come from `CRM_USER` +
-`CRM_PASSWORD` (the primary account, always admin) merged with `CRM_USERS`
-(comma-separated `name:password` or `name:password:viewer`; default role is admin).
+Six roles exist (`lib/crm/auth.ts`) — `admin`, `head`, `agent`, `finance`, `marketing`,
+`viewer` — mapped to ten capabilities in one table; routes ask for the capability they need
+rather than for a role. Accounts come from `CRM_USER` + `CRM_PASSWORD` (the primary account,
+always admin) merged with `CRM_USERS` (comma-separated `name:password[:role]`; an omitted or
+unrecognised role means admin) and `CRM_VIEWERS` (`name:password`, always read-only).
 In production a missing `CRM_PASSWORD` disables the primary account (fails closed); the
 `admin`/`longevity` fallback exists only outside production.
+
+**Password field.** Each password may be written out in full or given as an scrypt hash in
+the form `scrypt$<salt-hex>$<key-hex>`, produced by `node scripts/crm-hash.mjs`. Both are
+accepted, so hashing is per account and never a lock-out. A malformed hash fails closed
+rather than being compared as plaintext. Comparison is constant-time either way, and the
+scan continues past a match so that a wrong username and a wrong password cost the same.
+
+### Session lifetime
+
+| Setting | Env | Default | What it ends |
+|---|---|---|---|
+| Idle | `CRM_SESSION_IDLE_HOURS` | 12 h | A session nobody came back to — the unlocked laptop in the office. |
+| Absolute | `CRM_SESSION_DAYS` | 7 days | A session nobody left — a token still valid weeks later is a second password. |
+
+`seen` is refreshed at most every 5 minutes, so keeping a session alive does not mean a
+database write per page view. Expired rows are pruned on every write; the history of who
+was signed in lives in the audit log, not here.
 
 ## Rate limits
 
@@ -34,6 +51,170 @@ Only the two fully public intake endpoints are rate limited. Both limits are in-
 |---|---|---|
 | `POST /api/lead` | 5 requests / minute / IP | `429 {"ok":false}` |
 | `POST /api/event` | 30 requests / minute / IP | `429 {"ok":false}` |
+| `POST /api/crm/login` | `CRM_LOGIN_MAX_FAILS` (8) per address **and** `CRM_LOGIN_ACCOUNT_MAX` (12) per account name, both within `CRM_LOGIN_WINDOW_MIN` (10) minutes | `429` with `Retry-After`, and a `retryAfter` in seconds in the body |
+
+The login limit is shared across instances (`lib/crm/login-guard.ts`, stored under
+`crm_login_guard`), not held per instance in memory: on a serverless deployment a per-instance
+count hands an attacker the limit again on every instance, and the harder they push the more
+instances they get.
+
+**Two counters, either of which locks.** By address, for one machine working through a
+password list. By account name, for the shape that actually threatens a small CRM — many
+addresses trying one username once each, which no per-address counter can see.
+
+Lockouts start at `CRM_LOGIN_LOCK_MIN` (15 minutes) and double on repetition to a cap of a
+day. A stale strike ages out rather than accumulating, and a correct password clears both
+counters for that address and that account.
+
+**It fails open when the store is unreachable.** That is deliberate rather than an oversight:
+the login cannot succeed without the same store, because it has to write a session, so failing
+closed would lock everybody out of a CRM that is already down and protect nothing that was not
+already unreachable.
+
+## Response headers
+
+Set in `next.config.ts` for every response: `Strict-Transport-Security: max-age=63072000;
+includeSubDomains` (no `preload` — that is a submission to a list baked into browsers and far
+harder to undo than to add), `X-Content-Type-Options: nosniff`, `Referrer-Policy:
+strict-origin-when-cross-origin`, `X-Permitted-Cross-Domain-Policies: none`, and a
+`Permissions-Policy` switching off camera, microphone, geolocation, payment and USB.
+`/admin/*` additionally gets `X-Frame-Options: DENY`.
+
+### Content Security Policy
+
+Built per request in `middleware.ts`, because it carries a nonce. Two policies, because this
+deployment is two applications on one domain.
+
+**`/admin`, `/api/crm`, `/portal`, `/api/partners`** get the strict one:
+
+```
+default-src 'self'; script-src 'self' 'nonce-<per-request>' 'strict-dynamic';
+style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;
+connect-src 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none';
+object-src 'none'; base-uri 'none'; upgrade-insecure-requests
+```
+
+`connect-src 'self'` is the clause that matters: nothing running on a CRM page can post the
+lead list anywhere. The nonce is set on the *request* headers as well as the response, which
+is how Next finds it and stamps it onto its own scripts — setting it only on the response
+produces a correct-looking policy that blocks the app's own hydration.
+
+Inline **styles** stay allowed. Tailwind and the CRM's components write style attributes
+throughout, and a style attribute cannot exfiltrate anything; scripts are where the risk is
+and scripts are locked.
+
+**Everything else** — the marketing site — gets `frame-ancestors 'self'; object-src 'none';
+base-uri 'self'; upgrade-insecure-requests` and no script restriction. It runs Google Tag
+Manager, whose entire job is loading third-party tags nobody enumerated in advance, plus
+Leaflet map tiles and the 3D tour launcher. Locking `script-src` there would break marketing
+on the day it shipped.
+
+Google's tags render from `components/site-tags.tsx`, which returns `null` under `/admin` and
+`/portal`. They used to live in the root layout, which every route inherits, so GTM was also
+running on pages listing buyers by name, e-mail and phone. The CSP now makes that a rule
+rather than a habit: if they creep back into a shared layout, the CRM breaks rather than
+quietly leaking.
+
+## The nightly backup
+
+`GET /api/crm/backup`, run by Vercel Cron or by an admin, mails a full snapshot to
+`CRM_NOTIFY_TO`.
+
+**What is in it:** every lead including archived ones, the masterplan and its history, the
+last 500 interaction events, the project board, every agency including archived ones, and
+the blocked contacts.
+
+**What is deliberately not:** the settings. That corner holds the Gmail refresh token, the
+live sessions and the access log — credentials and audit rather than the business's
+records. A backup should be something you can hand to whoever is rebuilding the system
+without also handing them the keys, and everything left out is re-established by signing
+in again.
+
+**The file.** With `CRM_BACKUP_KEY` set the attachment is `crm-backup-<date>.lrb`:
+
+```
+LRCRM1.<salt-hex:32>.<iv-hex:24>.<tag-hex:32>
+<base64 ciphertext, wrapped at 76 columns>
+```
+
+scrypt for the key, AES-256-GCM for the payload, both from Node's own crypto — a backup
+format whose first step is "install this library" is one that fails on the day you need
+it, on a laptop that is not the usual one. GCM rather than CBC so a truncated or edited
+file is refused rather than half-decoded into plausible nonsense. Every field is a fixed
+width and the reader strips all whitespace first, because mail clients rewrap long lines
+and the header is ninety-seven characters — long enough to be broken in half by one.
+
+Without a key the attachment is plain `.json` and the subject line begins `⚠`.
+
+### Restoring one
+
+```
+npm run restore -- crm-backup-2026-08-31.lrb                 # report only, writes nothing
+npm run restore -- crm-backup-2026-08-31.lrb --apply         # add what is missing
+npm run restore -- crm-backup-2026-08-31.lrb --apply --overwrite
+npm run restore -- crm-backup-2026-08-31.lrb --out=plain.json # decrypt and stop
+```
+
+The passphrase comes from `CRM_BACKUP_KEY` or `--key=`. It writes through the same backend
+interface the app uses, so it restores into Postgres or the local JSON file depending on
+whether `DATABASE_URL` is set — and it prints which before doing anything, because the
+mistake that costs the most here is not a failed restore but a successful one into the
+wrong place. Leads, villas, history, events, notes and agencies are matched on id, so
+running it twice adds nothing the second time.
+
+## Testing the permission gates
+
+`tests/permissions.test.ts` drives the real route handlers rather than the store beneath
+them. It mints a real session for each of the six roles, puts the token in the cookie jar
+`cookies()` reads (`tests/loader.mjs` stubs it from `globalThis.__lrCookies`), and asserts the
+status that comes back.
+
+Covering **48 of the 55 permission checks across 15 of the 19 routes** that have them. The
+four uncovered are the two OAuth callbacks, the Google connect redirect and the cron — gated
+by a nonce or a bearer token rather than by a role.
+
+`401` and `403` are asserted apart on purpose. "Sign in" is something a caller can act on and
+"you may not" is not; a route that conflates them sends one of the two somewhere that cannot
+help. Both conflations existed when these tests were written and both are fixed.
+
+## Error alerting
+
+`lib/crm/alert.ts`, wired to Next's `onRequestError` in `instrumentation.ts`. Every server
+error — a page that failed to render, a route that threw, a database that stopped answering —
+is mailed to `CRM_ALERT_TO`. The nightly sweep reports whichever integration failed instead of
+swallowing it, and a backup the mailer refused raises one too.
+
+**It does not touch the database.** The most important thing it will ever report is the
+database being unreachable, so the throttle is in memory — which on a serverless deployment
+means per instance. A few instances may each send one mail about the same outage; that is a
+far better failure than a throttle that cannot run.
+
+**It does not go through `lib/crm/mailer`.** That module is the customer mail engine: it
+refuses to send without `CRM_AUTO_FROM` and stops entirely on `CRM_AUTO_EMAILS=off`. Both are
+right for letters to buyers and both would silently disable the alarm.
+
+**It does not flood.** Occurrences are collapsed by a signature that strips ids and numbers
+out of the message, so a thousand requests failing on a thousand different lead ids is one
+problem rather than a thousand. The same problem is mailed once per `CRM_ALERT_QUIET_MIN`
+carrying its own count; distinct problems are capped at `CRM_ALERT_MAX` per window and the
+mail says how many were held back.
+
+Nothing here throws. A reporting hook that breaks turns one failed request into two.
+
+## Audit log
+
+`lib/crm/audit.ts`. Every event that moves data out of the system is recorded with the
+account, the IP, the browser and a one-line detail: `login`, `login.failed`, `logout`,
+`session.revoked`, `export.csv`, `backup.mailed`, `leads.purge`, `settings.changed`.
+
+Stored in the settings key-value corner, one key per month (`crm_audit_YYYY-MM`), newest
+first, capped at `CRM_AUDIT_MAX` (5000) entries per month. A month is a natural retention
+unit, it keeps each document small enough that appending is cheap, and old months age out by
+never being written to again — no pruning job, and nothing silently deleted. Readers walk
+back six months. Writing never throws into a request: losing the note that somebody was let
+in is better than refusing to let them in because the note failed.
+
+Visible at `/admin/security` (admin only), alongside the live session list.
 
 ---
 
@@ -364,12 +545,58 @@ All routes below return `401 {"ok":false}` without a valid `lr_crm` session cook
 
 Public. Body: `{ "username": "...", "password": "..." }`. Credentials are checked in constant
 time against every configured account (the scan continues even after a match). On success
-sets the `lr_crm` cookie: httpOnly, `SameSite=Lax`, path `/`, `Secure` in production,
-30-day max-age. Responses: `200 {"ok":true}` or `401 {"ok":false,"error":"invalid credentials"}`.
+mints a session and sets the `lr_crm` cookie: httpOnly, `SameSite=Lax`, path `/`, `Secure` in
+production, 30-day max-age — the cookie's max-age is only browser housekeeping, the session
+store decides when the token stops working and is always stricter.
+
+Both outcomes are written to the audit log with the caller's IP and user agent. The attempted
+username is recorded on a failure; the attempted password is not, because a mistyped password
+is very often somebody's real one.
+
+Responses: `200 {"ok":true}`, `401 {"ok":false,"error":"invalid credentials"}`, or
+`429 {"ok":false,"error":"too many attempts — wait a few minutes"}`.
 
 ### POST /api/crm/logout
 
-Deletes the `lr_crm` cookie. Always `200 {"ok":true}`.
+Ends the session server-side and deletes the `lr_crm` cookie. Always `200 {"ok":true}`.
+Ending it server-side is the half that matters: deleting a cookie only asks a browser to
+forget a token, and the token used to stay valid regardless.
+
+### PATCH /api/crm/leads/[id] · `op: "whatsapp"`
+
+Sends a free-text WhatsApp from the company number and files it on the lead. Body:
+`{ "op": "whatsapp", "text": "…" }`. Requires `leads.write`.
+
+On success the message is appended to the lead's history as a `whatsapp` entry, the reply
+timer starts, the answer clock stops and a `new` lead moves to `contacted` — the same four
+consequences a sent e-mail has, because it is the same event through a different pipe.
+
+Nothing is written unless Meta accepted it. A timeline saying a buyer was answered when they
+were not is worse than an empty one: somebody reads it, believes it, and moves on.
+
+`400` with a `result` field naming the reason:
+
+| `result` | Meaning |
+|---|---|
+| `no-number` | The lead has no usable phone or WhatsApp number. Refused before the network. |
+| `disabled` | `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_ID` are not set, or `WHATSAPP_MESSAGES=off`. |
+| `refused` | Meta rejected it — almost always the 24-hour rule below, occasionally an empty body. |
+
+**Meta's 24-hour window.** Outside 24 hours from the customer's *own* last WhatsApp message,
+only a pre-approved template may be sent and free text is refused. `Lead.wa_last_inbound`
+records when they last wrote, set by the inbound webhook, and `waWindowOpen(lead)` in
+`lib/crm/rules.ts` answers the question — pure, and in `rules` rather than the store, because
+the lead page asks it while somebody is typing. Being told *afterwards* that a message did not
+go is how people go back to sending from their own handset, which is the thing this exists to
+stop.
+
+### POST /api/crm/sessions
+
+**Admin only** (`403 {"ok":false}` otherwise). Revokes sessions. Body is either
+`{ "id": "<session id>" }` for one device or `{ "user": "<account name>" }` for every device
+belonging to one person — the thing to do the hour somebody leaves. Returns
+`200 {"ok":true,"revoked":<n>}`, or `400 {"ok":false,"error":"id or user required"}`.
+Recorded in the audit log.
 
 ### POST /api/crm/leads
 
@@ -632,7 +859,22 @@ e-mails it via Resend as a `crm-backup-YYYY-MM-DD.json` attachment from `CRM_NOT
 | `CRON_SECRET` | Bearer token Vercel Cron sends to `GET /api/crm/cron` and `GET /api/crm/backup`. |
 | `CRM_USER` | Primary CRM account name (default `admin`). |
 | `CRM_PASSWORD` | Primary CRM account password. Unset in production → primary account disabled (fails closed); dev fallback password is `longevity`. |
-| `CRM_USERS` | Extra accounts, comma-separated. `name:password` = admin; `name:password:agent` = salesperson; `name:password:viewer` = read-only. An entry with no role stays admin, so existing accounts are unaffected. See the role table below. |
+| `CRM_USERS` | Extra accounts, comma-separated. `name:password` = admin; `name:password:agent` = salesperson; `name:password:viewer` = read-only. An entry with no role stays admin, so existing accounts are unaffected. The password may be an scrypt hash (`scrypt$…$…`) instead of the password itself — see **Password field** above. See the role table below. |
+| `CRM_VIEWERS` | Read-only guest accounts, comma-separated `name:password`. Separate from `CRM_USERS` so that adding a guest is one short value rather than an edit to the list holding every working account. |
+| `CRM_SESSION_DAYS` | Absolute session lifetime in days (default `7`). A token still valid weeks after it was issued is not a session, it is a second password. |
+| `CRM_SESSION_IDLE_HOURS` | Idle session lifetime in hours (default `12`) — what ends the session on the office laptop nobody locked. |
+| `CRM_LOGIN_MAX_FAILS` | Failed sign-ins from one address before it is locked out (default `8`). |
+| `CRM_LOGIN_ACCOUNT_MAX` | Failed sign-ins against one account name, from any address, before that account is locked (default `12`). |
+| `CRM_LOGIN_WINDOW_MIN` | The window those failures are counted in, in minutes (default `10`). |
+| `CRM_LOGIN_LOCK_MIN` | The first lockout, in minutes (default `15`). It doubles on repetition, capped at a day. |
+| `CRM_AUDIT_MAX` | Audit entries kept per month (default `5000`). |
+| `CRM_ALERT_TO` | Where server errors are mailed. Falls back to `CRM_NOTIFY_TO`; with neither set, alerting is silent. |
+| `CRM_ALERT_QUIET_MIN` | Minutes before the same problem is mailed again (default `60`). |
+| `CRM_ALERT_MAX` | Distinct problems mailed per window (default `6`). Beyond it the count is carried in the next mail rather than sent as more mail. |
+| `CRM_PAGE_SIZE` | Leads shown per page on `/admin/leads` (default `50`, floor `10`). Changing a filter or the sort returns to page one; an out-of-range `?page=` lands on the last page rather than on nothing. |
+| `CRM_BACKUP_KEY` | Passphrase the nightly backup is encrypted with. Unset → the backup still goes out (a missing backup is worse than a readable one) but says so loudly, in the subject line and the mail body. **Keep a copy outside Vercel**: the day you need a backup may well be a day the Vercel account is part of the problem. |
+| `NEXT_PUBLIC_CRM_REFRESH_SECONDS` | How often an open CRM screen re-reads itself, in seconds (default `60`). It only fires when the tab is in front and somebody has touched it recently, so this is a ceiling on how stale a watched screen gets, not a polling budget. Public for the same reason as the stage thresholds. |
+| `NEXT_PUBLIC_CRM_IDLE_MINUTES` | Minutes without a click or a keystroke before the refresh stops altogether (default `10`). A visible tab is not the same as somebody working, and the tab open all night is the case that cost the money. |
 | `RESEND_WEBHOOK_SECRET` | Resend's Standard Webhooks signing secret (`whsec_…`). Set → `POST /api/inbound` requires a valid signature and the URL key is ignored. |
 | `INBOUND_SECRET` | Fallback query-string secret for `POST /api/inbound` (`?key=`), used only while no signing secret is set. |
 | `CRM_REPLY_TO` | The Resend inbound address customer replies should go to, e.g. `reply@….resend.app`. Set → the CRM sees replies and can stop the sequence. Unset → falls back to `CRM_NOTIFY_TO` and the CRM stays blind. |
@@ -727,6 +969,25 @@ doing — the sequence, an inbound reply, a tracked click.
 Hiding a button is not a control: every capability above is refused by the API itself, not
 merely absent from the screen. The screen hides what it can so nobody meets a refusal they
 could not have predicted — the Payments page is out of marketing's menu entirely.
+
+## Reads per render
+
+`lib/crm/store.ts` wraps the three whole-table reads — `allLeads`, `getVillas`,
+`getVillaHistory` — in React's `cache()`, which scopes them to one request: the first
+caller runs the query, the rest get the same promise, and the next request starts clean.
+It deduplicates across a layout AND the page rendered inside it, which passing arguments
+cannot do, because those are separate renders.
+
+Measured on `/admin/today`: **24 backend reads per render before, 2 after.**
+
+The one hazard is a request that writes and then reads: it must not be handed the copy
+from before its own write. Exactly one caller does that — `villaTxn`, which returns the
+new masterplan at the end of a transaction — and it asks for `getVillaData({ fresh: true })`
+by name. Anything else added later that writes and then reads a whole table must do the
+same.
+
+Outside a request (the test suite) React declines to cache and calls straight through, so
+tests always see current data.
 
 ## Persistence note
 

@@ -6,10 +6,11 @@ import { SECTION_META, isQueueKey } from '@/lib/crm/rules';
 import { SOURCES, leadSource } from '@/lib/crm/sources';
 import { COUNTRIES, countryName, leadCountry } from '@/lib/crm/language';
 import { fxRates, hasRates } from '@/lib/crm/money';
-import { TIMEFRAMES } from '@/lib/crm/types';
+import { TIMEFRAMES, scoreLabel } from '@/lib/crm/types';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES, SCORES } from '@/lib/crm/types';
 import { LeadsTable } from '@/components/crm/leads-table';
+import { lang as uiLang } from '@/lib/crm/lang-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,7 @@ export default async function LeadsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
+  const { t } = await uiLang();
   /* `archived=only` is the one way into the archive, and it is deliberately a
      URL rather than a prominent tab: setting leads aside should be easy to
      undo and uninteresting to browse. */
@@ -57,7 +59,25 @@ export default async function LeadsPage({
   // Object.hasOwn, not a truthy lookup: '__proto__' or 'hasOwnProperty' would
   // otherwise pass the check and hand Array.sort a non-function comparator.
   const sort = Object.hasOwn(SORTS, str(sp.sort)) ? str(sp.sort) : 'received';
-  const leads = (await listLeads(filter as never)).sort(SORTS[sort]);
+  const matching = (await listLeads(filter as never)).sort(SORTS[sort]);
+
+  /* ── One page at a time ──
+
+     The list used to render every matching lead. At twenty-five that is the
+     right answer and at two thousand it is a page that takes seconds to draw
+     and cannot be scrolled to anything. The cost arrives gradually and nobody
+     notices the day it stops being fine, which is the argument for doing it
+     before it matters rather than after.
+
+     Page size is configuration, not a number typed into a component: a screen
+     full of leads is a different number on a laptop and on the office
+     monitor. */
+  const pageSize = Math.max(10, Number(process.env.CRM_PAGE_SIZE || 50));
+  const pages = Math.max(1, Math.ceil(matching.length / pageSize));
+  /* Out-of-range page numbers land on the last page rather than on nothing —
+     a bookmark from when the list was longer should show leads, not a void. */
+  const page = Math.min(pages, Math.max(1, Number(str(sp.page)) || 1));
+  const leads = matching.slice((page - 1) * pageSize, page * pageSize);
   const [archiver, exporter, editor, me] = await Promise.all([
     can('leads.archive'), can('leads.export'), canEdit(), currentUser(),
   ]);
@@ -76,6 +96,9 @@ export default async function LeadsPage({
   const mine = me && roster.includes(me) ? me : null;
 
   // Preserve the current view in links (sorting keeps filters, export keeps both).
+  /* `page` is carried only when a caller asks for it: changing a filter or the
+     sort has to go back to page one, or the list lands on page seven of a
+     result set that now has two pages. */
   const qs = (over: Record<string, string>) => {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries({ ...filter, sort, ...over })) if (v) p.set(k, String(v));
@@ -90,7 +113,7 @@ export default async function LeadsPage({
     <>
       <div className="crm-head">
         <div>
-          <h1 className="crm-title">{showArchived ? 'Archived leads' : 'Leads'}</h1>
+          <h1 className="crm-title">{showArchived ? t('Archivált leadek') : t('Leadek')}</h1>
           <p className="crm-sub">
             {leads.length} {leads.length === 1 ? 'lead' : 'leads'} matching your view.
             {flag && ` ${SECTION_META.find((sec) => sec.key === flag)?.blurb}`}
@@ -106,19 +129,24 @@ export default async function LeadsPage({
           </p>
         </div>
         <div className="act-row">
-          {editor && <Link className="crm-btn gold" href="/admin/leads/new">+ Add lead</Link>}
+          {/* The pipeline board used to be its own line in the menu, which
+              made it look like a different subject. It is this list, drawn as
+              columns, so it belongs here — one click from the data it draws,
+              and one fewer thing to scan on the way in. */}
+          {!showArchived && <Link className="crm-btn ghost" href="/admin/pipeline">{t('Tábla nézet')}</Link>}
+          {editor && <Link className="crm-btn gold" href="/admin/leads/new">{t('+ Új lead')}</Link>}
           {/* The export walks out of the building with every contact on it,
               so it needs its own permission rather than riding along with
               being able to read the list. */}
-          {exporter && <a className="crm-btn" href={`/api/crm/export${qs({ sort: '' })}`}>Export CSV</a>}
+          {exporter && <a className="crm-btn" href={`/api/crm/export${qs({ sort: '' })}`}>{t('CSV letöltés')}</a>}
           {mine && (
             <Link className="crm-btn" href={filter.owner === mine ? '/admin/leads' : `/admin/leads${qs({ owner: mine })}`}>
-              {filter.owner === mine ? 'Everyone' : 'My leads'}
+              {filter.owner === mine ? t('Mindenki') : t('Az én leadjeim')}
             </Link>
           )}
           {archiver && (
             <Link className="crm-btn ghost" href={showArchived ? '/admin/leads' : '/admin/leads?archived=only'}>
-              {showArchived ? '← Back to leads' : 'Archive'}
+              {showArchived ? `← ${t('Vissza a leadekhez')}` : t('Archívum')}
             </Link>
           )}
         </div>
@@ -127,25 +155,25 @@ export default async function LeadsPage({
       {/* Filters */}
       <form className="crm-filters" method="get">
         <div className="fld grow">
-          <input className="crm-input" name="q" placeholder="Search name, email, phone, villa…" defaultValue={filter.q} />
+          <input className="crm-input" name="q" placeholder={t('Név, e-mail, telefon, lakás…')} defaultValue={filter.q} />
         </div>
         <div className="fld">
-          <select className="crm-select" name="stage" defaultValue={filter.stage} aria-label="Filter by stage">
-            <option value="">All stages</option>
-            {STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          <select className="crm-select" name="stage" defaultValue={filter.stage} aria-label={t('Szűrés fázisra')}>
+            <option value="">{t('Minden fázis')}</option>
+            {STAGES.map((s) => <option key={s.id} value={s.id}>{t(s.label)}</option>)}
           </select>
         </div>
         <div className="fld">
-          <select className="crm-select" name="score" defaultValue={filter.score} aria-label="Filter by score">
-            <option value="">All scores</option>
-            {SCORES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
+          <select className="crm-select" name="score" defaultValue={filter.score} aria-label={t('Szűrés pontszámra')}>
+            <option value="">{t('Minden pontszám')}</option>
+            {SCORES.map((s) => <option key={s} value={s}>{t(scoreLabel(s))}</option>)}
           </select>
         </div>
         {/* With one salesperson this is noise, so it only appears once there
             is a roster to choose from. */}
         {roster.length > 1 && (
           <div className="fld">
-            <select className="crm-select" name="owner" defaultValue={filter.owner} aria-label="Filter by owner">
+            <select className="crm-select" name="owner" defaultValue={filter.owner} aria-label={t('Szűrés értékesítőre')}>
               <option value="">Everyone</option>
               {roster.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -157,8 +185,8 @@ export default async function LeadsPage({
             dropdown of sixteen where two exist is a dropdown nobody reads. */}
         {presentSources.length > 1 && (
           <div className="fld">
-            <select className="crm-select" name="source" defaultValue={filter.source} aria-label="Filter by source">
-              <option value="">All sources</option>
+            <select className="crm-select" name="source" defaultValue={filter.source} aria-label={t('Szűrés forrásra')}>
+              <option value="">{t('Minden forrás')}</option>
               {presentSources.map((sc) => <option key={sc.id} value={sc.id}>{sc.label}</option>)}
             </select>
           </div>
@@ -169,40 +197,54 @@ export default async function LeadsPage({
             still filed under what its phone number says. */}
         {presentCountries.length > 1 && (
           <div className="fld">
-            <select className="crm-select" name="country" defaultValue={filter.country} aria-label="Filter by country">
-              <option value="">All countries</option>
+            <select className="crm-select" name="country" defaultValue={filter.country} aria-label={t('Szűrés országra')}>
+              <option value="">{t('Minden ország')}</option>
               {presentCountries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
             </select>
           </div>
         )}
         <div className="fld">
-          <select className="crm-select" name="timeframe" defaultValue={filter.timeframe} aria-label="Filter by purchase timeframe">
-            <option value="">Any timeframe</option>
+          <select className="crm-select" name="timeframe" defaultValue={filter.timeframe} aria-label={t('Szűrés vásárlási időtávra')}>
+            <option value="">{t('Bármelyik időtáv')}</option>
             {TIMEFRAMES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
         </div>
         <div className="fld">
-          <input className="crm-input" name="minBudget" inputMode="numeric" placeholder="Budget from…"
-            defaultValue={filter.minBudget || ''} aria-label="Minimum budget" />
+          <input className="crm-input" name="minBudget" inputMode="numeric" placeholder={t('Kerettől…')}
+            defaultValue={filter.minBudget || ''} aria-label={t('Minimális keret')} />
         </div>
         <div className="fld" style={{ minWidth: 90 }}>
-          <select className="crm-select" name="budgetCurrency" defaultValue={filter.budgetCurrency} aria-label="Budget currency">
+          <select className="crm-select" name="budgetCurrency" defaultValue={filter.budgetCurrency} aria-label={t('A keret pénzneme')}>
             {['THB', 'EUR', 'USD', 'GBP'].map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         {/* The attention rules as a filter. Same definitions the Today queue
             uses, asked one at a time. */}
         <div className="fld">
-          <select className="crm-select" name="flag" defaultValue={flag} aria-label="Filter by what needs attention">
-            <option value="">Any state</option>
+          <select className="crm-select" name="flag" defaultValue={flag} aria-label={t('Szűrés arra, mi igényel figyelmet')}>
+            <option value="">{t('Bármilyen állapot')}</option>
             {SECTION_META.map((sec) => <option key={sec.key} value={sec.key}>{sec.title}</option>)}
           </select>
         </div>
         {showArchived && <input type="hidden" name="archived" value="only" />}
-        <button className="crm-btn gold" type="submit">Filter</button>
+        <button className="crm-btn gold" type="submit">{t('Szűrés')}</button>
       </form>
 
       <LeadsTable leads={leads} sortHrefs={sortHrefs} sort={sort} readOnly={!editor} canDelete={archiver} />
+
+      {pages > 1 && (
+        <div className="pager">
+          <span className="crm-meta">
+            {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, matching.length)}
+            {' / '}{matching.length} {t('lead')}
+          </span>
+          <span className="pager-acts">
+            {page > 1 && <Link className="crm-btn sm" href={`/admin/leads${qs({ page: String(page - 1) })}`}>{t('← Előző')}</Link>}
+            <span className="crm-meta">{page} / {pages} {t('oldal')}</span>
+            {page < pages && <Link className="crm-btn sm" href={`/admin/leads${qs({ page: String(page + 1) })}`}>{t('Következő →')}</Link>}
+          </span>
+        </div>
+      )}
     </>
   );
 }

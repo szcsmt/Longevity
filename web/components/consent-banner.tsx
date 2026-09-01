@@ -93,7 +93,7 @@ declare global {
   interface Window { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void }
 }
 
-/** Tell Google what is allowed, through the gtag shim layout.tsx installs
+/** Tell Google what is allowed, through the gtag shim site-tags.tsx installs
     before GTM loads. Also fires a dataLayer event so GTM triggers can react. */
 function pushConsent(c: Choices) {
   try {
@@ -137,8 +137,16 @@ export function ConsentBanner() {
   const [detail, setDetail] = useState(false);
   const [choices, setChoices] = useState<Choices>(ALL_DENIED);
 
-  // Decide whether to ask. Runs once, after hydration, so the server render is
-  // identical for everyone (and cacheable).
+  /* Decide whether to ask. Runs once, after hydration, so the server render is
+     identical for everyone (and cacheable).
+
+     The linter objects to setting state in an effect, and here it is wrong:
+     the decision lives in a cookie, and reading it during render would make
+     this page's HTML depend on the visitor — which is exactly what stops it
+     being cached for everyone. One extra render on first load is the price of
+     a cacheable page, and it is the right way round for a banner that is
+     allowed to appear a beat late. */
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const raw = document.cookie.split('; ').find((c) => c.startsWith(`${CONSENT_COOKIE}=`))?.split('=')[1];
     const stored = readConsent(raw);
@@ -151,6 +159,7 @@ export function ConsentBanner() {
     const reopen = () => { setDetail(true); setOpen(true); };
     window.addEventListener(OPEN_CONSENT_EVENT, reopen);
     return () => window.removeEventListener(OPEN_CONSENT_EVENT, reopen);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   const decide = (c: Choices) => {

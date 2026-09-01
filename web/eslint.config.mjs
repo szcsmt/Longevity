@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    /* A standalone CommonJS preview script, run by hand to look at the customer
+       letters. It is not part of the application and never reaches the browser,
+       so the app's module rules do not apply to it — and rewriting it as ESM to
+       satisfy a linter it has no business being measured by would be work in
+       the wrong direction. */
+    "scripts/letters-preview.cjs",
   ]),
 ]);
 

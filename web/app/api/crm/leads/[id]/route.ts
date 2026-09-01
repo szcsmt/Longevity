@@ -4,7 +4,7 @@ import { COUNTRIES } from '@/lib/crm/language';
 import { findContact, getAgency, protectionDays } from '@/lib/crm/partners';
 import {
   ClaimConflict, CrmConflict, addNote, addTask, archiveLead, blockContactOf, endNurture, getLead,
-  isOutreachChannel, logOutreach, logTouch, mergeLeads, purgeLead, registerAgency, releaseClaim,
+  isOutreachChannel, logOutreach, logTouch, mergeLeads, purgeLead, registerAgency, releaseClaim, sendWhatsAppToLead, setCallback,
   setAwaitingReply, setNurture, setQualification, toggleTask, unarchiveLead, updateLead,
 } from '@/lib/crm/store';
 import { LOST_REASONS, SCORES, STAGES } from '@/lib/crm/types';
@@ -98,6 +98,28 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (!String(body.title || '').trim()) return Response.json({ ok: false, error: 'empty task' }, { status: 400 });
       lead = await addTask(id, String(body.title), body.due ? String(body.due) : undefined, actor);
       break;
+    case 'whatsapp': {
+      /* Writing to a buyer is ordinary sales work, so it sits with canEdit —
+         but the refusals need saying in words rather than as a bare 400, because
+         each one has a different thing to do about it. */
+      const { result, lead: after } = await sendWhatsAppToLead(id, String(body.text || ''), actor);
+      if (result !== 'sent') {
+        const why = result === 'no-number'
+          ? 'Ehhez a leadhez nincs használható telefonszám.'
+          : result === 'disabled'
+            ? 'A WhatsApp-küldés nincs beállítva ezen a rendszeren.'
+            : 'A Meta nem fogadta el az üzenetet — valószínűleg letelt a 24 órás ablak, amíg szabad szöveget lehet küldeni.';
+        return Response.json({ ok: false, error: why, result }, { status: 400 });
+      }
+      lead = after;
+      break;
+    }
+    case 'setCallback':
+      /* Changing or dropping the call-back the CRM booked when the call was
+         logged. Same permission as logging it — the person who made the call
+         is the person who knows when the next one should be. */
+      lead = await setCallback(id, body.due === null ? null : String(body.due || ''), actor);
+      break;
     case 'toggleTask':
       lead = await toggleTask(id, String(body.taskId || ''));
       break;
@@ -112,7 +134,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
          with canEdit like notes and tasks rather than with the owner. An
          unknown key returns null and answers 404 — the UI only ever sends one
          of the six it renders. */
-      lead = await logTouch(id, String(body.touch || ''), body.note ? String(body.note) : undefined, actor);
+      lead = await logTouch(
+        id, String(body.touch || ''), body.note ? String(body.note) : undefined, actor,
+        /* undefined → the touch's own default interval; null → the caller said
+           this one needs no chasing; a date → they picked one. */
+        body.callback === null ? null : body.callback ? String(body.callback) : undefined,
+      );
       break;
     case 'outreach': {
       /* Fired by the lead page when somebody presses Email, WhatsApp or Call.

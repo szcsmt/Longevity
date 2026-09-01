@@ -33,8 +33,8 @@ describe('fit', () => {
     const rich = fitScore(lead({ qualification: { budget: entry, currency: 'THB' } }));
     const poor = fitScore(lead({ qualification: { budget: entry - 1, currency: 'THB' } }));
 
-    assert.ok(rich.reasons.some((r) => /covers an entry-level villa/.test(r)));
-    assert.ok(poor.reasons.some((r) => /under the entry price/.test(r)));
+    assert.ok(rich.reasons.some((r) => /elég egy belépő szintű villára/.test(r)));
+    assert.ok(poor.reasons.some((r) => /a belépő ár alatt/.test(r)));
     assert.ok(rich.value > poor.value);
   });
 
@@ -42,8 +42,8 @@ describe('fit', () => {
     // Recorded in euros with no rate configured: we know the number and cannot
     // line it up, and guessing either way would be a guess.
     const s = fitScore(lead({ qualification: { budget: 300_000, currency: 'EUR' } }));
-    assert.ok(s.reasons.some((r) => /not comparable/.test(r)));
-    assert.equal(s.missing.includes('Budget'), false, 'it is answered, just not comparable');
+    assert.ok(s.reasons.some((r) => /nem összehasonlítható/.test(r)));
+    assert.equal(s.missing.includes('keret'), false, 'it is answered, just not comparable');
   });
 
   it('separates a low score from an unknown one', () => {
@@ -146,7 +146,7 @@ describe('reading the two together', () => {
       qualification: { budget: 20_000_000, currency: 'THB', timeframe: '0-3', purpose: 'investment', financing: 'cash', decision: 'sole' },
     }));
     const quiet = engagementScore(lead());
-    assert.match(scoreVerdict(fit, quiet), /gone quiet/);
+    assert.match(scoreVerdict(fit, quiet), /elhallgatott/);
   });
 
   it('names the one that eats a fortnight', () => {
@@ -156,10 +156,10 @@ describe('reading the two together', () => {
     const chatty = engagementScore(lead({
       history: [ev('visit', 'Site visit', true), ev('call', 'Spoke by phone', true), ev('download', 'Opened: Brochure')],
     }));
-    assert.match(scoreVerdict(poor, chatty), /may not be able to buy/);
+    assert.match(scoreVerdict(poor, chatty), /nem tud venni/);
   });
 
   it('says "qualify them" rather than "low" when nobody has asked anything', () => {
-    assert.match(scoreVerdict(fitScore(lead()), engagementScore(lead())), /Too little known/);
+    assert.match(scoreVerdict(fitScore(lead()), engagementScore(lead())), /Túl keveset tudunk/);
   });
 });

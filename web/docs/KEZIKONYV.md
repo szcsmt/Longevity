@@ -7,13 +7,24 @@ Ez a kézikönyv az admin felület (`/admin`) napi használatát írja le. Minde
 ## 1. Belépés
 
 - Cím: `/admin/login`
-- Felhasználónév + jelszó. A munkamenet 30 napig érvényes (cookie), utána újra be kell lépni.
-- Kétféle fiók létezik:
-  - **admin** — mindent láthat és módosíthat,
-  - **viewer** (megfigyelő) — mindent lát, de semmit nem módosíthat. A bal oldalsáv alján „👁 View only" jelvény mutatja, és minden módosító gomb inaktív. Vendégnek, befektetőnek, auditornak való.
-- Kilépés: a bal oldalsáv alján a Logout gomb.
+- Felhasználónév + jelszó. A belépés **12 óra tétlenség** után lejár, és **7 nap** után
+  mindenképp — akkor is, ha közben végig használod. Utána újra be kell jelentkezni.
+- Hat fiók-típus létezik (tulajdonos, sales vezető, értékesítő, pénzügy, marketing, néző) —
+  a részletes táblázat a **11. fejezetben**. A bal oldalsáv alján jelvény mutatja, melyikkel
+  vagy bent; a tulajdonos nem kap jelvényt, mert nála úgyis minden látszik.
+- Kilépés: a bal oldalsáv alján a Logout gomb. Ez **valóban lezárja** a munkamenetet a
+  szerveren, nem csak a böngészőt kéri meg, hogy felejtse el.
+- Ha valakit ki kell léptetni minden eszközéről — távozó munkatárs, elveszett telefon —, azt
+  a tulajdonos a **Biztonság** oldalon teszi meg (11b. fejezet).
 
-A felület minden oldala kb. 6 másodpercenként magától frissül — nem kell F5-öt nyomni, a jelvények és a listák mindig az aktuális állapotot mutatják.
+A felület magától frissül, amíg dolgozol rajta — nem kell F5-öt nyomni. Percenként
+egyszer néz rá az adatokra, **de csak akkor**, ha a fül elöl van és tíz percen belül
+hozzányúltál valamihez. Ha átváltasz egy másik fülre vagy hazamész, leáll; amikor
+visszajössz, azonnal frissít, mielőtt végigfutna a szemed az oldalon.
+
+Ez nem takarékosság a látszaton: korábban hat másodpercenként frissült, éjjel-nappal,
+akkor is, ha senki nem nézte — és ezzel egyetlen nyitva felejtett fül egy nap alatt
+elhasználta az adatbázis havi keretét, amitől az egész rendszer leállt.
 
 ---
 
@@ -152,6 +163,26 @@ szabad szövegként, mert az „UK", a „United Kingdom" és az „England" há
 riportban. Üresre állítva visszatér a telefonszám szerinti olvasatra. Az **Edit** gombbal mind az öt kontaktmező (név, e-mail, telefon, WhatsApp, villa) szerkeszthető; minden módosítás bekerül az előzményekbe.
 
 Alatta gyorsgombok: **✉ Email** (levelezőt nyit), **WhatsApp** (wa.me link), **Call** (tárcsázás).
+
+### WhatsApp — a CRM-ből írj, ne a telefonodról
+
+A lead lapján a **WhatsApp** gombra kattintva megnyílik egy írómező. Amit ideírsz, az a
+**céges WhatsApp-számról** megy ki, és felkerül a lead előzményére — ugyanúgy, mint egy
+elküldött e-mail: elindul a válasz-időzítő, és az „Új" lead átkerül a „Kapcsolatban" fázisba.
+
+Korábban ez a gomb a saját telefonod WhatsAppját nyitotta meg. Ezért az a beszélgetés, ami a
+legfontosabb — az, ami egy igazi hívás után következik, ahol az ár szóba kerül — sehol nem
+látszott a CRM-ben, és a kollégával együtt távozott a cégtől.
+
+**Egy szabály, ami nem a miénk:** ha a vevő több mint 24 órája nem írt neked WhatsAppon, a
+Meta nem engedi a szabad szöveget. Ilyenkor az írómező fölött piros figyelmeztetés jelenik
+meg, még mielőtt begépelnéd az üzenetet. Ha mégis elküldöd, a rendszer megmondja, hogy nem
+ment ki — **és semmi nem kerül fel az előzményre**, mert egy előzmény, ami szerint válaszoltál
+a vevőnek, holott nem, rosszabb, mint az üres.
+
+Ilyenkor hívd fel, vagy írj e-mailt.
+
+---
 
 ### Ha a vevő ír, 24 óránk van válaszolni
 
@@ -924,6 +955,160 @@ helyettesítése normális.
 Új fiókot a `CRM_USERS` környezeti változóban lehet felvenni, `név:jelszó:szerep` alakban.
 Ha a szerep hiányzik **vagy elgépelted**, a fiók tulajdonosi jogot kap — egy elgépelés soha
 ne zárjon ki valakit a saját CRM-jéből. Szólj, ha kell egy, és beállítom.
+
+---
+
+## 11b2. Ha elromlik, szólni fog
+
+A rendszer mostantól **e-mailt küld, ha hibázik** — a `CRM_ALERT_TO` címre, vagy ha az nincs
+beállítva, oda, ahova a napi mentés megy.
+
+Mit jelent ez a gyakorlatban: ha egy oldal nem tölt be, ha az adatbázis nem válaszol, ha az
+éjszakai levélszinkron elakadt, vagy ha a mentés nem ment ki — arról kapsz egy levelet, a
+tárggyal `⚠ CRM hiba`. Eddig ezek a hibák a szolgáltató naplójában ültek, amit senki nem olvas,
+és a CRM kétszer állt le úgy ebben a hónapban, hogy te vetted észre, amikor használni akartad.
+
+**Nem fog elárasztani.** Ugyanarról a hibáról óránként legfeljebb egy levél megy ki, benne
+azzal, hogy hányszor fordult elő. Ha egyszerre több különböző dolog romlik el, a levél
+megmondja, hányról hallgatott. Egy riasztás, ami tizennégyezerszer megérkezik, olyan riasztás,
+amit az ember mappába rak — és onnantól az igaziakat sem olvassa el.
+
+---
+
+## 11b3. Ha valaki próbálgatja a jelszavakat
+
+A CRM megszámolja a sikertelen belépéseket, és zárol — kétféleképpen:
+
+- **Gépenként:** 8 rossz jelszó egy címről, és az a gép 15 percig nem próbálkozhat.
+- **Fiókonként:** 12 rossz jelszó ugyanarra a felhasználónévre, **bárhonnan** — és az a fiók
+  zárol. Ez a fontosabb: egy támadó könnyen vált gépet, de a felhasználónevet nem tudja
+  kikerülni.
+
+Aki zárolva van, magyar üzenetet kap arról, hogy mikor próbálkozhat újra. Ha valaki tovább
+próbálkozik a zárolás letelte után is, a következő zár kétszer olyan hosszú.
+
+**A saját embereidet ez nem fogja kizárni.** Egy elgépelt jelszó hétfőn és egy csütörtökön nem
+adódik össze — a régi próbálkozások elévülnek. És amint valaki helyesen lép be, a számláló
+nullázódik.
+
+A sikertelen belépések a **Biztonság** oldal naplójában is látszanak, címmel együtt. Ha ott
+sok idegen címet látsz, cserélj jelszót.
+
+---
+
+## 11c. Mentés és visszaállítás
+
+Minden éjjel kimegy egy teljes mentés e-mailben a `CRM_NOTIFY_TO` címre. Ebben benne van
+minden lead (az archiváltak is), a teljes masterplan és annak előzménye, a jegyzet-tábla,
+az összes ügynökség és a tiltólista.
+
+### A fájl titkosítva van
+
+A csatolmány neve `crm-backup-2026-08-31.lrb`, és **jelszó nélkül semmit nem ér**. Ez
+szándékos: enélkül bárki, aki hozzáfér ehhez a postafiókhoz, elolvashatná minden vevő
+nevét, telefonszámát és alkudott árát. Egy feltört postafiók így nem jelenti az egész
+ügyféladatbázis elvesztését.
+
+A jelszó a Vercelen áll, `CRM_BACKUP_KEY` néven.
+
+> **Tedd el máshova is** — jelszókezelőbe, vagy akárhova, ami nem a Vercel. Az a nap,
+> amikor mentésre lesz szükséged, könnyen lehet olyan nap, amikor éppen a Vercel-fiók a
+> probléma. Jelszó nélkül a mentések pontosan annyit érnek, mintha soha nem készültek volna.
+
+Ha nincs beállítva jelszó, a mentés **akkor is elmegy** — mert egy hiányzó mentés rosszabb,
+mint egy olvasható —, de a levél tárgya `⚠`-vel kezdődik és a szövege megmondja, hogy
+titkosítatlan.
+
+### Visszaállítás
+
+Mentsd le a csatolmányt, majd a projekt mappájában:
+
+```
+npm run restore -- crm-backup-2026-08-31.lrb
+```
+
+Ez **semmit nem ír**. Kiírja, mi van a mentésben, melyik adatbázisra mutat éppen, és mi
+történne. Olvasd el — a legdrágább hiba nem a sikertelen visszaállítás, hanem a sikeres,
+rossz helyre.
+
+Ha jónak látod:
+
+```
+npm run restore -- crm-backup-2026-08-31.lrb --apply
+```
+
+Alapból csak azt pótolja, ami hiányzik; a meglévő rekordokhoz nem nyúl. Ha a mentésben lévő
+állapotot akarod visszaállítani a mostani helyett, akkor `--apply --overwrite`. Kétszer
+lefuttatni ártalmatlan: minden rekord azonosító alapján párosul, nem duplázódik semmi.
+
+Ha csak bele akarsz nézni:
+
+```
+npm run restore -- crm-backup-2026-08-31.lrb --out=olvashato.json
+```
+
+Ez kititkosítja egy fájlba, és az adatbázishoz hozzá sem nyúl.
+
+### Amit a visszaállítás nem hoz vissza
+
+A beállításokat: a Gmail-kapcsolatot, az élő belépéseket és a hozzáférési naplót. Ezek
+szándékosan nincsenek benne a mentésben — azok kulcsok, nem adatok, és egy mentési fájl ne
+legyen egyben kulcscsomó is. Visszaállítás után jelentkezz be, és kösd újra a postafiókot.
+Ez egy perc.
+
+---
+
+## 11b. Biztonság — ki van bent és mi ment ki
+
+`/admin/security`, **csak a tulajdonos** látja. Három kérdésre válaszol, és egyikre sem volt
+válasz sehol azelőtt: ki van most belépve, ki próbált bejönni, és mi hagyta el a rendszert.
+
+### Élő munkamenetek
+
+Minden belépés egy eszközön külön sorban áll: melyik fiók, milyen böngészőből, melyik
+IP-címről, mikor lépett be és mikor csinált utoljára valamit.
+
+- **Kiléptetés** — ezt az egy eszközt dobja ki. A többi eszközén marad bent.
+- **Minden eszközön** — a fiók összes belépését megszakítja. **Ezt kell megnyomni még aznap,
+  amikor valaki távozik**, vagy amikor egy telefon elveszik.
+
+Azelőtt egyik sem létezett. A belépési süti a jelszóból számolódott: minden eszközön ugyanaz
+volt, soha nem járt le, és egyetlen embert nem lehetett kiléptetni — csak úgy, ha mindenkinek
+jelszót cserélsz. A „Sign out" gomb megkérte a böngészőt, hogy felejtse el a kódot; a kód
+maga attól még működött tovább.
+
+Most a belépés **12 óra tétlenség** után lejár, és **7 nap** után mindenképp — akkor is, ha
+folyamatosan használják. Újra be kell jelentkezni; ennyi az ára.
+
+### Fiókok
+
+Ki tud belépni, milyen szerepkörrel, és **hogy a jelszava olvashatóan áll-e a beállításokban**.
+
+Ha egy fióknál az áll, hogy „jelszó olvashatóan tárolva", az azt jelenti: aki hozzáfér a
+Vercel környezeti változóihoz, elolvashatja a jelszavát. Nem a CRM-be jutna be vele — abba
+úgyis bejut, ha odáig eljutott —, hanem oda, ahol az illető ugyanezt a jelszót használja.
+Ez ellen a jelszót titkosítva kell eltárolni:
+
+```
+node scripts/crm-hash.mjs
+```
+
+Beírod a jelszót, kapsz egy `scrypt$…` kezdetű hosszú szöveget, és **azt** írod a jelszó
+helyére a `CRM_USERS` értékben. **A belépés semmit nem változik** — ugyanaz a jelszó,
+ugyanúgy. Csak a beállításokból nem olvasható ki többé.
+
+### Napló
+
+Minden esemény, amivel adat mozdul: belépés, sikertelen belépés, kilépés, CSV export,
+kiküldött mentés, végleges törlés — fiókkal, időponttal, IP-címmel. Hat hónapra visszamenőleg.
+
+A CSV exportnál az is odakerül, **hány leadet** és **milyen szűrővel** töltöttek le. Ez a
+sor a különbség aközött, hogy valaki a saját négy elmaradt leadjét mentette ki, és aközött,
+hogy valaki az egész névsort.
+
+Ha 24 órán belül **öt vagy több sikertelen belépés** volt, az oldal tetején figyelmeztetés
+jelenik meg a címekkel. Ha ez nem te voltál: cserélj jelszót, és nyomd meg a „Minden
+eszközön" gombot.
 
 ---
 

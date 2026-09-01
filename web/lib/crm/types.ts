@@ -124,10 +124,10 @@ export interface Reservation {
    whether the contract had gone out that morning or was signed and sitting in a
    drawer. */
 export const CONTRACT_STEPS = [
-  { id: 'none',   label: 'Not started' },
-  { id: 'sent',   label: 'Sent to the buyer' },
-  { id: 'review', label: 'Under review' },
-  { id: 'signed', label: 'Signed' },
+  { id: 'none',   label: 'Nincs elindítva' },
+  { id: 'sent',   label: 'Kiküldve a vevőnek' },
+  { id: 'review', label: 'Véleményezés alatt' },
+  { id: 'signed', label: 'Aláírva' },
 ] as const;
 
 export type ContractStatus = (typeof CONTRACT_STEPS)[number]['id'];
@@ -193,17 +193,22 @@ export interface VillaHistoryEntry {
    step. `blurb` is what the stage MEANS — shown where somebody is choosing
    one, because "Presentation" only stops being a guess once it says that a
    presentation actually happened. */
+/* The labels are in Hungarian because the people reading them are. The ids
+   stay English: they are in stored records, in the partner API and in three
+   years of history, and renaming those would be renaming the data to relabel
+   a dropdown. What a stage MEANS is on the blurb, because a stage everybody
+   reads differently is a funnel that measures nothing. */
 export const STAGES: { id: Stage; label: string; blurb: string }[] = [
-  { id: 'new',          label: 'New',          blurb: 'Arrived. Nobody has spoken to them yet.' },
-  { id: 'contacted',    label: 'Contacted',    blurb: 'A real conversation has happened.' },
-  { id: 'qualified',    label: 'Qualified',    blurb: 'We know the budget, the timeframe, what it is for and where the money comes from.' },
-  { id: 'presentation', label: 'Presentation', blurb: 'A presentation or Zoom has actually taken place.' },
-  { id: 'visit',        label: 'Visit',        blurb: 'They have seen it — on site, or a live video walkthrough.' },
-  { id: 'negotiation',  label: 'Negotiation',  blurb: 'Talking about a specific unit, a price and terms.' },
-  { id: 'reserved',     label: 'Reserved',     blurb: 'A unit is held for them.' },
-  { id: 'contract',     label: 'Contract',     blurb: 'The SPA is out, under review, or signed.' },
-  { id: 'won',          label: 'Won',          blurb: 'Sold.' },
-  { id: 'lost',         label: 'Lost',         blurb: 'Not this one. Needs a reason.' },
+  { id: 'new',          label: 'Új',              blurb: 'Megérkezett. Még senki nem beszélt vele.' },
+  { id: 'contacted',    label: 'Kapcsolatban',    blurb: 'Volt egy valódi beszélgetés.' },
+  { id: 'qualified',    label: 'Minősítve',       blurb: 'Tudjuk a keretet, a határidőt, hogy mire kell és honnan a pénz.' },
+  { id: 'presentation', label: 'Bemutató',        blurb: 'Volt bemutató vagy Zoom — ténylegesen megtörtént.' },
+  { id: 'visit',        label: 'Megnézte',        blurb: 'Látta: a helyszínen vagy élő videós körbevezetésen.' },
+  { id: 'negotiation',  label: 'Tárgyalás',       blurb: 'Konkrét lakásról, árról és feltételekről beszéltek.' },
+  { id: 'reserved',     label: 'Lefoglalva',      blurb: 'Egy lakás a nevén van.' },
+  { id: 'contract',     label: 'Szerződés',       blurb: 'Az adásvételi kiment, véleményezés alatt van, vagy alá van írva.' },
+  { id: 'won',          label: 'Megvette',        blurb: 'Eladva.' },
+  { id: 'lost',         label: 'Elveszett',       blurb: 'Ez nem jött össze. Indokot kér.' },
 ];
 
 /* ── Reading the order, instead of hard-coding lists of stage names ──
@@ -227,6 +232,14 @@ export const atOrBeyond = (id: string | undefined, target: Stage): boolean =>
   id !== 'lost' && stageIndex(id) >= stageIndex(target);
 
 export const SCORES: Score[] = ['hot', 'warm', 'cold'];
+
+/* The ids stay English — they are stored on every lead and read by the
+   reports — and what the screen shows is the temperature in words a
+   salesperson uses out loud. */
+export const SCORE_LABELS: Record<Score, string> = {
+  hot: 'Forró', warm: 'Meleg', cold: 'Hideg',
+};
+export const scoreLabel = (s?: Score): string => (s ? SCORE_LABELS[s] || s : '—');
 
 export interface Note {
   id: string;
@@ -265,62 +278,62 @@ export interface SentEmail {
    must never block anything. */
 
 export const TIMEFRAMES = [
-  { id: '0-3',     label: 'Within 3 months' },
-  { id: '3-6',     label: '3 to 6 months' },
-  { id: '6-12',    label: '6 to 12 months' },
-  { id: '12+',     label: 'Over a year' },
-  { id: 'unknown', label: 'Not known yet' },
+  { id: '0-3',     label: '3 hónapon belül' },
+  { id: '3-6',     label: '3–6 hónap' },
+  { id: '6-12',    label: '6–12 hónap' },
+  { id: '12+',     label: 'Egy éven túl' },
+  { id: 'unknown', label: 'Még nem tudjuk' },
 ] as const;
 
 export const PURPOSES = [
-  { id: 'investment', label: 'Investment' },
-  { id: 'lifestyle',  label: 'Lifestyle' },
-  { id: 'mixed',      label: 'Both' },
+  { id: 'investment', label: 'Befektetés' },
+  { id: 'lifestyle',  label: 'Saját használat' },
+  { id: 'mixed',      label: 'Mindkettő' },
 ] as const;
 
 export const FINANCING = [
-  { id: 'cash',      label: 'Cash' },
-  { id: 'financing', label: 'Needs financing' },
-  { id: 'unknown',   label: 'Not known yet' },
+  { id: 'cash',      label: 'Készpénz' },
+  { id: 'financing', label: 'Finanszírozás kell' },
+  { id: 'unknown',   label: 'Még nem tudjuk' },
 ] as const;
 
 export const DECISION = [
-  { id: 'sole',    label: 'Decides alone' },
-  { id: 'shared',  label: 'Shares the decision' },
-  { id: 'unknown', label: 'Not known yet' },
+  { id: 'sole',    label: 'Egyedül dönt' },
+  { id: 'shared',  label: 'Mással közösen dönt' },
+  { id: 'unknown', label: 'Még nem tudjuk' },
 ] as const;
 
 /** Have they been to Koh Samui. A buyer who has stood on the plot behaves
     nothing like one who has only seen photographs. */
 export const VISITS = [
-  { id: 'been',    label: 'Has been to Samui' },
-  { id: 'planned', label: 'Planning a visit' },
-  { id: 'no',      label: 'Not been, no plans' },
-  { id: 'unknown', label: 'Not known yet' },
+  { id: 'been',    label: 'Járt már Samuin' },
+  { id: 'planned', label: 'Tervez látogatást' },
+  { id: 'no',      label: 'Nem járt, nem is tervez' },
+  { id: 'unknown', label: 'Még nem tudjuk' },
 ] as const;
 
 export const MOTIVATIONS = [
-  { id: 'roi',          label: 'Rental return' },
-  { id: 'appreciation', label: 'Capital growth' },
-  { id: 'personal',     label: 'Personal use' },
-  { id: 'retirement',   label: 'Retirement' },
-  { id: 'diversify',    label: 'Diversification' },
-  { id: 'other',        label: 'Other' },
+  { id: 'roi',          label: 'Bérbeadási hozam' },
+  { id: 'appreciation', label: 'Értéknövekedés' },
+  { id: 'personal',     label: 'Saját használat' },
+  { id: 'retirement',   label: 'Nyugdíjas évek' },
+  { id: 'diversify',    label: 'Vagyondiverzifikáció' },
+  { id: 'other',        label: 'Egyéb' },
 ] as const;
 
 /** What stands in the way. Distinct from a lost reason: this is the objection
     while the deal is alive, and it is the thing the next conversation has to
     answer. */
 export const OBJECTIONS = [
-  { id: 'price',      label: 'Price' },
-  { id: 'ownership',  label: 'Ownership structure' },
-  { id: 'legal',      label: 'Legal / title' },
-  { id: 'roi',        label: 'Doubts the return' },
-  { id: 'location',   label: 'Location' },
-  { id: 'trust',      label: 'Trust in the developer' },
-  { id: 'timing',     label: 'Timing' },
-  { id: 'financing',  label: 'Financing' },
-  { id: 'other',      label: 'Other' },
+  { id: 'price',      label: 'Ár' },
+  { id: 'ownership',  label: 'Tulajdoni forma' },
+  { id: 'legal',      label: 'Jogi háttér / tulajdonlap' },
+  { id: 'roi',        label: 'Kétli a hozamot' },
+  { id: 'location',   label: 'Elhelyezkedés' },
+  { id: 'trust',      label: 'Bizalom a fejlesztőben' },
+  { id: 'timing',     label: 'Időzítés' },
+  { id: 'financing',  label: 'Finanszírozás' },
+  { id: 'other',      label: 'Egyéb' },
 ] as const;
 
 export const CURRENCIES = ['THB', 'EUR', 'USD', 'GBP'] as const;
@@ -340,11 +353,11 @@ export interface Qualification {
 }
 
 export const LOST_REASONS = [
-  { id: 'price',       label: 'Price' },
-  { id: 'timing',      label: 'Timing — not now' },
-  { id: 'competitor',  label: 'Bought elsewhere' },
-  { id: 'unreachable', label: 'Went silent / unreachable' },
-  { id: 'other',       label: 'Other' },
+  { id: 'price',       label: 'Ár' },
+  { id: 'timing',      label: 'Időzítés — most nem' },
+  { id: 'competitor',  label: 'Máshol vásárolt' },
+  { id: 'unreachable', label: 'Elhallgatott / elérhetetlen' },
+  { id: 'other',       label: 'Egyéb' },
 ] as const;
 
 /* ── Nurture ──
@@ -362,12 +375,12 @@ export const LOST_REASONS = [
    queue until that date, and comes back on it. Nothing else changes. */
 
 export const NURTURE_REASONS = [
-  { id: 'visit',   label: 'Waiting on a trip to Thailand' },
-  { id: 'funds',   label: 'Waiting on funds' },
-  { id: 'later',   label: 'Buying, but not this year' },
-  { id: 'partner', label: 'Needs a partner’s decision' },
-  { id: 'build',   label: 'Waiting on construction progress' },
-  { id: 'other',   label: 'Other' },
+  { id: 'visit',   label: 'Thaiföldi útra vár' },
+  { id: 'funds',   label: 'Forrásra vár' },
+  { id: 'later',   label: 'Vásárol, de nem idén' },
+  { id: 'partner', label: 'Partner döntésére vár' },
+  { id: 'build',   label: 'Az építkezés haladására vár' },
+  { id: 'other',   label: 'Egyéb' },
 ] as const;
 
 /* ══════════════════ External agencies and the agents who introduce buyers ══════════════════
@@ -565,16 +578,30 @@ export interface TouchOption {
      twice, no luck" — but it is not contact, and nothing downstream should
      treat it as if it were. */
   reached: boolean;
+  /* When to ring them back, in days, if nobody says otherwise. The point of
+     the number is that there IS one: a call logged with no next step is how a
+     lead gets lost, and the note somebody typed instead ("call him Tuesday")
+     is not a reminder — it is a sentence in a box nobody reopens.
+
+     They differ because the calls differ. A ring-out gets tried again
+     tomorrow; a real conversation gets a few days to breathe; somebody who
+     has just walked the site is thinking about it now and wants an answer
+     before the week ends. */
+  followUpDays: number;
 }
 
 export const TOUCHES: TouchOption[] = [
-  { key: 'call',        kind: 'call',     label: 'Spoke by phone', past: 'Spoke by phone',    reached: true },
-  { key: 'call-missed', kind: 'call',     label: 'No answer',      past: 'Called, no answer', reached: false },
-  { key: 'video',       kind: 'video',    label: 'Video call',     past: 'Video call',        reached: true },
-  { key: 'meeting',     kind: 'meeting',  label: 'Meeting',        past: 'Met in person',     reached: true },
-  { key: 'visit',       kind: 'visit',    label: 'Site visit',     past: 'Site visit',        reached: true },
-  { key: 'whatsapp',    kind: 'whatsapp', label: 'WhatsApp',       past: 'Wrote on WhatsApp', reached: false },
+  { key: 'call',        kind: 'call',     label: 'Beszéltünk',      past: 'Beszéltünk telefonon',   reached: true,  followUpDays: 3 },
+  { key: 'call-missed', kind: 'call',     label: 'Nem vette fel',   past: 'Hívtuk, nem vette fel',  reached: false, followUpDays: 1 },
+  { key: 'video',       kind: 'video',    label: 'Videóhívás',      past: 'Videóhívás',             reached: true,  followUpDays: 3 },
+  { key: 'meeting',     kind: 'meeting',  label: 'Találkozó',       past: 'Személyes találkozó',    reached: true,  followUpDays: 3 },
+  { key: 'visit',       kind: 'visit',    label: 'Helyszíni séta',  past: 'Helyszíni séta',         reached: true,  followUpDays: 2 },
+  { key: 'whatsapp',    kind: 'whatsapp', label: 'WhatsApp',        past: 'WhatsApp üzenet',        reached: false, followUpDays: 2 },
 ];
+
+/** The title a scheduled call-back gets. One phrase, so the follow-up list and
+    the queue can recognise it and nobody has to read it twice. */
+export const CALLBACK_TITLE = 'Visszahívás';
 
 export const touchByKey = (key: string): TouchOption | undefined =>
   TOUCHES.find((t) => t.key === key);
@@ -618,6 +645,14 @@ export interface Lead {
      Cleared when they reply (or the operator clears it). After 3 days the
      CRM flags the lead and the linked plot. */
   awaiting_reply_since?: string;
+
+  /* When they last wrote to us ON WHATSAPP. Meta's rule, not ours: outside 24
+     hours from the customer's own last message, only a pre-approved template
+     may be sent, and free text is refused. The CRM has to know that before
+     somebody types out a paragraph, because being told afterwards that it did
+     not go is how people go back to sending from their own handset — which is
+     the entire thing this integration exists to stop. */
+  wa_last_inbound?: string;
 
   /* Why the deal was lost — one of LOST_REASONS. The free-text detail lives
      in a "Lost:" note; this field feeds reporting. */

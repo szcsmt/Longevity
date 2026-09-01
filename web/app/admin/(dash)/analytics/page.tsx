@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ReportTabs } from '@/components/crm/report-tabs';
 import { analytics, type Range } from '@/lib/crm/analytics';
 import { fmtInt, fmtTHBshort } from '@/lib/crm/format';
 import { AreaChart, BarList, Donut, Funnel, StackedBarList } from '@/components/crm/charts';
@@ -39,6 +40,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
+      <ReportTabs />
       <div className="crm-head">
         <div>
           <h1 className="crm-title">Analitika</h1>

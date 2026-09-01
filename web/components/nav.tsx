@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useT } from '@/lib/i18n';
 import { LanguageSelector } from '@/components/language-selector';
 
@@ -66,7 +67,10 @@ export function Nav() {
         animation: 'fadeIn 1.8s ease 0.6s both',
       }}>
         {/* Logo */}
-        <a href="/" style={{ display: 'block', pointerEvents: 'auto', lineHeight: 0 }}>
+        {/* Link rather than <a>: a plain anchor to an internal page reloads the
+            whole application, which on the home page throws away the video the
+            hero has already fetched. */}
+        <Link href="/" style={{ display: 'block', pointerEvents: 'auto', lineHeight: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/LOGO.svg"
@@ -76,7 +80,7 @@ export function Nav() {
             style={{ height: 'clamp(58px,6.8vw,92px)', width: 'auto', display: 'block', opacity: 1,
               filter: 'drop-shadow(0 2px 14px rgba(6,14,8,0.7)) drop-shadow(0 0 4px rgba(6,14,8,0.55))' }}
           />
-        </a>
+        </Link>
 
         {/* Language selector + hamburger */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px,1.4vw,18px)', pointerEvents: 'auto' }}>

@@ -32,7 +32,7 @@ export default async function MasterplanPage() {
     .filter((l) => linkedBuyers.has(l.id) || (!l.archived_at && l.stage !== 'lost'))
     .map((l) => ({
       id: l.id,
-      name: `${l.name || l.email || 'Unknown'}${l.archived_at ? ' (archived)' : ''}`,
+      name: `${l.name || l.email || 'Névtelen'}${l.archived_at ? ' (archived)' : ''}`,
       awaitingSince: l.awaiting_reply_since || null,
       villa: (l.villa || '').trim(),
       stage: l.stage,
@@ -44,8 +44,8 @@ export default async function MasterplanPage() {
         <div>
           <h1 className="crm-title">Masterplan</h1>
           <p className="crm-sub">
-            Availability, buyers and the 7/43/40/10 payment schedule across all {villas.length} residences —
-            click a villa to manage its sale.
+            Elérhetőség, vevők és a fizetési ütem mind a {villas.length} lakásra —
+            kattints egy villára az eladás kezeléséhez.
           </p>
         </div>
       </div>

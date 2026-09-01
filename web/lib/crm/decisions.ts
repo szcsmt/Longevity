@@ -47,6 +47,16 @@ export interface DecisionInput {
   issues: IntegrityIssue[];
 }
 
+/* The issue kinds are internal names — 'held-without-buyer' — and they were
+   being printed straight onto the screen. */
+const ISSUE_LABEL: Record<string, string> = {
+  'dangling-buyer':     'a vevő leadje eltűnt',
+  'archived-buyer':     'a vevő leadje archiválva',
+  'held-without-buyer': 'nincs megnevezve a vevő',
+  'lead-without-owner': 'nincs felelős értékesítő',
+  'unit-without-price': 'nincs ár a lakáson',
+};
+
 export function decisions({ villas, leads, holds, issues }: DecisionInput): Decision[] {
   const out: Decision[] = [];
 
@@ -97,7 +107,7 @@ export function decisions({ villas, leads, holds, issues }: DecisionInput): Deci
   for (const i of issues) {
     out.push({
       kind: 'integrity',
-      title: i.villaId ? `${i.villaId} · ${i.kind.replace(/-/g, ' ')}` : i.kind.replace(/-/g, ' '),
+      title: i.villaId ? `${i.villaId} · ${ISSUE_LABEL[i.kind] || i.kind}` : (ISSUE_LABEL[i.kind] || i.kind),
       detail: i.detail,
       href: i.leadId ? `/admin/leads/${i.leadId}` : '/admin/masterplan',
       waitingDays: null,

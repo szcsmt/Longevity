@@ -1,9 +1,10 @@
 import { Suspense } from 'react';
 import { can, canEdit } from '@/lib/crm/auth';
-import { listNotes } from '@/lib/crm/store';
+import { allLeadNotes, listNotes } from '@/lib/crm/store';
 import { status as googleStatus } from '@/lib/crm/google-tasks';
 import { status as gmailStatus } from '@/lib/crm/gmail';
 import { NotesBoard } from '@/components/crm/notes-board';
+import { LeadNotesFeed } from '@/components/crm/lead-notes-feed';
 import { GoogleTasksStrip } from '@/components/crm/google-tasks-strip';
 import { GmailStrip } from '@/components/crm/gmail-strip';
 
@@ -14,12 +15,17 @@ import { GmailStrip } from '@/components/crm/gmail-strip';
 export const dynamic = 'force-dynamic';
 
 export default async function NotesPage() {
-  const [notes, editable, google, gmail, owner] = await Promise.all([
-    listNotes(), canEdit(), googleStatus(), gmailStatus(), can('partners.write'),
+  const [notes, leadNotes, editable, google, gmail, owner] = await Promise.all([
+    listNotes(), allLeadNotes(), canEdit(), googleStatus(), gmailStatus(), can('partners.write'),
   ]);
   return (
     <>
       <NotesBoard initial={notes} readOnly={!editable} />
+
+      {/* The board is for the project; this is for the buyers. Kept apart
+          because they are two different kinds of writing, and mixing them was
+          the mistake that made the lead page unreadable. */}
+      <LeadNotesFeed items={leadNotes} />
       {/* Suspense because the strip reads the ?google= result of the consent redirect. */}
       <Suspense fallback={null}>
         <GoogleTasksStrip initial={google} readOnly={!editable} />

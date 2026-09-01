@@ -1,15 +1,31 @@
 /* Import hooks for running the domain layer under `node --test`.
 
    Two jobs: append `.ts` to the extensionless relative imports the project
-   uses, and stub the Next.js modules that only exist inside a request. The
-   stubs are inert — `cookies()` returns an empty jar, which is what an
-   unauthenticated call sees, and nothing under test reads a cookie. */
+   uses, and stub the Next.js modules that only exist inside a request.
+
+   The cookie jar used to be inert — `cookies()` returned nothing, which is
+   what an unauthenticated call sees, and nothing under test read a cookie.
+   That stopped being true the day the API routes got tested: their whole
+   subject is who is signed in, and every one of them asks the jar. So the stub
+   now reads `globalThis.__lrCookies`, which a test sets to sign itself in as
+   somebody. With nothing set it behaves exactly as before, so the domain tests
+   are unaffected — an empty jar is still an anonymous caller. */
 import { existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve as join } from 'node:path';
 
 const STUBS = {
-  'next/headers': 'data:text/javascript,export const cookies = async () => ({ get: () => undefined });',
+  'next/headers': 'data:text/javascript,' + encodeURIComponent(`
+    export const cookies = async () => ({
+      get: (name) => {
+        const v = globalThis.__lrCookies?.[name];
+        return v === undefined ? undefined : { name, value: v };
+      },
+      set: (name, value) => { (globalThis.__lrCookies ??= {})[name] = value; },
+      delete: (name) => { if (globalThis.__lrCookies) delete globalThis.__lrCookies[name]; },
+    });
+    export const headers = async () => new Headers(globalThis.__lrHeaders || {});
+  `),
   'server-only': 'data:text/javascript,',
 };
 

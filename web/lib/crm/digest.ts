@@ -30,6 +30,13 @@ export interface Digest {
      beats a task you set yourself, which beats a lead going stale. */
   unanswered: DigestLine[];   // they wrote to us and nobody has replied
   overdue: DigestLine[];      // open tasks past their due date
+  /* What was promised for today and for tomorrow. The digest used to name
+     only what had already been missed, which is the one moment a reminder can
+     no longer help: by the time a call-back is overdue, the promise is
+     already broken. Tomorrow's list is here so the day can be planned the
+     evening before rather than discovered at nine in the morning. */
+  today: DigestLine[];        // due today — the day's actual plan
+  tomorrow: DigestLine[];     // due tomorrow — so it can be arranged tonight
   untouched: DigestLine[];    // new leads nobody has picked up
   awaiting: DigestLine[];     // we wrote, they have gone quiet past the threshold
   warming: DigestLine[];      // opened or clicked in the last day — call them now
@@ -66,9 +73,10 @@ export async function buildDigest(now = new Date()): Promise<Digest> {
 
   const d: Digest = {
     date: today,
-    unanswered: [], overdue: [], untouched: [], awaiting: [],
+    unanswered: [], overdue: [], today: [], tomorrow: [], untouched: [], awaiting: [],
     warming: [], stalled: [], noNext: [], total: 0,
   };
+  const tomorrowDay = new Date(now.getTime() + DAY).toISOString().slice(0, 10);
 
   for (const l of leads) {
     if (l.stage === 'won' || l.stage === 'lost') continue;
@@ -80,9 +88,11 @@ export async function buildDigest(now = new Date()): Promise<Digest> {
     }
 
     for (const t of l.tasks) {
-      if (!t.done && t.due && t.due.slice(0, 10) < today) {
-        d.overdue.push(line(l, `${t.title} — due ${t.due.slice(0, 10)}`));
-      }
+      if (t.done || !t.due) continue;
+      const day = t.due.slice(0, 10);
+      if (day < today) d.overdue.push(line(l, `${t.title} — ${day} óta esedékes`));
+      else if (day === today) d.today.push(line(l, t.title));
+      else if (day === tomorrowDay) d.tomorrow.push(line(l, t.title));
     }
 
     if (l.stage === 'new' && l.created_at < newCut && !l.notes.length && !l.tasks.length) {
@@ -106,8 +116,12 @@ export async function buildDigest(now = new Date()): Promise<Digest> {
     if (hasNoNextStep(l)) d.noNext.push(line(l, 'no task, no reply expected — nothing scheduled'));
   }
 
+  /* Tomorrow is deliberately OUTSIDE the count. The headline answers "how much
+     is there to do today", and folding tomorrow into it would make every
+     morning look busier than it is — which is how a daily mail stops being
+     read. It still appears in the body, at the bottom, as a heads-up. */
   d.total =
-    d.unanswered.length + d.overdue.length + d.untouched.length +
+    d.unanswered.length + d.overdue.length + d.today.length + d.untouched.length +
     d.awaiting.length + d.warming.length + d.stalled.length + d.noNext.length;
   return d;
 }
@@ -159,13 +173,15 @@ export function digestHtml(d: Digest): string {
     <h1 style="margin:10px 0 0;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:30px;line-height:38px;color:${GOLD_HI};">${d.total} thing${d.total === 1 ? '' : 's'} to do today</h1>
   </td></tr>
 
-  ${section('Waiting on you', d.unanswered, true)}
-  ${section('Overdue', d.overdue, true)}
-  ${section('Nobody has picked these up', d.untouched, true)}
-  ${section('Warming up — they opened something', d.warming)}
-  ${section('Gone quiet', d.awaiting)}
-  ${section('Stalled', d.stalled)}
-  ${section('No next step', d.noNext)}
+  ${section('Rád várnak — írtak és nem válaszoltunk', d.unanswered, true)}
+  ${section('Lejárt', d.overdue, true)}
+  ${section('Mai teendők', d.today, true)}
+  ${section('Ezeket senki nem vette fel', d.untouched, true)}
+  ${section('Melegszik — megnyitott valamit', d.warming)}
+  ${section('Elhallgatott', d.awaiting)}
+  ${section('Elakadt', d.stalled)}
+  ${section('Nincs következő lépés', d.noNext)}
+  ${section('Holnapra beígérve', d.tomorrow)}
 
   <tr><td align="center" style="padding:34px 32px 0 32px;">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">

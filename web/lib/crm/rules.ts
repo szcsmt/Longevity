@@ -86,11 +86,11 @@ export function isStalled(lead: Lead): boolean {
    them first. "unknown" counts as unanswered on purpose: it is an honest
    answer to record, and it is still not knowing. */
 export const QUALIFYING: { key: 'budget' | 'timeframe' | 'purpose' | 'financing' | 'villa'; label: string }[] = [
-  { key: 'budget',    label: 'Budget' },
-  { key: 'timeframe', label: 'Timeframe' },
-  { key: 'purpose',   label: 'Purpose' },
-  { key: 'financing', label: 'Cash or financing' },
-  { key: 'villa',     label: 'Residence of interest' },
+  { key: 'budget',    label: 'keret' },
+  { key: 'timeframe', label: 'mikorra' },
+  { key: 'purpose',   label: 'mire kell' },
+  { key: 'financing', label: 'honnan a pénz' },
+  { key: 'villa',     label: 'melyik lakás' },
 ];
 
 export function missingQualification(lead: Lead): string[] {
@@ -103,6 +103,22 @@ export function missingQualification(lead: Lead): string[] {
     villa: Boolean((lead.villa || '').trim()),
   };
   return QUALIFYING.filter((f) => !answered[f.key]).map((f) => f.label);
+}
+
+/* ── Meta's twenty-four hours ──
+
+   Outside 24 hours from the customer's OWN last WhatsApp message, only a
+   pre-approved template may be sent and free text is refused. Meta's rule,
+   not ours, and there is no way round it — what the CRM can do is say so
+   BEFORE somebody writes a paragraph. Being told afterwards that it did not
+   go is exactly how people go back to sending from their own handset, which
+   is the thing the whole integration exists to stop.
+
+   Pure, and here rather than in the store, because the lead page needs to ask
+   it while somebody is typing. */
+export function waWindowOpen(lead: Lead, at = Date.now()): boolean {
+  if (!lead.wa_last_inbound) return false;
+  return at - new Date(lead.wa_last_inbound).getTime() < 24 * 3_600_000;
 }
 
 /** Active lead with no open task and no reply-timer: nobody owns its next step. */
@@ -142,6 +158,42 @@ function configuredAnswerHours(): number {
 }
 
 export const ANSWER_HOURS = configuredAnswerHours();
+
+/* ── How often the screen re-reads itself ──
+
+   Every CRM page re-runs its server components on a timer so that a new lead
+   or a colleague's edit appears without anybody pressing reload. That timer
+   was six seconds, and it did not care whether anybody was looking: a tab
+   left open on a second monitor re-read the entire database ten times a
+   minute, all night, all weekend. It is what exhausted a month of the
+   database's data-transfer allowance in a single working day.
+
+   Sixty seconds is the right order of magnitude for a business that sees a
+   few dozen events a day, and it costs nothing in practice because the two
+   moments freshness actually matters are both handled directly: your own
+   changes refresh the view as they save, and coming back to the tab
+   refreshes it before you have finished looking at it.
+
+   `NEXT_PUBLIC_CRM_REFRESH_SECONDS` moves it; see the note on the stage
+   thresholds for why the variable is a public one. */
+function configuredRefreshSeconds(): number {
+  const n = Number((process.env.NEXT_PUBLIC_CRM_REFRESH_SECONDS || '').trim());
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 60;
+}
+
+export const REFRESH_SECONDS = configuredRefreshSeconds();
+
+/* And after this long without a keystroke or a click, the timer stops
+   altogether. A visible tab is not the same as somebody working: the CRM
+   spends its whole night open on somebody's office machine, and that is the
+   case that cost the money rather than the ten minutes anybody is actually
+   away from the keyboard. */
+function configuredIdleMinutes(): number {
+  const n = Number((process.env.NEXT_PUBLIC_CRM_IDLE_MINUTES || '').trim());
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 10;
+}
+
+export const IDLE_MINUTES = configuredIdleMinutes();
 
 /* ══════════════════ The next step ══════════════════
 
@@ -302,14 +354,17 @@ export interface QueueSection {
 
 /* Order matters: it is both the priority of the day and the tie-break that
    decides which single section a lead lands in. */
+/* The keys stay English — they are in stored filters, in bookmarked URLs and
+   in the partner API. The titles are what a salesperson reads at nine in the
+   morning, and they are in the language that salesperson thinks in. */
 export const SECTION_META: { key: QueueKey; title: string; blurb: string }[] = [
-  { key: 'uncontacted', title: 'Nobody has spoken to them yet', blurb: 'New leads with no conversation on record. These first, always.' },
-  { key: 'overdue',     title: 'Late',                          blurb: 'A follow-up you promised yourself, past its date.' },
-  { key: 'today',       title: 'Due today',                     blurb: 'Scheduled for today.' },
-  { key: 'wake',        title: 'Back from nurture',             blurb: 'You parked these until a date, and the date has come.' },
-  { key: 'silent',      title: 'Gone quiet',                    blurb: `Waiting on a reply for more than ${REPLY_FLAG_DAYS} days.` },
-  { key: 'nonext',      title: 'No next step',                  blurb: 'Live deals nobody has decided what to do with.' },
-  { key: 'stalled',     title: 'Not moving',                    blurb: 'Sitting in the same stage past its threshold.' },
+  { key: 'uncontacted', title: 'Még senki nem beszélt velük', blurb: 'Új leadek, akikkel még nem volt beszélgetés. Mindig ezek az elsők.' },
+  { key: 'overdue',     title: 'Lejárt',                       blurb: 'Egy követés, amit megígértél magadnak, és letelt a határideje.' },
+  { key: 'today',       title: 'Mára tervezve',                blurb: 'Amit mára időzítettél.' },
+  { key: 'wake',        title: 'Visszatért a félretettekből',  blurb: 'Ezeket egy dátumig félretetted, és a dátum megjött.' },
+  { key: 'silent',      title: 'Elhallgatott',                 blurb: `Több mint ${REPLY_FLAG_DAYS} napja várunk választ.` },
+  { key: 'nonext',      title: 'Nincs következő lépés',        blurb: 'Élő üzletek, amikkel senki nem döntötte el, mi legyen.' },
+  { key: 'stalled',     title: 'Nem mozdul',                   blurb: 'A fázisában ül a megengedett időn túl.' },
 ];
 
 /* Object.hasOwn, not `in`: `'constructor' in QUEUE_RULES` is true, and a

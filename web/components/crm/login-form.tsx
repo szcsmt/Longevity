@@ -23,11 +23,34 @@ export function LoginForm() {
       if (res.ok) {
         router.replace('/admin');
         router.refresh();
+        return;
+      }
+
+      /* ── Say which failure it was ──
+
+         Every non-OK answer used to read "wrong username or password",
+         including a 500. For three days while the database was unreachable,
+         everybody who tried to sign in was told their password was wrong —
+         so they tried another, then another, then began to doubt themselves,
+         when nothing they could type would ever have worked.
+
+         A password can be corrected by the person at the keyboard. An outage
+         cannot, and telling them it is their fault sends them looking in the
+         one place the answer is not. */
+      const data = await res.json().catch(() => null);
+      if (res.status === 401) {
+        setErr('Hibás felhasználónév vagy jelszó.');
+      } else if (res.status === 429) {
+        setErr(data?.error || 'Túl sok sikertelen próbálkozás. Próbáld újra később.');
       } else {
-        setErr('Incorrect username or password.');
+        setErr(
+          'A rendszer most nem elérhető — ez nem a jelszóddal van. ' +
+          'Próbáld újra pár perc múlva; ha továbbra sem megy, szólj.',
+        );
       }
     } catch {
-      setErr('Something went wrong. Try again.');
+      /* The request never left, or never came back. */
+      setErr('Nincs kapcsolat a szerverrel. Ellenőrizd az internetet, és próbáld újra.');
     } finally {
       setBusy(false);
     }
@@ -40,11 +63,11 @@ export function LoginForm() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/LOGO.svg" alt="Longevity Resort" />
           <h1>CRM</h1>
-          <p>Longevity Resort — lead management</p>
+          <p>Longevity Resort — ügyfélkezelés</p>
           <input
             className="crm-input"
             type="text"
-            placeholder="Username"
+            placeholder="Felhasználónév"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoFocus
@@ -54,14 +77,14 @@ export function LoginForm() {
           <input
             className="crm-input"
             type="password"
-            placeholder="Password"
+            placeholder="Jelszó"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             style={{ textAlign: 'center', marginTop: 10 }}
           />
           <button className="crm-btn gold" type="submit" disabled={busy} style={{ width: '100%', justifyContent: 'center', marginTop: 14 }}>
-            {busy ? 'Signing in…' : 'Sign in'}
+            {busy ? 'Belépés…' : 'Belépés'}
           </button>
           <div className="crm-err">{err}</div>
         </form>

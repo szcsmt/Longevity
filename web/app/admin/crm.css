@@ -11,13 +11,26 @@
   --c-gold:    #C9A96E;
   --c-gold-bright: #E8C98A;
   --c-cream:   #E4D9C3;
-  --c-mut:     rgba(228,217,195,0.55);
-  /* 0.55 alpha ≈ 4.7:1 on the panels — the previous 0.38 measured ~2.9:1,
-     below WCAG AA for the small table headers and annotations that use it. */
-  --c-mut-2:   rgba(228,217,195,0.55);
-  --c-hot:  #E0774E;
+  /* ── Secondary text ──
+
+     This is the colour most of the CRM is written in — every timestamp, every
+     meta line, every field label — and it was the colour hardest to read. It
+     sat at 0.55 alpha, measuring 4.71:1 against the panels: over the WCAG AA
+     minimum of 4.5 by a hair, and a hair is not a margin when the reader is
+     sixty and the room has a window in it. Passing the standard and being
+     comfortable are different tests, and only the second one matters here.
+
+     0.80 measures 8.64:1, which is past AAA. The second tier keeps a real
+     step down at 6.24:1 rather than being the same value under another name,
+     which is what the two had quietly become. */
+  --c-mut:     rgba(228,217,195,0.80);
+  --c-mut-2:   rgba(228,217,195,0.66);
+  /* The three status colours were 6.0–6.4:1 — legible, not comfortable, and
+     they are what "overdue" and "hot" are written in. Same hues, lifted to
+     7.6:1 and 9.2:1. */
+  --c-hot:  #EC9068;
   --c-warm: #D8B26A;
-  --c-cold: #6FA0B5;
+  --c-cold: #8FBFD4;
   --ui: var(--font-raleway), system-ui, sans-serif;
   --serif: var(--font-playfair), Georgia, serif;
 
@@ -34,7 +47,40 @@
   color-scheme: dark;
 }
 
-.crm-shell { display: grid; grid-template-columns: 244px 1fr; min-height: 100vh; }
+/* ── Text size ──
+
+   The CRM was set in 11 to 13.5px, which is comfortable for whoever built it
+   and genuinely hard for a salesperson in their sixties — and the people
+   reading it all day are not the people who chose the size. Every size in
+   this file went up by roughly a seventh, the smallest by nearly a third,
+   and all of them are now multiplied by --tz so that anybody who still finds
+   it small can say so once and have the whole CRM listen.
+
+   The sidebar grows with the text rather than squeezing it: a nav label that
+   wraps onto two lines is not more readable for being bigger. */
+:root { --tz: 1; }
+.crm-shell { display: grid; grid-template-columns: calc(244px * var(--tz, 1)) 1fr; min-height: 100vh; }
+
+.crm-lang { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--c-line-2); border-radius: 8px; margin-bottom: 8px; }
+.crm-lang button {
+  flex: 1; padding: 5px 0; border: 0; border-radius: 6px; background: none; cursor: pointer;
+  font-family: var(--ui); font-size: calc(11.5px * var(--tz, 1)); font-weight: 700; letter-spacing: 0.08em;
+  color: var(--c-mut); line-height: 1;
+}
+.crm-lang button:hover { color: var(--c-cream); }
+.crm-lang button.on { background: rgba(201,169,110,0.16); color: var(--c-gold-bright); }
+
+.crm-text-size { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--c-line-2); border-radius: 8px; margin-bottom: 8px; }
+.crm-text-size button {
+  flex: 1; padding: 5px 0; border: 0; border-radius: 6px; background: none; cursor: pointer;
+  font-family: var(--ui); font-weight: 700; color: var(--c-mut); line-height: 1;
+}
+.crm-text-size button:hover { color: var(--c-cream); }
+.crm-text-size button.on { background: rgba(201,169,110,0.16); color: var(--c-gold-bright); }
+/* The buttons show the sizes they set, so the control explains itself. */
+.crm-text-size button:nth-child(1) { font-size: calc(12px * var(--tz, 1)); }
+.crm-text-size button:nth-child(2) { font-size: calc(14px * var(--tz, 1)); }
+.crm-text-size button:nth-child(3) { font-size: calc(16px * var(--tz, 1)); }
 
 /* ── Sidebar ── */
 .crm-side {
@@ -45,11 +91,11 @@
 }
 .crm-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 22px; }
 .crm-brand img { height: 40px; width: auto; }
-.crm-brand small { display: block; font-size: 9px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--c-gold); opacity: 0.8; }
+.crm-brand small { display: block; font-size: calc(11.5px * var(--tz, 1)); letter-spacing: 0.28em; text-transform: uppercase; color: var(--c-gold); opacity: 0.8; }
 .crm-nav-link {
   display: flex; align-items: center; gap: 11px;
   padding: 10px 12px; border-radius: 9px;
-  color: var(--c-mut); text-decoration: none; font-size: 14px; font-weight: 500;
+  color: var(--c-mut); text-decoration: none; font-size: calc(15.5px * var(--tz, 1)); font-weight: 500;
   transition: background 0.2s ease, color 0.2s ease;
 }
 .crm-nav-link:hover { background: rgba(201,169,110,0.07); color: var(--c-cream); }
@@ -59,12 +105,44 @@
   margin-left: auto; min-width: 19px; height: 19px; padding: 0 6px;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 100px; background: rgba(224,119,78,0.16); border: 1px solid rgba(224,119,78,0.4);
-  color: var(--c-hot); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--c-hot); font-size: calc(12.5px * var(--tz, 1)); font-weight: 700; font-variant-numeric: tabular-nums;
 }
+/* Three small groups instead of thirteen equal lines. The heading is what
+   makes them groups rather than gaps. */
+.crm-help-link {
+  display: block; text-align: center; padding: 7px 0 9px; text-decoration: none;
+  color: var(--c-mut); font-size: calc(12.5px * var(--tz, 1));
+}
+.crm-help-link:hover { color: var(--c-gold); }
+
+/* Diagrams scroll rather than shrink: a flow chart squeezed onto a phone is a
+   picture of nothing. */
+.diagram { overflow-x: auto; }
+.diagram svg { min-width: 720px; }
+.help-list { margin: 0; padding-left: 20px; line-height: 1.75; }
+.help-list li { margin-bottom: 12px; }
+.help-list b { color: var(--c-cream); }
+
+.report-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; padding: 3px; border: 1px solid var(--c-line-2); border-radius: 10px; }
+.report-tabs a {
+  padding: 8px 15px; border-radius: 7px; text-decoration: none;
+  font-size: calc(14px * var(--tz, 1)); font-weight: 600; color: var(--c-mut);
+}
+.report-tabs a:hover { color: var(--c-cream); }
+.report-tabs a.on { background: rgba(201,169,110,0.16); color: var(--c-gold-bright); }
+
+.nav-group { margin-bottom: 14px; }
+.nav-group + .nav-group { padding-top: 12px; border-top: 1px solid var(--c-line-2); }
+.nav-group-title {
+  padding: 0 12px 6px; font-size: calc(10.5px * var(--tz, 1));
+  letter-spacing: 0.20em; text-transform: uppercase; color: var(--c-mut-2); font-weight: 700;
+}
+.crm-brand { display: block; text-decoration: none; }
+
 .crm-side-foot { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--c-line-2); }
 .viewer-chip {
   display: inline-flex; align-items: center; gap: 6px; margin-bottom: 10px;
-  padding: 5px 11px; border-radius: 100px; font-size: 11.5px; font-weight: 600;
+  padding: 5px 11px; border-radius: 100px; font-size: calc(13px * var(--tz, 1)); font-weight: 600;
   color: var(--c-cold); background: rgba(111,160,181,0.10); border: 1px solid rgba(111,160,181,0.35);
 }
 
@@ -72,7 +150,7 @@
 .crm-main { padding: 30px clamp(20px, 3vw, 44px) 60px; min-width: 0; }
 .crm-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 26px; flex-wrap: wrap; }
 .crm-title { font-family: var(--serif); font-weight: 400; font-size: clamp(26px, 3vw, 38px); line-height: 1.05; letter-spacing: -0.01em; margin: 0; }
-.crm-sub { color: var(--c-mut); font-size: 13px; margin: 6px 0 0; }
+.crm-sub { color: var(--c-mut); font-size: calc(14.5px * var(--tz, 1)); margin: 6px 0 0; }
 
 /* ── Cards / panels ── */
 .crm-card {
@@ -97,7 +175,7 @@
 
   /* iOS zooms into any focused input below 16px — keep form text at 16px on
      phones so the viewport stays put. */
-  .crm-input, .crm-select, .crm-textarea { font-size: 16px; }
+  .crm-input, .crm-select, .crm-textarea { font-size: calc(17px * var(--tz, 1)); }
 
   /* Filter fields pair up neatly instead of one ragged row each. */
   .crm-filters .fld { flex: 1 1 45%; min-width: 0; }
@@ -110,16 +188,16 @@
   .crm-btn.sm { padding: 8px 12px; }
 }
 
-.crm-stat .k { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c-mut); }
-.crm-stat .v { font-family: var(--serif); font-size: 40px; line-height: 1; margin-top: 10px; }
-.crm-stat .v small { font-size: 14px; color: var(--c-mut); font-family: var(--ui); margin-left: 6px; }
+.crm-stat .k { font-size: calc(12.5px * var(--tz, 1)); letter-spacing: 0.16em; text-transform: uppercase; color: var(--c-mut); }
+.crm-stat .v { font-family: var(--serif); font-size: calc(40px * var(--tz, 1)); line-height: 1; margin-top: 10px; }
+.crm-stat .v small { font-size: calc(15.5px * var(--tz, 1)); color: var(--c-mut); font-family: var(--ui); margin-left: 6px; }
 .crm-stat.accent { border-color: rgba(224,119,78,0.3); }
 .crm-stat.accent .v { color: var(--c-gold-bright); }
 
-.crm-card h3 { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--c-mut); margin: 0 0 16px; font-weight: 600; }
+.crm-card h3 { font-size: calc(13.5px * var(--tz, 1)); letter-spacing: 0.18em; text-transform: uppercase; color: var(--c-mut); margin: 0 0 16px; font-weight: 600; }
 
 /* ── Bars (reports) ── */
-.bar-row { display: grid; grid-template-columns: 100px 1fr 62px; align-items: center; gap: 12px; margin-bottom: 11px; font-size: 13px; }
+.bar-row { display: grid; grid-template-columns: 100px 1fr 62px; align-items: center; gap: 12px; margin-bottom: 11px; font-size: calc(14.5px * var(--tz, 1)); }
 .bar-row .lab { color: var(--c-cream); text-transform: capitalize; }
 .bar-track { display: block; width: 100%; height: 9px; border-radius: 100px; background: rgba(228,217,195,0.08); overflow: hidden; }
 /* display:block is load-bearing: spans are inline and ignore width/height,
@@ -128,7 +206,7 @@
 .bar-row .num { text-align: right; color: var(--c-mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ── Badges ── */
-.badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; border: 1px solid transparent; white-space: nowrap; text-transform: capitalize; }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 100px; font-size: calc(12.5px * var(--tz, 1)); font-weight: 600; letter-spacing: 0.04em; border: 1px solid transparent; white-space: nowrap; text-transform: capitalize; }
 .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .badge.hot  { color: var(--c-hot);  background: rgba(224,119,78,0.12);  border-color: rgba(224,119,78,0.3); }
 .badge.warm { color: var(--c-warm); background: rgba(216,178,106,0.12); border-color: rgba(216,178,106,0.3); }
@@ -137,23 +215,23 @@
 .badge.stage::before { background: var(--c-gold); }
 
 /* ── Table ── */
-.crm-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.crm-table th { text-align: left; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-mut-2); font-weight: 600; padding: 0 14px 12px; border-bottom: 1px solid var(--c-line-2); }
+.crm-table { width: 100%; border-collapse: collapse; font-size: calc(15px * var(--tz, 1)); }
+.crm-table th { text-align: left; font-size: calc(12px * var(--tz, 1)); letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-mut-2); font-weight: 600; padding: 0 14px 12px; border-bottom: 1px solid var(--c-line-2); }
 .crm-table td { padding: 13px 14px; border-bottom: 1px solid var(--c-line-2); vertical-align: middle; }
 .crm-row { text-decoration: none; color: inherit; }
 .crm-table tbody tr { transition: background 0.15s ease; }
 .crm-table tbody tr:hover { background: rgba(201,169,110,0.05); }
 .crm-name { font-weight: 600; color: var(--c-cream); }
-.crm-meta { color: var(--c-mut); font-size: 12px; }
+.crm-meta { color: var(--c-mut); font-size: calc(13.5px * var(--tz, 1)); }
 .tabnum { font-variant-numeric: tabular-nums; }
 
 /* ── Buttons / inputs ── */
-.crm-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 9px; font-family: var(--ui); font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--c-line); background: rgba(228,217,195,0.04); color: var(--c-cream); text-decoration: none; transition: all 0.2s ease; }
+.crm-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 9px; font-family: var(--ui); font-size: calc(14.5px * var(--tz, 1)); font-weight: 600; cursor: pointer; border: 1px solid var(--c-line); background: rgba(228,217,195,0.04); color: var(--c-cream); text-decoration: none; transition: all 0.2s ease; }
 .crm-btn:hover { border-color: var(--c-gold); background: rgba(201,169,110,0.1); }
 .crm-btn.gold { background: linear-gradient(135deg, var(--c-gold), var(--c-gold-bright)); color: #14100a; border-color: transparent; }
 .crm-btn.gold:hover { filter: brightness(1.06); }
 .crm-btn.ghost { background: none; }
-.crm-btn.sm { padding: 6px 11px; font-size: 12px; }
+.crm-btn.sm { padding: 6px 11px; font-size: calc(13.5px * var(--tz, 1)); }
 /* Destructive actions read as destructive at rest too — on touch screens the
    hover state never appears, and "Delete" must not look like "Clear". */
 .crm-btn.danger { border-color: rgba(224,119,78,0.45); color: var(--c-hot); }
@@ -161,12 +239,12 @@
 .crm-input, .crm-select, .crm-textarea {
   width: 100%; padding: 10px 13px; border-radius: 9px;
   background: var(--c-bg); border: 1px solid var(--c-line);
-  color: var(--c-cream); font-family: var(--ui); font-size: 14px;
+  color: var(--c-cream); font-family: var(--ui); font-size: calc(15.5px * var(--tz, 1));
   transition: border-color 0.2s ease;
 }
 .crm-input:focus, .crm-select:focus, .crm-textarea:focus { outline: none; border-color: var(--c-gold); }
 .crm-textarea { resize: vertical; min-height: 74px; line-height: 1.5; }
-.crm-label { display: block; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-mut); margin-bottom: 7px; }
+.crm-label { display: block; font-size: calc(12.5px * var(--tz, 1)); letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-mut); margin-bottom: 7px; }
 .crm-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
 .crm-filters .fld { min-width: 130px; }
 .crm-filters .grow { flex: 1; min-width: 180px; }
@@ -174,33 +252,33 @@
 /* ── Kanban ── */
 .kb-wrap { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 14px; }
 .kb-col { flex: 0 0 262px; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; }
-.kb-col h4 { margin: 0 0 12px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-mut); display: flex; justify-content: space-between; align-items: center; }
-.kb-col h4 .cnt { color: var(--c-gold); background: rgba(201,169,110,0.12); border-radius: 100px; padding: 1px 8px; font-size: 11px; }
+.kb-col h4 { margin: 0 0 12px; font-size: calc(13.5px * var(--tz, 1)); letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-mut); display: flex; justify-content: space-between; align-items: center; }
+.kb-col h4 .cnt { color: var(--c-gold); background: rgba(201,169,110,0.12); border-radius: 100px; padding: 1px 8px; font-size: calc(12.5px * var(--tz, 1)); }
 .kb-card { background: var(--c-panel-2); border: 1px solid var(--c-line-2); border-radius: 11px; padding: 12px; margin-bottom: 10px; }
-.kb-card .nm { font-weight: 600; font-size: 14px; }
-.kb-card .mt { color: var(--c-mut); font-size: 11.5px; margin-top: 3px; }
+.kb-card .nm { font-weight: 600; font-size: calc(15.5px * var(--tz, 1)); }
+.kb-card .mt { color: var(--c-mut); font-size: calc(13px * var(--tz, 1)); margin-top: 3px; }
 .kb-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 11px; gap: 6px; }
 .kb-move { display: flex; gap: 4px; }
-.kb-move button { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--c-line); background: none; color: var(--c-mut); cursor: pointer; font-size: 13px; line-height: 1; transition: all 0.15s ease; }
+.kb-move button { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--c-line); background: none; color: var(--c-mut); cursor: pointer; font-size: calc(14.5px * var(--tz, 1)); line-height: 1; transition: all 0.15s ease; }
 .kb-move button:hover:not(:disabled) { border-color: var(--c-gold); color: var(--c-gold); }
 .kb-move button:disabled { opacity: 0.25; cursor: default; }
 
 /* ── Lead detail ── */
 .crm-detail { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
 @media (max-width: 960px) { .crm-detail { grid-template-columns: 1fr; } }
-.kv { display: grid; grid-template-columns: 130px 1fr; gap: 8px 14px; font-size: 13.5px; }
+.kv { display: grid; grid-template-columns: 130px 1fr; gap: 8px 14px; font-size: calc(15px * var(--tz, 1)); }
 .kv dt { color: var(--c-mut); }
 .kv dd { margin: 0; color: var(--c-cream); word-break: break-word; }
 .act-row { display: flex; gap: 9px; flex-wrap: wrap; }
 .timeline { list-style: none; margin: 0; padding: 0; }
-.timeline li { padding: 12px 0; border-bottom: 1px solid var(--c-line-2); font-size: 13.5px; line-height: 1.5; }
+.timeline li { padding: 12px 0; border-bottom: 1px solid var(--c-line-2); font-size: calc(15px * var(--tz, 1)); line-height: 1.5; }
 .timeline li:last-child { border-bottom: 0; }
-.timeline .t { color: var(--c-mut-2); font-size: 11px; letter-spacing: 0.05em; margin-top: 4px; }
-.task { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--c-line-2); font-size: 13.5px; }
+.timeline .t { color: var(--c-mut-2); font-size: calc(12.5px * var(--tz, 1)); letter-spacing: 0.05em; margin-top: 4px; }
+.task { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--c-line-2); font-size: calc(15px * var(--tz, 1)); }
 .task:last-child { border-bottom: 0; }
 .task input { margin-top: 2px; accent-color: var(--c-gold); width: 16px; height: 16px; }
 .task.done .task-title { text-decoration: line-through; color: var(--c-mut-2); }
-.task-due { font-size: 11px; color: var(--c-mut); }
+.task-due { font-size: calc(12.5px * var(--tz, 1)); color: var(--c-mut); }
 .task-due.over { color: var(--c-hot); }
 
 .stack { display: flex; flex-direction: column; gap: 16px; }
@@ -210,7 +288,7 @@
   .crm-card { padding: 16px; }
 }
 .muted { color: var(--c-mut); }
-.empty { color: var(--c-mut-2); font-size: 13px; padding: 18px 0; text-align: center; }
+.empty { color: var(--c-mut-2); font-size: calc(14.5px * var(--tz, 1)); padding: 18px 0; text-align: center; }
 
 /* ── v2: kanban drag & drop ── */
 .kb-card { cursor: grab; transition: border-color 0.15s ease, opacity 0.15s ease; }
@@ -225,14 +303,51 @@
 .trend-col:hover .trend-bar { background: var(--c-gold-bright); }
 .trend-bar { width: 100%; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--c-gold-bright), var(--c-gold)); }
 .trend-bar.zero { background: rgba(228,217,195,0.10); border-radius: 2px 2px 0 0; }
-.trend-axis { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--c-mut-2); }
+.trend-axis { display: flex; justify-content: space-between; margin-top: 8px; font-size: calc(12.5px * var(--tz, 1)); color: var(--c-mut-2); }
 
 /* ── v2: conversion funnel ── */
 .funnel-row { grid-template-columns: 96px 1fr 72px; }
-.funnel-row .pct { color: var(--c-mut-2); font-size: 11px; }
+.funnel-row .pct { color: var(--c-mut-2); font-size: calc(12.5px * var(--tz, 1)); }
 
 /* ── v2: needs-attention panel ── */
 .crm-card.attention { border-color: rgba(224,119,78,0.35); }
+
+/* ── Folded sections on the lead page ──
+   The collapsed row has to read as an answer, not as a promise of one: the
+   title on the left, the fact on the right, and the detail behind it. */
+.fold { padding: 0; }
+.fold > summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; gap: 12px;
+  padding: 15px 20px;
+}
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::after {
+  content: ''; margin-left: auto; flex-shrink: 0;
+  width: 8px; height: 8px; border-right: 1.6px solid var(--c-mut-2); border-bottom: 1.6px solid var(--c-mut-2);
+  transform: rotate(45deg) translate(-2px,-2px); transition: transform 0.18s ease;
+}
+.fold[open] > summary::after { transform: rotate(225deg) translate(-2px,-2px); }
+.fold > summary:hover .fold-title { color: var(--c-cream); }
+.fold-title {
+  font-size: calc(13.5px * var(--tz, 1)); letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--c-mut); font-weight: 600; flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+/* The answer. Truncated rather than wrapped: a folded row that grows to three
+   lines defeats the point of folding it. */
+.fold-hint {
+  font-size: calc(13.5px * var(--tz, 1)); color: var(--c-mut-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+.fold-body { padding: 0 20px 18px; }
+.fold.danger > summary .fold-title { color: rgba(224,119,78,0.75); }
+.fold.danger[open] { border-color: rgba(224,119,78,0.35); }
+
+@media (max-width: 720px) {
+  .fold > summary { padding: 14px 15px; }
+  .fold-body { padding: 0 15px 15px; }
+}
 .att-row, .related-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--c-line-2); }
 .att-row:last-child, .related-row:last-child { border-bottom: 0; }
 
@@ -240,7 +355,7 @@
 .th-sort { color: inherit; text-decoration: none; }
 .th-sort:hover { color: var(--c-gold); }
 .th-sort.on { color: var(--c-gold-bright); }
-.stale { color: var(--c-hot); font-size: 11px; }
+.stale { color: var(--c-hot); font-size: calc(12.5px * var(--tz, 1)); }
 
 /* ── v2: contact edit form ── */
 .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -249,18 +364,145 @@
 
 /* ── v2: timeline auto-entries ── */
 .timeline li.auto { color: var(--c-mut); }
-.tl-badge { margin-right: 8px; font-size: 10px; padding: 2px 8px; vertical-align: 1px; }
+.tl-badge { margin-right: 8px; font-size: calc(12.5px * var(--tz, 1)); padding: 2px 8px; flex-shrink: 0; }
+
+/* ── Paging a long list ── */
+.pager {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  margin-top: 14px; padding: 12px 16px;
+  border: 1px solid var(--c-line-2); border-radius: 11px;
+}
+.pager-acts { display: flex; align-items: center; gap: 10px; }
+
+/* ── Writing on WhatsApp from inside the CRM ── */
+.wa-box { margin-top: 12px; padding: 13px 14px; border: 1px solid var(--c-line); border-radius: 11px; background: rgba(228,217,195,0.02); }
+.wa-warn {
+  margin-bottom: 10px; padding: 9px 12px; border-radius: 9px;
+  border: 1px solid rgba(224,119,78,0.42); background: rgba(224,119,78,0.09);
+  color: var(--c-hot); font-size: calc(13px * var(--tz, 1)); line-height: 1.5;
+}
+
+/* ── What we promised ──
+   First thing on the card, because "did I agree a time with them" is the
+   first question anybody asks of a lead they are about to ring. */
+.next-step {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 13px 15px; border-radius: 11px; margin-bottom: 16px;
+  border: 1px solid rgba(201,169,110,0.38); background: rgba(201,169,110,0.09);
+}
+.next-step.empty { border-color: var(--c-line-2); background: none; }
+.next-step-main { flex: 1; min-width: 180px; }
+.next-step-what { font-size: calc(15px * var(--tz, 1)); margin-top: 2px; color: var(--c-cream); }
+.next-step.empty .next-step-what { color: var(--c-mut); }
+.next-step-act { display: flex; align-items: center; gap: 8px; }
+.next-step-act .crm-input { width: auto; padding: 6px 10px; }
+
+/* ── One way to write down what happened ──
+   There used to be two: a note box with its own Save, and six buttons beside
+   it that logged a call. Both wrote to the same timeline, and nothing said
+   which one you were meant to use. */
+.happened { padding: 14px 15px; border: 1px solid var(--c-line-2); border-radius: 11px; margin-bottom: 18px; }
+.happened-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.happened-top .crm-label { margin: 0; }
+.happened-top .crm-select { width: auto; min-width: 170px; }
+.happened-miss { display: inline-flex; align-items: center; gap: 7px; color: var(--c-mut); font-size: calc(13px * var(--tz, 1)); cursor: pointer; }
+.happened-miss input { accent-color: var(--c-gold); width: 16px; height: 16px; }
+
+.tl-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+
+/* ── The timeline, once it says which entry is whose ── */
+/* The day, said once above its group. A full date repeated on every line is
+   the slowest possible way to answer "when". */
+.tl-day {
+  margin: 18px 0 8px; font-size: calc(13px * var(--tz, 1)); font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--c-gold);
+}
+.timeline li:first-child .tl-day { margin-top: 0; }
+.tl-line { display: flex; align-items: flex-start; gap: 0; }
+.tl-body { min-width: 0; }
+/* A note is content and reads like it; the CRM's own entries step back. */
+.timeline li.auto .tl-body { color: var(--c-mut); }
+.tl-filter { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--c-line-2); border-radius: 8px; }
+.tl-filter button {
+  padding: 5px 11px; border: 0; border-radius: 6px; background: none; cursor: pointer;
+  font-family: var(--ui); font-size: calc(13.5px * var(--tz, 1)); font-weight: 600; letter-spacing: 0;
+  text-transform: none; color: var(--c-mut);
+}
+.tl-filter button:hover { color: var(--c-cream); }
+.tl-filter button.on { background: rgba(201,169,110,0.16); color: var(--c-gold-bright); }
+
+
+/* The call-back the CRM just booked, said out loud. A reminder created behind
+   somebody's back is a reminder that surprises them a week later. */
+.booked {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 12px; padding: 11px 14px; border-radius: 10px;
+  border: 1px solid rgba(201,169,110,0.34); background: rgba(201,169,110,0.08);
+  font-size: calc(15px * var(--tz, 1));
+}
+/* ── Who is carrying what ── */
+.alloc-row { padding: 13px 0; border-bottom: 1px solid var(--c-line-2); }
+.alloc-row:last-child { border-bottom: 0; }
+.alloc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.alloc-count { white-space: nowrap; color: var(--c-mut); font-size: calc(13px * var(--tz, 1)); }
+.alloc-count b { color: var(--c-gold-bright); font-size: calc(15px * var(--tz, 1)); }
+.alloc-stages { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.alloc-chip {
+  padding: 3px 9px; border-radius: 100px; border: 1px solid var(--c-line-2);
+  font-size: calc(11.5px * var(--tz, 1)); color: var(--c-mut); white-space: nowrap;
+}
+.alloc-chip b { color: var(--c-cream); }
+
+/* ── The follow-up calendar ── */
+.cal-head { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
+.cal-head > div {
+  text-align: center; font-size: calc(11px * var(--tz, 1)); font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-mut-2);
+}
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-day {
+  min-height: calc(94px * var(--tz, 1)); padding: 7px 8px; border-radius: 9px;
+  border: 1px solid var(--c-line-2); background: rgba(228,217,195,0.02);
+  display: flex; flex-direction: column; gap: 3px; overflow: hidden;
+}
+/* Days spilling in from the neighbouring months are context, not content. */
+.cal-day.out { opacity: 0.38; }
+.cal-day.today { border-color: var(--c-gold); background: rgba(201,169,110,0.09); }
+.cal-num { font-size: calc(12px * var(--tz, 1)); color: var(--c-mut); font-variant-numeric: tabular-nums; }
+.cal-day.today .cal-num { color: var(--c-gold-bright); font-weight: 700; }
+.cal-item {
+  display: block; padding: 3px 7px; border-radius: 6px; text-decoration: none;
+  background: rgba(201,169,110,0.14); color: var(--c-cream);
+  font-size: calc(11.5px * var(--tz, 1)); line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cal-item:hover { background: rgba(201,169,110,0.26); }
+.cal-more { font-size: calc(10.5px * var(--tz, 1)); color: var(--c-mut-2); }
+
+/* A month grid does not survive a phone. Below the fold it becomes a column of
+   days, which is the same information in the only shape that fits. */
+@media (max-width: 900px) {
+  .cal-head { display: none; }
+  .cal-grid { grid-template-columns: 1fr; }
+  .cal-day { min-height: 0; flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .cal-day.out { display: none; }
+  .cal-num { min-width: 26px; font-weight: 700; }
+}
+
+.feed-due { margin-left: 10px; padding: 1px 8px; border-radius: 100px; border: 1px solid rgba(201,169,110,0.34); color: var(--c-gold); }
+.booked-tick { color: var(--c-gold-bright); font-weight: 700; }
+.booked-date { width: auto; padding: 5px 9px; font-size: calc(14.5px * var(--tz, 1)); }
 
 /* ── v3: sidebar quick search ── */
 .nav-search { padding: 0 4px 12px; }
-.nav-search .crm-input { padding: 8px 12px; font-size: 13px; }
+.nav-search .crm-input { padding: 8px 12px; font-size: calc(14.5px * var(--tz, 1)); }
 
 /* The nav itself: a column on desktop, a wrapping row on phones. Without this
    the column nav sat as a tall narrow strip beside the logo at <=720px. */
 .crm-nav { display: flex; flex-direction: column; gap: 4px; }
 @media (max-width: 720px) {
   .crm-nav { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px; flex: 1 1 100%; }
-  .crm-nav .crm-nav-link { padding: 8px 10px; font-size: 13px; }
+  .crm-nav .crm-nav-link { padding: 8px 10px; font-size: calc(14.5px * var(--tz, 1)); }
   .crm-nav .crm-nav-link svg { width: 15px; height: 15px; }
   .nav-search { flex: 1 1 100%; padding: 8px 4px; }
 }
@@ -272,12 +514,12 @@
 .bulk-bar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   background: rgba(201,169,110,0.08); border: 1px solid var(--c-gold);
-  border-radius: 11px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px;
+  border-radius: 11px; padding: 10px 14px; margin-bottom: 14px; font-size: calc(14.5px * var(--tz, 1));
 }
 .bulk-bar .crm-select { width: auto; }
 /* Zero-selection state: present but visibly dormant, so the table never jumps. */
 .bulk-bar.idle { border-color: var(--c-line); background: rgba(228,217,195,0.03); color: var(--c-mut); }
-.crm-select.sm { padding: 6px 10px; font-size: 12.5px; }
+.crm-select.sm { padding: 6px 10px; font-size: calc(13.5px * var(--tz, 1)); }
 .bulk-check { width: 15px; height: 15px; accent-color: var(--c-gold); cursor: pointer; }
 .crm-table tr.row-sel { background: rgba(201,169,110,0.07); }
 
@@ -302,11 +544,11 @@
   width: min(440px, 92vw); background: var(--c-panel); border: 1px solid var(--c-line);
   border-radius: 14px; padding: 22px;
 }
-.lost-box h3 { font-size: 15px; font-weight: 600; color: var(--c-cream); margin: 0 0 14px; text-transform: none; letter-spacing: 0; }
+.lost-box h3 { font-size: calc(16px * var(--tz, 1)); font-weight: 600; color: var(--c-cream); margin: 0 0 14px; text-transform: none; letter-spacing: 0; }
 .lost-opts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 
 /* ── Attention flags on the leads list ── */
-.stale, .flag { font-size: 11px; font-weight: 600; white-space: nowrap; }
+.stale, .flag { font-size: calc(12.5px * var(--tz, 1)); font-weight: 600; white-space: nowrap; }
 .flag.stalled { color: var(--c-hot); }
 .flag.nonext { color: var(--c-warm); }
 
@@ -314,22 +556,22 @@
 .crm-login { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
 .crm-login .box { width: 100%; max-width: 380px; text-align: center; }
 .crm-login img { height: 64px; margin: 0 auto 26px; display: block; }
-.crm-login h1 { font-family: var(--serif); font-weight: 400; font-size: 28px; margin: 0 0 6px; }
-.crm-login p { color: var(--c-mut); font-size: 13px; margin: 0 0 26px; }
-.crm-err { color: var(--c-hot); font-size: 13px; margin-top: 14px; min-height: 18px; }
+.crm-login h1 { font-family: var(--serif); font-weight: 400; font-size: calc(28px * var(--tz, 1)); margin: 0 0 6px; }
+.crm-login p { color: var(--c-mut); font-size: calc(14.5px * var(--tz, 1)); margin: 0 0 26px; }
+.crm-err { color: var(--c-hot); font-size: calc(14.5px * var(--tz, 1)); margin-top: 14px; min-height: 18px; }
 
 /* ══════════ Analytics ══════════ */
-.sec-title { font-family: var(--serif); font-weight: 400; font-size: 19px; color: var(--c-cream); margin: 26px 0 13px; letter-spacing: -0.01em; }
+.sec-title { font-family: var(--serif); font-weight: 400; font-size: calc(19px * var(--tz, 1)); color: var(--c-cream); margin: 26px 0 13px; letter-spacing: -0.01em; }
 .h3-note { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--c-mut-2); }
 
 /* Segmented range filter */
 .seg { display: inline-flex; background: var(--c-panel); border: 1px solid var(--c-line); border-radius: 10px; padding: 3px; gap: 2px; }
-.seg-item { padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--c-mut); text-decoration: none; transition: all .18s ease; white-space: nowrap; }
+.seg-item { padding: 7px 14px; border-radius: 7px; font-size: calc(13.5px * var(--tz, 1)); font-weight: 600; color: var(--c-mut); text-decoration: none; transition: all .18s ease; white-space: nowrap; }
 .seg-item:hover { color: var(--c-cream); }
 .seg-item.active { background: linear-gradient(135deg, var(--c-gold), var(--c-gold-bright)); color: #14100a; }
 
 /* KPI trend chip */
-.kpi-trend { font-size: 12px; font-weight: 700; font-family: var(--ui); margin-left: 4px; vertical-align: middle; }
+.kpi-trend { font-size: calc(13.5px * var(--tz, 1)); font-weight: 700; font-family: var(--ui); margin-left: 4px; vertical-align: middle; }
 .kpi-trend.up { color: #2ECC71; }
 .kpi-trend.down { color: var(--c-hot); }
 
@@ -337,18 +579,18 @@
 .fin-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
 @media (max-width: 900px) { .fin-grid { grid-template-columns: 1fr 1fr; } }
 .fin-tile { background: var(--c-panel-2); border: 1px solid var(--c-line-2); border-radius: 12px; padding: 14px 15px; }
-.fin-tile .k { font-size: 10.5px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--c-mut); }
-.fin-tile .v { font-family: var(--serif); font-size: 25px; line-height: 1.1; margin: 8px 0 4px; color: var(--c-gold-bright); }
-.fin-tile .s { font-size: 11.5px; color: var(--c-mut); }
+.fin-tile .k { font-size: calc(12px * var(--tz, 1)); letter-spacing: 0.13em; text-transform: uppercase; color: var(--c-mut); }
+.fin-tile .v { font-family: var(--serif); font-size: calc(25px * var(--tz, 1)); line-height: 1.1; margin: 8px 0 4px; color: var(--c-gold-bright); }
+.fin-tile .s { font-size: calc(13px * var(--tz, 1)); color: var(--c-mut); }
 .fin-progress { display: flex; height: 12px; border-radius: 100px; overflow: hidden; background: rgba(228,217,195,0.10); margin-bottom: 10px; }
 .fin-progress span { display: block; height: 100%; }
 .fin-progress .fp-sold { background: #E74C3C; }
 .fin-progress .fp-res { background: #F1C40F; }
-.fin-progress-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--c-mut); margin-bottom: 18px; }
+.fin-progress-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: calc(13.5px * var(--tz, 1)); color: var(--c-mut); margin-bottom: 18px; }
 .fin-progress-legend span { display: inline-flex; align-items: center; }
 .fin-progress-legend i { width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
 .fin-sizes { border-top: 1px solid var(--c-line-2); padding-top: 14px; }
-.fin-size-row { display: grid; grid-template-columns: 42px 130px 1fr 78px; align-items: center; gap: 12px; margin-bottom: 9px; font-size: 12.5px; }
+.fin-size-row { display: grid; grid-template-columns: 42px 130px 1fr 78px; align-items: center; gap: 12px; margin-bottom: 9px; font-size: calc(13.5px * var(--tz, 1)); }
 .fin-size-tag { font-weight: 700; color: var(--c-gold); background: rgba(201,169,110,0.12); border-radius: 6px; padding: 3px 0; text-align: center; }
 .fin-size-meta { color: var(--c-mut); }
 .fin-size-bar { display: flex; height: 8px; border-radius: 100px; overflow: hidden; background: rgba(228,217,195,0.08); }
@@ -356,60 +598,60 @@
 .fin-size-bar .s-sold { background: #E74C3C; }
 .fin-size-bar .s-res { background: #F1C40F; }
 .fin-size-count { text-align: right; color: var(--c-mut); }
-.fin-size-key { font-size: 11px; color: var(--c-mut-2); text-align: right; margin-top: 4px; }
+.fin-size-key { font-size: calc(12.5px * var(--tz, 1)); color: var(--c-mut-2); text-align: right; margin-top: 4px; }
 @media (max-width: 640px) { .fin-size-row { grid-template-columns: 38px 1fr 62px; } .fin-size-meta { display: none; } }
 
 /* ── Chart primitives ── */
 .cx-wrap { position: relative; width: 100%; }
-.cx-empty { color: var(--c-mut-2); font-size: 13px; padding: 30px 0; text-align: center; }
+.cx-empty { color: var(--c-mut-2); font-size: calc(14.5px * var(--tz, 1)); padding: 30px 0; text-align: center; }
 .cx-tip { position: absolute; transform: translate(-50%, calc(-100% - 12px)); background: #060a07; border: 1px solid var(--c-line); border-radius: 8px; padding: 6px 10px; pointer-events: none; z-index: 5; white-space: nowrap; box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
-.cx-tip b { display: block; font-size: 13.5px; color: var(--c-gold-bright); font-variant-numeric: tabular-nums; }
-.cx-tip span { display: block; font-size: 11px; color: var(--c-mut); margin-top: 1px; }
+.cx-tip b { display: block; font-size: calc(15px * var(--tz, 1)); color: var(--c-gold-bright); font-variant-numeric: tabular-nums; }
+.cx-tip span { display: block; font-size: calc(12.5px * var(--tz, 1)); color: var(--c-mut); margin-top: 1px; }
 .cx-xaxis { position: relative; height: 15px; margin-top: 3px; }
-.cx-xaxis span { position: absolute; transform: translateX(-50%); font-size: 10px; color: var(--c-mut-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cx-xaxis span { position: absolute; transform: translateX(-50%); font-size: calc(12px * var(--tz, 1)); color: var(--c-mut-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cx-xaxis span:first-child { transform: translateX(0); }
 .cx-xaxis span:last-child { transform: translateX(-100%); }
-.cx-ymax { position: absolute; top: 0; left: 0; font-size: 10px; color: var(--c-mut-2); font-variant-numeric: tabular-nums; }
+.cx-ymax { position: absolute; top: 0; left: 0; font-size: calc(12px * var(--tz, 1)); color: var(--c-mut-2); font-variant-numeric: tabular-nums; }
 
 /* Bars */
 .cx-bars { position: relative; }
-.cx-bar-row { display: grid; grid-template-columns: minmax(70px, 118px) 1fr 74px; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 13px; }
+.cx-bar-row { display: grid; grid-template-columns: minmax(70px, 118px) 1fr 74px; align-items: center; gap: 12px; margin-bottom: 10px; font-size: calc(14.5px * var(--tz, 1)); }
 .cx-bar-row:last-child { margin-bottom: 0; }
 .cx-bar-lab { color: var(--c-cream); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
 .cx-bar-track { height: 9px; border-radius: 100px; background: rgba(228,217,195,0.08); overflow: hidden; }
 .cx-bar-fill { display: block; height: 100%; min-width: 3px; border-radius: 100px; background: linear-gradient(90deg, var(--c-gold), var(--c-gold-bright)); }
 .cx-bar-val { text-align: right; color: var(--c-cream); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.cx-bar-val i { color: var(--c-mut); font-style: normal; margin-left: 6px; font-size: 11.5px; }
+.cx-bar-val i { color: var(--c-mut); font-style: normal; margin-left: 6px; font-size: calc(13px * var(--tz, 1)); }
 
 /* Donut */
 .cx-donut { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .cx-donut-svg { position: relative; width: 150px; height: 150px; flex: 0 0 auto; }
 .cx-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
-.cx-donut-center b { font-family: var(--serif); font-size: 30px; line-height: 1; color: var(--c-cream); }
-.cx-donut-center span { font-size: 11px; color: var(--c-mut); margin-top: 3px; }
+.cx-donut-center b { font-family: var(--serif); font-size: calc(30px * var(--tz, 1)); line-height: 1; color: var(--c-cream); }
+.cx-donut-center span { font-size: calc(12.5px * var(--tz, 1)); color: var(--c-mut); margin-top: 3px; }
 .cx-legend { flex: 1; min-width: 148px; }
 .cx-legend-row { display: flex; align-items: center; gap: 9px; padding: 6px 0; }
 .cx-dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
-.cx-legend-lab { flex: 1; font-size: 13px; color: var(--c-cream); }
-.cx-legend-val { font-variant-numeric: tabular-nums; color: var(--c-cream); font-size: 13px; }
-.cx-legend-val em { color: var(--c-mut); font-style: normal; margin-left: 6px; font-size: 11.5px; }
+.cx-legend-lab { flex: 1; font-size: calc(14.5px * var(--tz, 1)); color: var(--c-cream); }
+.cx-legend-val { font-variant-numeric: tabular-nums; color: var(--c-cream); font-size: calc(14.5px * var(--tz, 1)); }
+.cx-legend-val em { color: var(--c-mut); font-style: normal; margin-left: 6px; font-size: calc(13px * var(--tz, 1)); }
 
 /* Funnel */
 .cx-funnel { position: relative; display: flex; flex-direction: column; gap: 12px; }
-.cx-funnel-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; font-size: 13px; }
+.cx-funnel-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; font-size: calc(14.5px * var(--tz, 1)); }
 .cx-funnel-head span { color: var(--c-cream); }
 .cx-funnel-head b { font-variant-numeric: tabular-nums; color: var(--c-cream); }
-.cx-funnel-head b i { color: var(--c-gold); font-style: normal; font-weight: 600; margin-left: 8px; font-size: 11.5px; }
+.cx-funnel-head b i { color: var(--c-gold); font-style: normal; font-weight: 600; margin-left: 8px; font-size: calc(13px * var(--tz, 1)); }
 .cx-funnel-bar { height: 14px; border-radius: 100px; background: rgba(228,217,195,0.06); overflow: hidden; }
 .cx-funnel-bar span { display: block; height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--c-gold), var(--c-gold-bright)); }
 
 /* Stacked composition */
 .cx-stack { position: relative; }
-.cx-stack-legend { display: flex; gap: 16px; margin-bottom: 14px; font-size: 12px; color: var(--c-mut); flex-wrap: wrap; }
+.cx-stack-legend { display: flex; gap: 16px; margin-bottom: 14px; font-size: calc(13.5px * var(--tz, 1)); color: var(--c-mut); flex-wrap: wrap; }
 .cx-stack-legend span { display: inline-flex; align-items: center; }
 .cx-stack-legend i { width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
 .cx-stack-row { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 12px; margin-bottom: 9px; }
-.cx-stack-lab { font-size: 12.5px; color: var(--c-cream); }
+.cx-stack-lab { font-size: calc(13.5px * var(--tz, 1)); color: var(--c-cream); }
 .cx-stack-track { display: flex; height: 12px; border-radius: 100px; overflow: hidden; background: rgba(228,217,195,0.06); }
 .cx-stack-seg { height: 100%; }
 .cx-stack-seg + .cx-stack-seg { border-left: 2px solid var(--c-panel); }
@@ -417,9 +659,9 @@
 /* Agents leaderboard */
 .rank-row { display: grid; grid-template-columns: 30px 1fr auto auto; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--c-line-2); }
 .rank-row:last-child { border-bottom: 0; }
-.rank-pos { font-family: var(--serif); font-size: 18px; color: var(--c-gold); text-align: center; }
+.rank-pos { font-family: var(--serif); font-size: calc(18px * var(--tz, 1)); color: var(--c-gold); text-align: center; }
 .rank-name { font-weight: 600; color: var(--c-cream); }
-.rank-stat { color: var(--c-mut); font-size: 12.5px; }
+.rank-stat { color: var(--c-mut); font-size: calc(13.5px * var(--tz, 1)); }
 .rank-stat b { color: var(--c-cream); }
 .rank-rev { color: var(--c-gold-bright); font-variant-numeric: tabular-nums; }
 
@@ -446,18 +688,29 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
 }
 @keyframes greetIn { 0% { opacity: 0; transform: translateY(18px) scale(.985); filter: blur(12px); } 100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
 @keyframes greetShine { 0% { background-position: 150% 0; } 100% { background-position: -120% 0; } }
-.welcome-links { margin-top: 40px; display: inline-flex; align-items: center; gap: 14px; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; animation: welcomeFade 1.4s ease both; pointer-events: auto; }
+.welcome-search {
+  margin-top: 34px; display: flex; gap: 8px; justify-content: center;
+  pointer-events: auto; animation: welcomeFade 1.3s ease both;
+}
+.welcome-search .crm-input { width: min(420px, 70vw); }
+@media (max-width: 720px) { .welcome-search { flex-direction: column; align-items: stretch; } .welcome-search .crm-input { width: auto; } }
+
+.welcome-links { margin-top: 26px; display: inline-flex; align-items: center; gap: 14px; font-size: calc(13.5px * var(--tz, 1)); letter-spacing: 0.18em; text-transform: uppercase; animation: welcomeFade 1.4s ease both; pointer-events: auto; }
 .welcome-links a { color: var(--c-mut-2); text-decoration: none; transition: color .2s ease; }
 .welcome-links a:hover { color: var(--c-gold); }
 .welcome-links span { color: rgba(228,217,195,0.2); }
 .welcome-lang { position: absolute; top: 2px; right: 2px; z-index: 3; display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--c-line); border-radius: 9px; background: rgba(14,23,18,0.6); backdrop-filter: blur(5px); }
-.welcome-lang button { padding: 5px 11px; border: 0; border-radius: 6px; background: none; color: var(--c-mut); font-family: var(--ui); font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; transition: all .18s ease; }
+.welcome-lang button { padding: 5px 11px; border: 0; border-radius: 6px; background: none; color: var(--c-mut); font-family: var(--ui); font-size: calc(13px * var(--tz, 1)); font-weight: 700; letter-spacing: 0.08em; cursor: pointer; transition: all .18s ease; }
 .welcome-lang button:hover { color: var(--c-cream); }
 .welcome-lang button.active { background: linear-gradient(135deg, var(--c-gold), var(--c-gold-bright)); color: #14100a; }
-.welcome-alerts { margin-top: 26px; display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 10px; pointer-events: auto; animation: welcomeFade 1.6s ease both; }
+/* One warning per line. Side by side they read as a single sentence of
+   numbers — "5 érintetlen 5 elakadt 5 következő lépés nélkül" — and the eye
+   has to work out where one ends and the next begins. Stacked, each is a line
+   you either act on or skip, which is what they are. */
+.welcome-alerts { margin-top: 26px; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: auto; animation: welcomeFade 1.6s ease both; }
 .welcome-alerts a {
   display: inline-flex; align-items: center; padding: 6px 13px; border-radius: 100px;
-  font-size: 12.5px; font-weight: 600; text-decoration: none;
+  font-size: calc(13.5px * var(--tz, 1)); font-weight: 600; text-decoration: none;
   color: var(--c-hot); background: rgba(224,119,78,0.10); border: 1px solid rgba(224,119,78,0.35);
   transition: background .18s ease;
 }
@@ -484,7 +737,7 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
 .nb-bar .nb-search { flex: 1 1 220px; max-width: 320px; }
 .nb-chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 100px;
-  font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  font-size: calc(13.5px * var(--tz, 1)); font-weight: 600; cursor: pointer; white-space: nowrap;
   border: 1px solid var(--c-line-2); background: none; color: var(--c-mut);
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
@@ -496,7 +749,7 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
 .nb-composer.closed { padding: 0; }
 .nb-composer.closed button {
   width: 100%; text-align: left; padding: 15px 18px; background: none; border: 0; cursor: pointer;
-  font-family: var(--ui); font-size: 14px; color: var(--c-mut);
+  font-family: var(--ui); font-size: calc(15.5px * var(--tz, 1)); color: var(--c-mut);
 }
 .nb-composer.closed button:hover { color: var(--c-cream); }
 .nb-open { padding: 16px 18px 14px; }
@@ -507,8 +760,8 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
   display: block; width: 100%; background: none; border: 0; outline: none;
   color: var(--c-cream); font-family: var(--ui);
 }
-.nb-title-in { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-.nb-body-in { font-size: 14px; line-height: 1.55; resize: vertical; min-height: 88px; }
+.nb-title-in { font-size: calc(17px * var(--tz, 1)); font-weight: 600; margin-bottom: 8px; }
+.nb-body-in { font-size: calc(15.5px * var(--tz, 1)); line-height: 1.55; resize: vertical; min-height: 88px; }
 .nb-title-in::placeholder, .nb-body-in::placeholder { color: var(--c-mut-2); }
 .nb-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-line-2); }
 .nb-tools .grow { flex: 1; }
@@ -522,34 +775,95 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
 .nb-dot:hover { transform: scale(1.14); }
 .nb-dot.on { border-color: var(--c-gold-bright); box-shadow: 0 0 0 2px rgba(201,169,110,0.3); }
 
-/* ── The wall ── */
+/* ── The whiteboard ──
+
+   The rest of the CRM is dark, and this one screen is not, deliberately. A
+   board of coloured notes is a physical metaphor and the physical object is
+   white: on the dark panel the six colours had to be 10% tints to stay
+   readable, which made them decorative rather than useful — you could not tell
+   a gold card from a green one across the room, and telling them apart across
+   the room is the entire point of colouring them.
+
+   The inversion is done by redefining the theme variables on this container
+   rather than by rewriting the rules beneath it. Every .nb-* rule below was
+   written against --c-cream, --c-mut, --c-panel and friends; pointing those at
+   ink-on-paper values turns the same code light, and keeps one set of rules
+   instead of two that drift apart. */
+.nb-board {
+  --c-cream:       #211E18;
+  /* Same correction on paper: 0.66 measured 5.27:1 and 0.52 only 3.41:1,
+     which was below AA on the very lines that say when a card is due. */
+  --c-mut:         rgba(33,30,24,0.78);
+  --c-mut-2:       rgba(33,30,24,0.62);
+  /* Brand gold is a colour for dark backgrounds; on paper it is unreadable,
+     so it darkens to the same hue at a legible contrast. */
+  --c-gold:        #8A6D2F;
+  --c-gold-bright: #A9873B;
+  --c-panel:       #FFFFFF;
+  --c-panel-2:     #F1EFE9;
+  --c-line:        rgba(33,30,24,0.22);
+  --c-line-2:      rgba(33,30,24,0.12);
+  --c-hot:         #B4441A;
+  --c-warm:        #8A6A20;
+
+  /* The notes themselves. Opaque paper, not a tint of the surface. */
+  --note-plain:  #FFFFFF;
+  --note-gold:   #FBEEBC;
+  --note-green:  #D7EEDC;
+  --note-blue:   #D5E6F6;
+  --note-rose:   #FADCD1;
+  --note-violet: #E4DBF5;
+
+  background: #FAF9F6;
+  border: 1px solid rgba(33,30,24,0.13);
+  border-radius: 18px;
+  padding: 22px 22px 8px;
+  min-height: 420px;
+  color: var(--c-cream);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 20px 50px -34px rgba(0,0,0,0.75);
+}
+
 .nb-wall { columns: 4 250px; column-gap: 16px; }
 .nb-card {
+  position: relative;
   break-inside: avoid; -webkit-column-break-inside: avoid; page-break-inside: avoid;
   display: block; width: 100%; margin: 0 0 16px; text-align: left;
-  border: 1px solid var(--c-line-2); border-radius: 14px; padding: 15px 16px 12px;
-  background: var(--c-panel); color: inherit; font-family: var(--ui); cursor: pointer;
-  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  border: 1px solid rgba(33,30,24,0.12); border-radius: 10px; padding: 15px 16px 12px;
+  background: var(--note-plain); color: var(--c-cream); font-family: var(--ui); cursor: pointer;
+  box-shadow: 0 1px 2px rgba(33,30,24,0.10), 0 8px 16px -12px rgba(33,30,24,0.45);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.nb-card:hover { border-color: var(--c-line); transform: translateY(-2px); box-shadow: 0 14px 30px -18px rgba(0,0,0,0.9); }
-.nb-card.c-gold   { background: rgba(201,169,110,0.11); border-color: rgba(201,169,110,0.26); }
-.nb-card.c-green  { background: rgba(120,178,150,0.10); border-color: rgba(120,178,150,0.24); }
-.nb-card.c-blue   { background: rgba(111,160,181,0.10); border-color: rgba(111,160,181,0.26); }
-.nb-card.c-rose   { background: rgba(224,119,78,0.10);  border-color: rgba(224,119,78,0.26); }
-.nb-card.c-violet { background: rgba(150,130,200,0.10); border-color: rgba(150,130,200,0.26); }
-.nb-card.archived { opacity: 0.55; }
+/* Lifts off the board rather than changing colour — paper does not glow. */
+.nb-card:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(33,30,24,0.12), 0 18px 30px -18px rgba(33,30,24,0.5); }
+.nb-card.c-gold   { background: var(--note-gold); }
+.nb-card.c-green  { background: var(--note-green); }
+.nb-card.c-blue   { background: var(--note-blue); }
+.nb-card.c-rose   { background: var(--note-rose); }
+.nb-card.c-violet { background: var(--note-violet); }
+.nb-card.archived { opacity: 0.5; }
 
-.nb-card h4 { margin: 0 0 7px; font-size: 14.5px; font-weight: 600; color: var(--c-cream); line-height: 1.35; }
-.nb-text { margin: 0; font-size: 13px; line-height: 1.6; color: rgba(228,217,195,0.78); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* ── The pin ──
+   A pinned card already sorted to the front; nothing said so on the card
+   itself, so the order looked arbitrary to anyone who had not pinned it. */
+.nb-card.pinned { box-shadow: 0 2px 3px rgba(33,30,24,0.14), 0 14px 26px -16px rgba(33,30,24,0.55); }
+.nb-card.pinned::before {
+  content: ''; position: absolute; top: -6px; right: 16px;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #E8705A, #A8341F 70%);
+  box-shadow: 0 2px 3px rgba(33,30,24,0.45);
+}
+
+.nb-card h4 { margin: 0 0 7px; font-size: calc(16px * var(--tz, 1)); font-weight: 600; color: var(--c-cream); line-height: 1.35; }
+.nb-text { margin: 0; font-size: calc(14.5px * var(--tz, 1)); line-height: 1.6; color: rgba(228,217,195,0.78); white-space: pre-wrap; overflow-wrap: anywhere; }
 .nb-list { list-style: none; margin: 8px 0 0; padding: 0; }
-.nb-li { display: flex; align-items: flex-start; gap: 9px; padding: 4px 0; font-size: 13px; line-height: 1.45; }
+.nb-li { display: flex; align-items: flex-start; gap: 9px; padding: 4px 0; font-size: calc(14.5px * var(--tz, 1)); line-height: 1.45; }
 .nb-li input { accent-color: var(--c-gold); width: 15px; height: 15px; margin-top: 1px; flex-shrink: 0; cursor: pointer; }
 .nb-li.done span { text-decoration: line-through; color: var(--c-mut-2); }
-.nb-more { font-size: 11.5px; color: var(--c-mut-2); margin-top: 6px; }
+.nb-more { font-size: calc(13px * var(--tz, 1)); color: var(--c-mut-2); margin-top: 6px; }
 
 .nb-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 11px; }
 .nb-tag {
-  font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 100px;
+  font-size: calc(12px * var(--tz, 1)); font-weight: 600; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 100px;
   border: 1px solid var(--c-line-2); color: var(--c-mut); white-space: nowrap;
 }
 .nb-tag.who { border-color: rgba(201,169,110,0.34); color: var(--c-gold); }
@@ -576,10 +890,22 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
 .nb-box .nb-row > * { flex: 1 1 150px; }
 .nb-edit-li { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
 .nb-edit-li input[type="text"] { flex: 1; }
-.nb-x { background: none; border: 0; color: var(--c-mut-2); cursor: pointer; font-size: 16px; line-height: 1; padding: 4px; }
+.nb-x { background: none; border: 0; color: var(--c-mut-2); cursor: pointer; font-size: calc(17px * var(--tz, 1)); line-height: 1; padding: 4px; }
 .nb-x:hover { color: var(--c-hot); }
 
+/* The decisions block sits above the day's queue and has to read as a
+   different kind of thing from it — hence the warm border rather than the
+   panel's usual line. */
+.decisions-block { border-color: rgba(224,119,78,0.45); margin-bottom: 18px; }
+
+/* An empty board should look like an empty board, not like a missing panel —
+   the dark .crm-card that used to hold this message read as a hole in it. */
+.nb-empty {
+  padding: 64px 20px; text-align: center; color: var(--c-mut-2); font-size: calc(15.5px * var(--tz, 1));
+}
+
 @media (max-width: 720px) {
+  .nb-board { padding: 14px 13px 4px; border-radius: 14px; min-height: 300px; }
   .nb-wall { columns: 1; }
   .nb-bar .nb-search { max-width: none; }
   .nb-li input { width: 19px; height: 19px; }   /* tappable */
@@ -591,13 +917,13 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   margin-top: 26px; padding: 13px 16px;
   border: 1px solid var(--c-line-2); border-radius: 12px; background: var(--c-panel);
-  font-size: 13px; color: var(--c-mut);
+  font-size: calc(14.5px * var(--tz, 1)); color: var(--c-mut);
 }
 .gt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-gold); flex-shrink: 0; box-shadow: 0 0 10px rgba(201,169,110,0.6); }
 .gt-dot.off { background: var(--c-mut-2); box-shadow: none; }
 .gt-txt { flex: 1; min-width: 220px; }
 .gt-txt strong { color: var(--c-cream); font-weight: 600; }
-.gt-txt code { font-size: 12px; color: var(--c-gold); }
+.gt-txt code { font-size: calc(13.5px * var(--tz, 1)); color: var(--c-gold); }
 .gt-flash, .gt-err { display: block; margin-top: 4px; font-style: normal; }
 .gt-flash { color: var(--c-gold); }
 .gt-err { color: var(--c-hot); }
@@ -620,7 +946,7 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
 }
 .q-row:last-child { border-bottom: 0; }
 .q-who { min-width: 0; }
-.q-what { min-width: 0; font-size: 13.5px; }
+.q-what { min-width: 0; font-size: calc(15px * var(--tz, 1)); }
 .q-late { color: var(--c-hot); font-weight: 600; }
 .q-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .q-act { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
@@ -634,7 +960,7 @@ body:has(.crm-root) [class*="cky-"] { display: none !important; }
 
 /* A warning inside the lost dialog, for the reason that is usually not a loss. */
 .lost-hint {
-  margin: 12px 0; padding: 11px 13px; border-radius: 10px; font-size: 12.5px; line-height: 1.5;
+  margin: 12px 0; padding: 11px 13px; border-radius: 10px; font-size: calc(13.5px * var(--tz, 1)); line-height: 1.5;
   color: var(--c-cream); background: rgba(201,169,110,0.09); border: 1px solid rgba(201,169,110,0.35);
 }
 .lost-hint strong { color: var(--c-gold-bright); }

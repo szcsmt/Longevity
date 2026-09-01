@@ -1,18 +1,30 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { sessionFor } from './sessions';
 
 /* Multi-user auth for the CRM, still env-configured (no user table yet).
    Users come from three places, merged:
      CRM_USER + CRM_PASSWORD  — the original primary account
      CRM_USERS                — extra accounts as "name:password[:role]"
      CRM_VIEWERS              — read-only accounts as "name:password"
-   The session cookie is "<base64url(name)>.<sha256(name:password:salt)>", so
-   the app always knows WHO is signed in (greeting now, audit trail later).
    In production a missing CRM_PASSWORD fails CLOSED for the primary account;
-   the dev fallback admin/longevity exists only locally. */
+   the dev fallback admin/longevity exists only locally.
+
+   The password field may hold either the password itself or an scrypt hash of
+   it (see `hashPassword`). Both work, deliberately: an account whose password
+   is written out in the environment still signs in exactly as it did, and
+   hashing is something the owner does one account at a time rather than a
+   migration that locks the team out of their own CRM on a Tuesday. What
+   hashing buys is that a copy of the environment — a screenshot of the Vercel
+   settings, a pasted .env, a chat message — stops being a set of working
+   logins, which matters because people reuse passwords elsewhere.
+
+   The session cookie is an opaque random token; what it means lives in
+   ./sessions, and the reasons it is no longer derived from the password are
+   written down there. */
 
 export const CRM_COOKIE = 'lr_crm';
-const SECRET_SUFFIX = 'lr-crm-session-v2';
 
 /* ══════════════════ Roles, and what each one may actually do ══════════════════
 
@@ -51,12 +63,12 @@ const SECRET_SUFFIX = 'lr-crm-session-v2';
 export type CrmRole = 'admin' | 'head' | 'agent' | 'finance' | 'marketing' | 'viewer';
 
 export const ROLES: { id: CrmRole; label: string; blurb: string }[] = [
-  { id: 'admin',     label: 'Owner',          blurb: 'Everything, including the irreversible.' },
-  { id: 'head',      label: 'Head of sales',  blurb: 'Works and runs the team\u2019s leads, and sees the money.' },
-  { id: 'agent',     label: 'Sales',          blurb: 'Works leads. Cannot delete, reassign, export or touch the ledger.' },
-  { id: 'finance',   label: 'Finance',        blurb: 'The ledger. Payments, reservations, contracts \u2014 not the leads.' },
-  { id: 'marketing', label: 'Marketing',      blurb: 'Attribution and campaigns, without the money.' },
-  { id: 'viewer',    label: 'View only',      blurb: 'Reads everything, changes nothing.' },
+  { id: 'admin',     label: 'Tulajdonos',    blurb: 'Minden, a visszafordíthatatlant is beleértve.' },
+  { id: 'head',      label: 'Sales vezető',  blurb: 'Dolgozik a leadeken és irányítja a csapatot, és látja a pénzt.' },
+  { id: 'agent',     label: 'Értékesítő',    blurb: 'Leadeken dolgozik. Nem törölhet, nem oszthat át, nem exportálhat, a főkönyvhöz nem nyúl.' },
+  { id: 'finance',   label: 'Pénzügy',       blurb: 'A főkönyv. Fizetések, foglalások, szerződések \u2014 leadek nem.' },
+  { id: 'marketing', label: 'Marketing',     blurb: 'Attribúció és kampányok, pénzügyi adatok nélkül.' },
+  { id: 'viewer',    label: 'Csak olvas',    blurb: 'Mindent lát, semmit nem változtat.' },
 ];
 
 /* ── The capabilities ──
@@ -138,36 +150,62 @@ function accounts(): CrmAccount[] {
 const sha = (s: string) => createHash('sha256').update(s).digest();
 const equal = (a: Buffer, b: Buffer) => a.length === b.length && timingSafeEqual(a, b);
 
-function tokenFor(acc: CrmAccount): string {
-  return createHash('sha256')
-    .update(`${acc.name.trim().toLowerCase()}:${acc.password}:${SECRET_SUFFIX}`)
-    .digest('hex');
+/* ── Passwords, hashed or not ──
+
+   scrypt rather than bcrypt because it is in Node already: a security fix
+   whose first step is "add a dependency" is a security fix with a supply
+   chain, and this one does not need one. The parameters are the Node
+   defaults, which cost roughly a tenth of a second per check — invisible at a
+   sign-in, and a wall to anything trying passwords in bulk.
+
+   Format: scrypt$<salt-hex>$<hash-hex>. The separator is a dollar rather than
+   a colon because CRM_USERS splits its entries on colons, and a hash that
+   silently ate the role field would be a very confusing afternoon. */
+const SCRYPT_PREFIX = 'scrypt$';
+const KEY_LEN = 32;
+
+/** Hash a password for CRM_USERS / CRM_PASSWORD. Used by scripts/crm-hash.mjs. */
+export function hashPassword(password: string): string {
+  const salt = randomBytes(16);
+  const key = scryptSync(password, salt, KEY_LEN);
+  return `${SCRYPT_PREFIX}${salt.toString('hex')}$${key.toString('hex')}`;
 }
 
-const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64url');
-const unb64 = (s: string) => {
-  try { return Buffer.from(s, 'base64url').toString('utf8'); } catch { return ''; }
-};
+/** True if this configured password field is a hash rather than the password. */
+export const isHashed = (stored: string): boolean => stored.startsWith(SCRYPT_PREFIX);
 
-/** Check credentials; returns the cookie value to set, or null. */
-export function authenticate(username: string, password: string): string | null {
+/** Constant-time check of a supplied password against a stored field, which
+    may be a hash or the password itself. A malformed hash fails closed rather
+    than falling through to a plaintext comparison — a typo in a hash must not
+    quietly turn into "the password is literally this string". */
+function passwordMatches(supplied: string, stored: string): boolean {
+  if (isHashed(stored)) {
+    const [, saltHex, keyHex] = stored.split('$');
+    if (!saltHex || !keyHex) return false;
+    try {
+      const key = scryptSync(supplied, Buffer.from(saltHex, 'hex'), KEY_LEN);
+      return equal(key, Buffer.from(keyHex, 'hex'));
+    } catch {
+      return false;
+    }
+  }
+  return equal(sha(supplied), sha(stored));
+}
+
+/** Check credentials. Returns the account, or null — starting the session is
+    the caller's job, because that is where the request (and so the IP, and so
+    the audit entry) is. */
+export function verifyCredentials(username: string, password: string): { name: string; role: CrmRole } | null {
   const uname = String(username || '').trim().toLowerCase();
+  const pw = String(password || '');
   let ok: CrmAccount | null = null;
   for (const acc of accounts()) {
     // Constant-time on both fields; keep scanning even after a match.
     const nameOk = equal(sha(uname), sha(acc.name.trim().toLowerCase()));
-    const pwOk = equal(sha(String(password || '')), sha(acc.password));
+    const pwOk = passwordMatches(pw, acc.password);
     if (nameOk && pwOk && !ok) ok = acc;
   }
-  return ok ? `${b64(ok.name)}.${tokenFor(ok)}` : null;
-}
-
-function parseCookie(value: string | undefined): { name: string; token: string } | null {
-  if (!value) return null;
-  const dot = value.indexOf('.');
-  if (dot <= 0) return null;
-  const name = unb64(value.slice(0, dot));
-  return name ? { name, token: value.slice(dot + 1) } : null;
+  return ok ? { name: ok.name, role: ok.role } : null;
 }
 
 /** True if the current request carries a valid CRM session cookie. */
@@ -175,20 +213,30 @@ export async function isAuthed(): Promise<boolean> {
   return (await currentAccount()) !== null;
 }
 
-/** The signed-in account (name + role), or null. Role comes from env at
-    check time, so an env edit takes effect without re-login. */
-export async function currentAccount(): Promise<{ name: string; role: CrmRole } | null> {
+/* Memoised for the length of one request. A page render asks who is signed in
+   several times over — the layout, the nav, the page, each route it calls —
+   and every one of those used to be pure arithmetic. Now it is a lookup in
+   the session store, so asking four times would be four round trips to answer
+   a question whose answer cannot change mid-request. */
+export const currentAccount = cache(async (): Promise<{ name: string; role: CrmRole } | null> => {
   const jar = await cookies();
-  const parsed = parseCookie(jar.get(CRM_COOKIE)?.value);
-  if (!parsed) return null;
-  for (const acc of accounts()) {
-    if (acc.name.trim().toLowerCase() === parsed.name.trim().toLowerCase()) {
-      if (equal(Buffer.from(parsed.token), Buffer.from(tokenFor(acc)))) {
-        return { name: acc.name, role: acc.role };
-      }
-    }
-  }
-  return null;
+  const session = await sessionFor(jar.get(CRM_COOKIE)?.value);
+  if (!session) return null;
+  /* The role is read from the environment at check time, not stored on the
+     session: demoting somebody should take effect on their next click rather
+     than on their next sign-in. An account that has since been removed
+     entirely resolves to null, which is the right answer — the session
+     outlived the person's right to it. */
+  const wanted = session.user.trim().toLowerCase();
+  const acc = accounts().find((a) => a.name.trim().toLowerCase() === wanted);
+  return acc ? { name: acc.name, role: acc.role } : null;
+});
+
+/** Every configured account, without its password — for the security page,
+    which needs to say who can sign in and whether their password is written
+    out in the environment in readable form. */
+export function listAccounts(): { name: string; role: CrmRole; hashed: boolean }[] {
+  return accounts().map((a) => ({ name: a.name, role: a.role, hashed: isHashed(a.password) }));
 }
 
 /** The signed-in account name, or null. */

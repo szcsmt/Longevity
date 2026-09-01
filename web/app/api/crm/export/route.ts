@@ -1,4 +1,5 @@
-import { can, isAuthed } from '@/lib/crm/auth';
+import { can, currentAccount, isAuthed } from '@/lib/crm/auth';
+import { audit, clientInfo } from '@/lib/crm/audit';
 import { isQueueKey, listLeads } from '@/lib/crm/store';
 import { creditedClaim } from '@/lib/crm/rules';
 import { leadSource, sourceLabel } from '@/lib/crm/sources';
@@ -84,6 +85,16 @@ export async function GET(req: Request) {
     COLS.map(([h]) => h).join(','),
     ...leads.map((l) => COLS.map(([, fn]) => cell(fn(l))).join(',')),
   ];
+
+  /* Recorded with the filter that produced it, because "exported 4 leads
+     off their own overdue list" and "exported all of them" are the same
+     button and very different events. */
+  await audit({
+    actor: (await currentAccount())?.name || 'unknown',
+    action: 'export.csv',
+    detail: `${leads.length} leads · ${url.search || 'no filter'}`,
+    ...clientInfo(req),
+  });
 
   return new Response('﻿' + lines.join('\r\n'), {
     headers: {

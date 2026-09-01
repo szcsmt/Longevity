@@ -31,7 +31,7 @@ export function PortalAccess({ agency: initial }: { agency: Agency }) {
         body: JSON.stringify({ op }),
       });
       const data = await res.json();
-      if (!res.ok) { alert(data?.error || 'That change could not be saved.'); return; }
+      if (!res.ok) { alert(data?.error || 'A módosítást nem sikerült menteni.'); return; }
       if (data.agency) setAgency(data.agency);
       setToken(data.token || null);
       setCopied(false);
@@ -43,12 +43,12 @@ export function PortalAccess({ agency: initial }: { agency: Agency }) {
 
   return (
     <div className="crm-card">
-      <h3>Partner portal</h3>
+      <h3>Partnerportál</h3>
 
       {token && (
         <div className="lost-hint" style={{ marginBottom: 14 }}>
           <div className="crm-meta" style={{ marginBottom: 6 }}>
-            Their access code — <strong>copy it now</strong>. It is stored only as a hash and
+            A belépőkódjuk — <strong>másold ki most</strong>. It is stored only as a hash and
             cannot be shown again; a lost code is replaced, not recovered.
           </div>
           <code style={{ display: 'block', fontSize: 15, wordBreak: 'break-all', margin: '8px 0' }}>{token}</code>
@@ -59,11 +59,11 @@ export function PortalAccess({ agency: initial }: { agency: Agency }) {
                 await navigator.clipboard.writeText(token);
                 setCopied(true);
               } catch {
-                window.prompt('Copy this code:', token);
+                window.prompt('Másold ki ezt a kódot:', token);
               }
             }}
           >
-            {copied ? '✓ Copied' : 'Copy code'}
+            {copied ? '✓ Kimásolva' : 'Kód másolása'}
           </button>
         </div>
       )}
@@ -71,7 +71,7 @@ export function PortalAccess({ agency: initial }: { agency: Agency }) {
       {open ? (
         <>
           <div className="crm-meta" style={{ marginBottom: 12 }}>
-            Access is open. They sign in at <strong>/portal</strong> with their code, register
+            A hozzáférés nyitva. Itt lépnek be: <strong>/portal</strong> with their code, register
             buyers themselves, and see the ones they introduced — nobody else&rsquo;s, and a
             status in five words rather than our pipeline.
             {agency.portal_seen_at
@@ -80,7 +80,7 @@ export function PortalAccess({ agency: initial }: { agency: Agency }) {
           </div>
           <div className="act-row">
             <button className="crm-btn sm" disabled={busy} onClick={() => send('openPortal')}>
-              Issue a new code
+              Új kód kiadása
             </button>
             <button className="crm-btn danger sm" disabled={busy}
               onClick={() => {
@@ -88,11 +88,11 @@ export function PortalAccess({ agency: initial }: { agency: Agency }) {
                   send('closePortal');
                 }
               }}>
-              Close access
+              Hozzáférés lezárása
             </button>
           </div>
           <div className="crm-meta" style={{ marginTop: 8 }}>
-            Issuing a new code replaces the old one and signs out anybody using it.
+            Új kód kiadása felülírja a régit, és kilépteti mindenkit, aki azt használja.
           </div>
         </>
       ) : (
@@ -103,7 +103,7 @@ export function PortalAccess({ agency: initial }: { agency: Agency }) {
             happens by e-mail three days later.
           </div>
           <button className="crm-btn sm" disabled={busy} onClick={() => send('openPortal')}>
-            Open portal access
+            Portál-hozzáférés megnyitása
           </button>
         </>
       )}

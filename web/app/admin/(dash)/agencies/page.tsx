@@ -40,19 +40,19 @@ export default async function AgenciesPage({
     <>
       <div className="crm-head">
         <div>
-          <h1 className="crm-title">{showArchived ? 'Former agencies' : 'Agencies'}</h1>
+          <h1 className="crm-title">{showArchived ? 'Korábbi ügynökségek' : 'Ügynökségek'}</h1>
           <p className="crm-sub">
             {rows.length} {rows.length === 1 ? 'agency' : 'agencies'}
             {!showArchived && rows.length > 0 && (
               <> · {totals.registered} buyers introduced · {totals.won} sold{money ? ` · ${fmtTHB(totals.wonValue)}` : ''}</>
             )}
-            {' · '}a registration protects a claim for {houseProtectionDays()} days unless the agreement says otherwise.
+            {' · '}egy regisztráció {houseProtectionDays()} napig védi az igényt, hacsak a megállapodás mást nem mond.
           </p>
         </div>
         <div className="act-row">
           {admin && (
             <Link className="crm-btn ghost" href={showArchived ? '/admin/agencies' : '/admin/agencies?archived=only'}>
-              {showArchived ? '← Back to agencies' : 'Former partners'}
+              {showArchived ? '← Vissza az ügynökségekhez' : 'Korábbi partnerek'}
             </Link>
           )}
         </div>
@@ -64,24 +64,24 @@ export default async function AgenciesPage({
         {rows.length === 0 ? (
           <div className="empty" style={{ padding: 40 }}>
             {showArchived
-              ? 'No former partners.'
-              : 'No agencies yet. Add the first one above — until an agency exists here, an introduction can only be recorded as a word in the source field, and that cannot be reported on.'}
+              ? 'Nincs korábbi partner.'
+              : 'Még nincs ügynökség. Vegyél fel egyet fent — amíg nincs itt ügynökség, egy behozott vevőt csak egy szóként lehet rögzíteni a forrás mezőben, és arról nem lehet riportot készíteni.'}
           </div>
         ) : (
           <table className="crm-table">
             <thead>
               <tr>
-                <th>Agency</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Introduced</th>
-                <th style={{ textAlign: 'right' }}>Live</th>
-                <th style={{ textAlign: 'right' }}>Sold</th>
-                <th style={{ textAlign: 'right' }}>Conversion</th>
+                <th>Ügynökség</th>
+                <th>Állapot</th>
+                <th style={{ textAlign: 'right' }}>Behozott</th>
+                <th style={{ textAlign: 'right' }}>Élő</th>
+                <th style={{ textAlign: 'right' }}>Eladva</th>
+                <th style={{ textAlign: 'right' }}>Konverzió</th>
                 {/* What a partner produced in buyers is marketing's business;
                     what those buyers are worth is not. */}
-                {money && <th style={{ textAlign: 'right' }}>Sales value</th>}
-                {money && <th style={{ textAlign: 'right' }}>Commission</th>}
-                {money && <th style={{ textAlign: 'right' }}>Owed</th>}
+                {money && <th style={{ textAlign: 'right' }}>Eladási érték</th>}
+                {money && <th style={{ textAlign: 'right' }}>Jutalék</th>}
+                {money && <th style={{ textAlign: 'right' }}>Tartozás</th>}
                 <th></th>
               </tr>
             </thead>
@@ -115,7 +115,7 @@ export default async function AgenciesPage({
                     </td>
                   )}
                   <td style={{ textAlign: 'right' }}>
-                    <Link href={`/admin/agencies/${r.agency.id}`} className="crm-btn ghost sm">Open</Link>
+                    <Link href={`/admin/agencies/${r.agency.id}`} className="crm-btn ghost sm">Megnyitás</Link>
                   </td>
                 </tr>
               ))}

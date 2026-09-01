@@ -129,6 +129,25 @@ describe('coming back', () => {
     assert.equal(hit?.key, 'wake');
   });
 
+  it('drops the call-back it booked, and postpones the one a person wrote', async () => {
+    /* Logging a call now books the next one, so parking has to overrule it —
+       otherwise the lead surfaces as overdue for the whole month it is
+       supposed to be asleep. The two kinds of task part company: the CRM's own
+       guess goes, because carrying it over would invent a promise nobody made;
+       what somebody typed is theirs and only moves far enough not to go off
+       while the lead is parked. */
+    const lead = await fresh();
+    await store.logTouch(lead.id, 'call', 'Coming out in November', 'Anna');
+    await store.addTask(lead.id, 'Send the floor plans', day(2), 'Anna');
+
+    const parked = (await store.setNurture(lead.id, day(30), 'visit', undefined, 'Anna'))!;
+    const open = parked.tasks.filter((t) => !t.done);
+
+    assert.equal(open.length, 1, 'the booked call-back is gone, the typed task is not');
+    assert.equal(open[0].title, 'Send the floor plans');
+    assert.equal(open[0].due, day(30), 'moved to the day it wakes, not left to fire while asleep');
+  });
+
   it('can be pulled back early, and says so on the timeline', async () => {
     const lead = await fresh();
     await store.setNurture(lead.id, day(75), 'partner', undefined, 'Anna');

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useT } from './lang-provider';
 import type { Lead } from '@/lib/crm/types';
 import { STAGES } from '@/lib/crm/types';
 import { hasNoNextStep, isNurtured, isStalled, nextAction, nextActionState, stageAgeDays } from '@/lib/crm/rules';
@@ -13,20 +14,21 @@ const fmtDay = (iso?: string) =>
 
 /* What is planned next, and whether it is late. */
 function NextStep({ lead }: { lead: Lead }) {
+  const t = useT();
   // Parked on purpose beats every other reading: this lead is not neglected,
   // it is waiting, and saying "nothing planned" about it would be a lie.
   if (isNurtured(lead)) {
     return (
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13 }}>Parked</div>
-        <div className="crm-meta tabnum">until {fmtShort(lead.nurture_until!)}</div>
+        <div style={{ fontSize: 13 }}>{t('Félretéve')}</div>
+        <div className="crm-meta tabnum">{t('eddig')} {fmtShort(lead.nurture_until!)}</div>
       </div>
     );
   }
   const task = nextAction(lead);
   if (!task) {
     return hasNoNextStep(lead)
-      ? <span className="flag nonext">Nothing planned</span>
+      ? <span className="flag nonext">{t('Nincs betervezve')}</span>
       : <span className="crm-meta">—</span>;
   }
   const state = nextActionState(lead);
@@ -43,6 +45,25 @@ function NextStep({ lead }: { lead: Lead }) {
 const fmtShort = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'short', day: 'numeric' });
 
+/* ── A sortable column heading ──
+
+   Defined out here rather than inside the table's render. A component declared
+   inside another component is a NEW component on every render as far as React
+   is concerned, so it unmounts and remounts its subtree each time — losing
+   focus, losing scroll, and doing it on every keystroke in a filter. It worked
+   by luck because a <th> has no state to lose. */
+function TH({ id, label, sortHrefs, sort, t }: {
+  id: string; label: string; sortHrefs: Record<string, string>; sort?: string; t: (h: string) => string;
+}) {
+  return (
+    <th>
+      <Link href={sortHrefs[id]} className={`th-sort${sort === id ? ' on' : ''}`}>
+        {t(label)}{sort === id ? ' ↓' : ''}
+      </Link>
+    </th>
+  );
+}
+
 export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete = false }: {
   leads: Lead[];
   sortHrefs: Record<string, string>; // column id -> href with that sort applied
@@ -53,6 +74,7 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
       then refused by the API. */
   canDelete?: boolean;
 }) {
+  const t = useT();
   const router = useRouter();
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -71,9 +93,9 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
   async function bulk(action: 'archive', value?: string) {
     if (!ids.length) return;
     if (action === 'archive' && !confirm(
-      `Archive ${ids.length} ${ids.length === 1 ? 'lead' : 'leads'}?\n\n` +
-      'They leave every list, count and report, and their automated e-mails stop. ' +
-      'Nothing is lost — each one can be restored.',
+      `${t('Archiválod ezt a(z)')} ${ids.length} ${t('leadet?')}\n\n` +
+      `${t('Eltűnnek minden listából, számlálóból és riportból, és az automata levelek leállnak.')} ` +
+      t('Semmi nem vész el — bármelyik visszaállítható.'),
     )) return;
     setBusy(true);
     try {
@@ -100,14 +122,6 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
     }
   }
 
-  const TH = ({ id, label }: { id: string; label: string }) => (
-    <th>
-      <Link href={sortHrefs[id]} className={`th-sort${sort === id ? ' on' : ''}`}>
-        {label}{sort === id ? ' ↓' : ''}
-      </Link>
-    </th>
-  );
-
   const any = sel.size > 0;
 
   return (
@@ -120,14 +134,14 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
       {leads.length > 0 && !readOnly && any && (
         <div className="bulk-bar">
           <span className="tabnum" style={{ fontWeight: 600 }}>{sel.size} selected</span>
-          {canDelete && <button className="crm-btn danger sm" disabled={busy} onClick={() => bulk('archive')}>Archive</button>}
-          <button className="crm-btn ghost sm" disabled={busy} onClick={() => setSel(new Set())}>Clear</button>
+          {canDelete && <button className="crm-btn danger sm" disabled={busy} onClick={() => bulk('archive')}>{t('Archiválás')}</button>}
+          <button className="crm-btn ghost sm" disabled={busy} onClick={() => setSel(new Set())}>{t('Törlés')}</button>
         </div>
       )}
 
       <div className="crm-card table-scroll" style={{ padding: '8px 6px' }}>
         {leads.length === 0 ? (
-          <div className="empty" style={{ padding: 40 }}>No leads match these filters.</div>
+          <div className="empty" style={{ padding: 40 }}>{t('Nincs a szűrőknek megfelelő lead.')}</div>
         ) : (
           <table className="crm-table">
             <thead>
@@ -138,16 +152,16 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
                     className="bulk-check"
                     checked={allSelected}
                     onChange={() => setSel(allSelected ? new Set() : new Set(leads.map((l) => l.id)))}
-                    aria-label="Select all"
+                    aria-label={t('Mind kijelölése')}
                   />}
                 </th>
-                <TH id="name" label="Name" />
-                <th>Enquiry</th>
-                <th>Source</th>
-                <TH id="score" label="Score" />
-                <TH id="stage" label="Stage" />
-                <th>Next step</th>
-                <TH id="received" label="Received" />
+                <TH id="name" label="Név" sortHrefs={sortHrefs} sort={sort} t={t} />
+                <th>{t('Érdeklődés')}</th>
+                <th>{t('Honnan')}</th>
+                <TH id="score" label="Pontszám" sortHrefs={sortHrefs} sort={sort} t={t} />
+                <TH id="stage" label="Fázis" sortHrefs={sortHrefs} sort={sort} t={t} />
+                <th>{t('Következő lépés')}</th>
+                <TH id="received" label="Beérkezett" sortHrefs={sortHrefs} sort={sort} t={t} />
                 <th></th>
               </tr>
             </thead>
@@ -161,13 +175,13 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
                         className="bulk-check"
                         checked={sel.has(l.id)}
                         onChange={() => toggle(l.id)}
-                        aria-label={`Select ${l.name || 'lead'}`}
+                        aria-label={`${l.name || 'Lead'} kijelölése`}
                       />
                     )}
                   </td>
                   <td>
                     <Link href={`/admin/leads/${l.id}`} className="crm-row">
-                      <div className="crm-name">{l.name || 'Unknown'}</div>
+                      <div className="crm-name">{l.name || t('Névtelen')}</div>
                       <div className="crm-meta">{l.email || l.phone || '—'}</div>
                     </Link>
                   </td>
@@ -187,13 +201,13 @@ export function LeadsTable({ leads, sortHrefs, sort, readOnly = false, canDelete
                   <td className="crm-meta tabnum">
                     {fmtDay(l.submitted_at || l.created_at)}
                     {isStalled(l) && !isNurtured(l) && (
-                      <span className="flag stalled" title="Sitting in this stage past its threshold">
+                      <span className="flag stalled" title={t('A fázisában ül a megengedett időn túl')}>
                         {' '}· stalled {stageAgeDays(l)}d
                       </span>
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <Link href={`/admin/leads/${l.id}`} className="crm-btn ghost sm">Open</Link>
+                    <Link href={`/admin/leads/${l.id}`} className="crm-btn ghost sm">{t('Megnyitás')}</Link>
                   </td>
                 </tr>
               ))}

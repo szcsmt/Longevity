@@ -58,7 +58,7 @@ describe('a call that got through', () => {
     const after = await store.logTouch(lead.id, 'call', 'Wants two bedrooms, budget around 9M', 'Anna');
     const entry = (after!.history || []).find((h) => h.kind === 'call');
     assert.ok(entry, 'a call must be its own kind of event, not a note');
-    assert.match(entry!.detail, /Spoke by phone — Wants two bedrooms/);
+    assert.match(entry!.detail, /Beszéltünk telefonon — Wants two bedrooms/);
     assert.equal(entry!.by, 'Anna');
     assert.equal(entry!.reached, true);
   });
@@ -97,7 +97,7 @@ describe('a call that got through', () => {
     const after = await store.logTouch(lead.id, 'call', undefined, 'Anna');
     const state = sequenceState(after!);
     assert.equal(state.active, false, 'somebody they spoke to must not get the day-3 nudge');
-    assert.match((state as { reason: string }).reason, /Spoke by phone/);
+    assert.match((state as { reason: string }).reason, /Beszéltünk telefonon/);
   });
 });
 

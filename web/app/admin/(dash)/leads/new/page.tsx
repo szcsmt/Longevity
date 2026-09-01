@@ -8,9 +8,9 @@ export default function NewLeadPage() {
     <>
       <div className="crm-head">
         <div>
-          <Link href="/admin/leads" className="crm-meta" style={{ textDecoration: 'none' }}>← All leads</Link>
-          <h1 className="crm-title" style={{ marginTop: 6 }}>Add a lead</h1>
-          <p className="crm-sub">A phone enquiry, a walk-in, a referral — anything that didn&apos;t come through the website.</p>
+          <Link href="/admin/leads" className="crm-meta" style={{ textDecoration: 'none' }}>← Összes lead</Link>
+          <h1 className="crm-title" style={{ marginTop: 6 }}>Új lead</h1>
+          <p className="crm-sub">Telefonos érdeklődés, betérő vendég, ajánlás — bármi, ami nem a weboldalról jött.</p>
         </div>
       </div>
       <NewLeadForm />

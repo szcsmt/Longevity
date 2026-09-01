@@ -2,8 +2,7 @@
 
 import {
   createContext, useContext, useEffect, useMemo, useState,
-  type ReactNode, type CSSProperties,
-} from 'react';
+  type ReactNode, type CSSProperties, useSyncExternalStore } from 'react';
 import { messages, LOCALES, type Locale } from './dictionaries';
 
 interface Ctx {
@@ -16,30 +15,52 @@ const LangContext = createContext<Ctx>({ locale: 'en', setLocale: () => {}, t: (
 
 const isLocale = (v: string): v is Locale => (LOCALES as readonly string[]).includes(v);
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en');
+const LOCALE_EVENT = 'lr-locale-change';
 
-  // Pick up a saved choice, otherwise the browser language (only if we support it).
+function applyLocale(l: Locale): void {
+  document.documentElement.dataset.locale = l;
+  document.documentElement.lang = l;
+  window.dispatchEvent(new Event(LOCALE_EVENT));
+}
+
+const subscribeLocale = (onChange: () => void) => {
+  window.addEventListener(LOCALE_EVENT, onChange);
+  return () => window.removeEventListener(LOCALE_EVENT, onChange);
+};
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  /* ── Which language the page is in ──
+
+     The chosen locale lives on the document element, not in React state, and
+     is read back with useSyncExternalStore. Loading it into state inside an
+     effect meant the page rendered in English first and corrected itself a
+     frame later — a German visitor watched the whole site flash English on
+     every load, which is the kind of thing that reads as a broken site rather
+     than as a slow one.
+
+     The server can only honestly answer "en": it has no browser to ask. */
+  const locale = useSyncExternalStore(
+    subscribeLocale,
+    () => (document.documentElement.dataset.locale as Locale) || 'en',
+    () => 'en' as Locale,
+  );
+
   useEffect(() => {
     let initial: Locale | null = null;
     try {
       const saved = localStorage.getItem('lr-locale');
       if (saved && isLocale(saved)) initial = saved;
-    } catch { /* ignore */ }
+    } catch { /* Private window, or site data blocked. English is the default. */ }
     if (!initial && typeof navigator !== 'undefined') {
       const n = navigator.language.slice(0, 2).toLowerCase();
       if (isLocale(n)) initial = n;
     }
-    if (initial && initial !== 'en') setLocaleState(initial);
+    applyLocale(initial || 'en');
   }, []);
 
-  useEffect(() => {
-    if (typeof document !== 'undefined') document.documentElement.lang = locale;
-  }, [locale]);
-
   const setLocale = (l: Locale) => {
-    setLocaleState(l);
-    try { localStorage.setItem('lr-locale', l); } catch { /* ignore */ }
+    applyLocale(l);
+    try { localStorage.setItem('lr-locale', l); } catch { /* the choice just does not persist */ }
   };
 
   const t = useMemo(() => {

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { can } from '@/lib/crm/auth';
-import { getVillaData, integrityIssues, reservationWatch, type HeldUnit } from '@/lib/crm/store';
+import { getVillaData, reservationWatch, type HeldUnit } from '@/lib/crm/store';
 import { financeReport, type DueState, type Instalment } from '@/lib/crm/finance';
 import { houseSchedule, houseScheduleProblem, scheduleSummary } from '@/lib/crm/schedule';
 import { DueDate } from '@/components/crm/due-date';
@@ -16,11 +16,11 @@ export const dynamic = 'force-dynamic';
    late". Everything here is derived — nothing new is stored. */
 
 const STATE_LABEL: Record<DueState, string> = {
-  overdue: 'Overdue',
-  due: 'Due now',
-  soon: 'Next 30 days',
-  later: 'Later',
-  paid: 'Paid',
+  overdue: 'Lejárt',
+  due: 'Most esedékes',
+  soon: 'Következő 30 nap',
+  later: 'Később',
+  paid: 'Befizetve',
 };
 
 function Tile({ label, value, note, alarm }: { label: string; value: string; note?: string; alarm?: boolean }) {
@@ -38,7 +38,7 @@ function Tile({ label, value, note, alarm }: { label: string; value: string; not
 }
 
 function Row({ i, canWrite }: { i: Instalment; canWrite: boolean }) {
-  const who = i.buyerName || 'Unnamed buyer';
+  const who = i.buyerName || 'Névtelen vevő';
   return (
     <div className="task" style={{ alignItems: 'center', gap: 12 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -69,12 +69,12 @@ function HoldRow({ h }: { h: HeldUnit }) {
     <div className="task" style={{ alignItems: 'center' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="task-title" style={{ fontWeight: 500 }}>
-          {h.id} · {h.buyerName || 'Unnamed buyer'}
+          {h.id} · {h.buyerName || 'Névtelen vevő'}
         </div>
         <div className="crm-meta">
           {h.depositPaid
-            ? 'Deposit received'
-            : h.amount ? `Deposit of ${fmtTHB(h.amount)} not received` : 'No deposit recorded'}
+            ? 'Előleg megérkezett'
+            : h.amount ? `Deposit of ${fmtTHB(h.amount)} not received` : 'Nincs rögzített előleg'}
           {h.expiresAt ? ` · holds to ${h.expiresAt}` : ''}
         </div>
       </div>
@@ -85,7 +85,7 @@ function HoldRow({ h }: { h: HeldUnit }) {
             ? `${Math.abs(h.daysLeft)} ${Math.abs(h.daysLeft) === 1 ? 'day' : 'days'} past`
             : `${h.daysLeft} ${h.daysLeft === 1 ? 'day' : 'days'} left`}
       </span>
-      {h.buyerLeadId && <Link href={`/admin/leads/${h.buyerLeadId}`} className="crm-btn ghost sm">Open lead</Link>}
+      {h.buyerLeadId && <Link href={`/admin/leads/${h.buyerLeadId}`} className="crm-btn ghost sm">Lead megnyitása</Link>}
     </div>
   );
 }
@@ -96,7 +96,7 @@ function Group({ state, items, canWrite }: { state: DueState; items: Instalment[
     <div className="crm-card">
       <h3>{STATE_LABEL[state]}{items.length ? ` · ${fmtTHBShort(total)}` : ''}</h3>
       {items.length === 0
-        ? <div className="empty">Nothing here.</div>
+        ? <div className="empty">Itt nincs semmi.</div>
         : items.map((i) => <Row key={`${i.villaId}-${i.key}`} i={i} canWrite={canWrite} />)}
     </div>
   );
@@ -109,13 +109,13 @@ export default async function FinancePage() {
     return (
       <div className="crm-card">
         <h3>Payments</h3>
-        <div className="empty">This view is limited to the owner, the head of sales and finance.</div>
+        <div className="empty">Ezt az oldalt csak a tulajdonos, a sales vezető és a pénzügy látja.</div>
       </div>
     );
   }
 
-  const [{ villas }, issues, holds, canWrite] = await Promise.all([
-    getVillaData(), integrityIssues(), reservationWatch(), can('money.write'),
+  const [{ villas }, holds, canWrite] = await Promise.all([
+    getVillaData(), reservationWatch(), can('money.write'),
   ]);
   const pressing = holds.filter((h) => h.state !== 'held');
   const r = financeReport(villas);
@@ -126,10 +126,9 @@ export default async function FinancePage() {
     <>
       <div className="crm-head">
         <div>
-          <h1 className="crm-title">Payments</h1>
+          <h1 className="crm-title">Fizetések</h1>
           <p className="crm-sub">
-            {r.units} {r.units === 1 ? 'unit' : 'units'} under contract. {collected}% of the contracted
-            value has been received.
+            {r.units} lakás van szerződés alatt. A szerződött érték {collected}%-a folyt be.
           </p>
         </div>
         <Link className="crm-btn" href="/admin/masterplan">Masterplan →</Link>
@@ -140,7 +139,7 @@ export default async function FinancePage() {
           and being wrong, which is the worst of the two failures. */}
       {houseScheduleProblem() && (
         <div className="crm-card" style={{ borderColor: 'var(--c-hot)', marginBottom: 16 }}>
-          <h3 style={{ color: 'var(--c-hot)' }}>The configured payment schedule was refused</h3>
+          <h3 style={{ color: 'var(--c-hot)' }}>A beállított fizetési ütemet a rendszer elutasította</h3>
           <div className="crm-meta">
             {houseScheduleProblem()} Everything below is computed on the standard
             {' '}{scheduleSummary(houseSchedule())} schedule until <code>CRM_PAYMENT_SCHEDULE</code> is fixed.
@@ -149,13 +148,13 @@ export default async function FinancePage() {
       )}
 
       <div className="crm-grid crm-stats">
-        <Tile label="Contracted" value={fmtTHBShort(r.contracted)} note={`${r.units} units`} />
-        <Tile label="Received" value={fmtTHBShort(r.received)} note={`${collected}% collected`} />
-        <Tile label="Outstanding" value={fmtTHBShort(r.outstanding)} note="still to come in" />
+        <Tile label="Szerződött" value={fmtTHBShort(r.contracted)} note={`${r.units} lakás`} />
+        <Tile label="Befolyt" value={fmtTHBShort(r.received)} note={`${collected}% beérkezett`} />
+        <Tile label="Kint van" value={fmtTHBShort(r.outstanding)} note="még be kell folynia" />
         <Tile
-          label="Needs chasing"
+          label="Utána kell menni"
           value={fmtTHBShort(r.overdue + r.dueNow)}
-          note={r.overdue ? `${fmtTHBShort(r.overdue)} past an agreed date` : 'released, not yet paid'}
+          note={r.overdue ? `${fmtTHBShort(r.overdue)} megbeszélt határidőn túl` : 'felszabadult, még nincs fizetve'}
           alarm={Boolean(r.overdue + r.dueNow)}
         />
       </div>
@@ -179,41 +178,23 @@ export default async function FinancePage() {
           the villa to somebody else. */}
       {pressing.length > 0 && (
         <div className="crm-card" style={{ marginTop: 16, borderColor: 'var(--c-hot)' }}>
-          <h3 style={{ color: 'var(--c-hot)' }}>Reservations running out · {pressing.length}</h3>
+          <h3 style={{ color: 'var(--c-hot)' }}>Lejáró foglalások · {pressing.length}</h3>
           {pressing.map((h) => <HoldRow key={h.id} h={h} />)}
         </div>
       )}
 
-      {issues.length > 0 && (
-        <div className="crm-card" style={{ marginTop: 16, borderColor: 'var(--c-hot)' }}>
-          <h3 style={{ color: 'var(--c-hot)' }}>Needs a decision · {issues.length}</h3>
-          <p className="crm-meta" style={{ marginTop: 4, marginBottom: 10 }}>
-            Nothing here is broken loudly. Each one is a figure on this page that is
-            quietly wrong until somebody says which record is right.
-          </p>
-          {issues.map((i, n) => (
-            <div key={`${i.kind}-${i.villaId || i.leadId}-${n}`} className="task" style={{ alignItems: 'center' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="task-title">{i.detail}</div>
-                <div className="crm-meta">{i.kind.replace(/-/g, ' ')}</div>
-              </div>
-              {i.leadId && (
-                <Link href={`/admin/leads/${i.leadId}`} className="crm-btn ghost sm">Open lead</Link>
-              )}
-              {!i.leadId && i.villaId && (
-                <Link href="/admin/masterplan" className="crm-btn ghost sm">Masterplan</Link>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* The integrity problems used to be listed here too, under "Needs a
+          decision". They are on Today with everything else waiting on a
+          person: the same list in two places is not twice the reminder, it is
+          two places to check and one of them to forget. */}
 
       <p className="crm-meta" style={{ marginTop: 16 }}>
-        An instalment counts as due once the work it is tied to is finished on site,
-        which is how the schedule actually works. Give one an agreed date on the
-        masterplan and it can also become overdue. The project sells on
-        {' '}{scheduleSummary(houseSchedule())}; a unit whose buyer negotiated something else keeps
-        its own terms, and changing the house schedule never rewrites a deal already struck.
+        Egy részlet akkor válik esedékessé, amikor a hozzá tartozó munka elkészül a helyszínen —
+        a fizetési ütem valójában így működik. Ha a masterplanon megbeszélt dátumot is kap, akkor
+        lejárttá is válhat. A projekt fizetési üteme:
+        {' '}{scheduleSummary(houseSchedule())}. Az a lakás, amelyiknek a vevője mást alkudott ki,
+        megtartja a saját feltételeit — a házirend későbbi módosítása soha nem írja át a már
+        megkötött üzletet.
       </p>
     </>
   );
