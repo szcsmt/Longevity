@@ -7,6 +7,7 @@ import { sessionFor } from './sessions';
    Users come from three places, merged:
      CRM_USER + CRM_PASSWORD  — the original primary account
      CRM_USERS                — extra accounts as "name:password[:role]"
+     CRM_ADMINS               — owner accounts as "name:password"
      CRM_VIEWERS              — read-only accounts as "name:password"
    In production a missing CRM_PASSWORD fails CLOSED for the primary account;
    the dev fallback admin/longevity exists only locally.
@@ -128,6 +129,24 @@ function accounts(): CrmAccount[] {
       const role: CrmRole = ROLES.some((r) => r.id === named) ? (named as CrmRole) : 'admin';
       if (name && password) list.push({ name, password, role });
     }
+  }
+
+  /* ── Owners, in their own variable ──
+
+     Same reasoning as the guests below, learned the hard way: CRM_USERS is
+     stored as a SENSITIVE value, which means Vercel will not hand it back —
+     deliberately, and rightly. So adding one account to it means retyping
+     every account it already holds from memory, and a slip there costs
+     somebody their login on a Tuesday morning.
+
+     One variable per kind of account, each short enough to write from
+     scratch, is the shape that makes adding somebody a safe operation rather
+     than a careful one. Format: "name:password,name:password". */
+  for (const entry of (process.env.CRM_ADMINS || '').split(',')) {
+    const [rawName, rawPw] = entry.split(':');
+    const name = (rawName || '').trim();
+    const password = (rawPw || '').trim();
+    if (name && password) list.push({ name, password, role: 'admin' });
   }
 
   /* ── Guests, in their own variable ──

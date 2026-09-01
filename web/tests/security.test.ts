@@ -74,6 +74,21 @@ describe('passwords', () => {
     process.env.CRM_USERS = before;
   });
 
+  it('takes an owner from its own variable, so adding one cannot erase the others', () => {
+    /* CRM_USERS is stored as a sensitive value and cannot be read back —
+       rightly. Adding one account to it therefore means retyping every account
+       it already holds, from memory, and a slip costs somebody their login.
+       One short variable per kind of account is what makes that safe. */
+    const before = process.env.CRM_ADMINS;
+    process.env.CRM_ADMINS = `boss:${auth.hashPassword('owner-pw-2')}`;
+    assert.deepEqual(auth.verifyCredentials('boss', 'owner-pw-2'), { name: 'boss', role: 'admin' });
+    assert.equal(auth.verifyCredentials('boss', 'wrong'), null);
+    /* And the accounts in the other variables are untouched by its presence. */
+    assert.deepEqual(auth.verifyCredentials('Jani', 'hashed-secret'), { name: 'Jani', role: 'admin' });
+    assert.deepEqual(auth.verifyCredentials('vendeg', 'guest-secret'), { name: 'vendeg', role: 'viewer' });
+    if (before === undefined) delete process.env.CRM_ADMINS; else process.env.CRM_ADMINS = before;
+  });
+
   it('reports which accounts are still readable in the environment', () => {
     const list = auth.listAccounts();
     assert.equal(list.find((a) => a.name === 'Jani')?.hashed, true);
